@@ -1,5 +1,6 @@
 /* Copyright (c) 2015 Fabian Schuiki */
 #include "lexer.h"
+#include "parser.h"
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,20 +70,22 @@ compile (const char *filename) {
 		return 1;
 	}
 
-	printf("compiling %s\n", filename);
+	// printf("compiling %s\n", filename);
 	lexer_t lex;
 	lexer_init(&lex, p, fs.st_size);
 	lexer_next(&lex);
-	for (; lex.token > 0; lexer_next(&lex)) {
-		printf("lexed token %d\n", lex.token);
-	}
+	// for (; lex.token > 0; lexer_next(&lex)) {
+	// 	printf("lexed token %d\n", lex.token);
+	// }
+
+	int err = parse(&lex);
 
 	if (munmap(p, fs.st_size) == -1) {
 		perror("munmap");
 		return 1;
 	}
 
-	return lex.token == TKN_EOF ? 0 : 1;
+	return err || lex.token != TKN_EOF;
 }
 
 

@@ -1,7 +1,13 @@
 /* Copyright (c) 2015 Fabian Schuiki */
-import "stdio"
+import "stdio";
+return "blah"
+import return "dude";
+import void;
+import "stdlib";
 
+/*
 int main(int argc, char **argv) {
 	printf("Hello World\n");
 	return 0;
 }
+*/

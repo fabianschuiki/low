@@ -213,6 +213,7 @@ lexer_next (lexer_t *self) {
 			CHECK_KEYWORD("for",      TKN_FOR);
 			CHECK_KEYWORD("goto",     TKN_GOTO);
 			CHECK_KEYWORD("if",       TKN_IF);
+			CHECK_KEYWORD("import",   TKN_IMPORT);
 			CHECK_KEYWORD("inline",   TKN_INLINE);
 			CHECK_KEYWORD("return",   TKN_RETURN);
 			CHECK_KEYWORD("sizeof",   TKN_SIZEOF);

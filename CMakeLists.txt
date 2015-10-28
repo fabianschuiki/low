@@ -9,8 +9,11 @@ endif()
 add_definitions(-Wall)
 
 add_executable(lowc
-	src/main.c
+	src/array.c
+	src/grammar.c
 	src/lexer.c
+	src/main.c
+	src/parser.c
 )
 
 install(TARGETS lowc RUNTIME DESTINATION bin)

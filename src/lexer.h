@@ -3,9 +3,9 @@
 #include <stdlib.h>
 
 enum {
-	TKN_INVALID = -1,
-	TKN_EOF = 0,
+	TKN_INVALID = 0,
 	TKN_SOF = 1,
+	TKN_EOF = 2,
 
 	TKN_ADD,
 	TKN_ADD_ASSIGN,
@@ -39,6 +39,7 @@ enum {
 	TKN_GT,
 	TKN_IDENT,
 	TKN_IF,
+	TKN_IMPORT,
 	TKN_INC,
 	TKN_INLINE,
 	TKN_LBRACE,
@@ -80,6 +81,8 @@ enum {
 	TKN_WHILE,
 	TKN_XOR_ASSIGN,
 	TKN_YIELD,
+
+	MAX_TOKENS
 };
 
 typedef struct {
