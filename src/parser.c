@@ -320,6 +320,8 @@ parse_leads (lexer_t *lex, const array_t *leads, state_stack_t *stack) {
 			print_token(&tokens[i]);
 		}
 		printf("\n");
+	#else
+		printf("%s\n", lead->rule->name);
 	#endif
 
 		tail->token.rule = lead->rule;
