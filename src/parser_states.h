@@ -1,5 +1,6 @@
 /* Copyright (c) 2015 Fabian Schuiki */
 #pragma once
+#include "grammar.h"
 
 typedef struct parser_goto parser_goto_t;
 typedef struct parser_action parser_action_t;
@@ -8,7 +9,7 @@ typedef struct parser_state parser_state_t;
 struct parser_action {
 	int token;
 	int state_or_length;
-	reducer_fn_t reducer;
+	reduce_fn_t reducer;
 	int rule; // after reduction
 };
 

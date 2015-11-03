@@ -497,10 +497,39 @@ main (int argc, char** argv) {
 
 	gather_states(&states, 0, 1);
 
+
+	printf("/* States of the LR(1) parser. Automatically generated. */\n");
+	printf("#include \"parser_states.h\"\n");
+	printf("\n");
+
+
+	array_t reducers;
+	array_init(&reducers, sizeof(reduce_fn_t));
+
+	for (i = 0; i < states.size; ++i) {
+		state_t *state = array_get(&states, i);
+		for (n = 0; n < state->token_actions.size; ++n) {
+			token_action_t *action = array_get(&state->token_actions, n);
+			if (action->rule && action->rule != &grammar_root && action->variant->reducer) {
+				unsigned k;
+				for (k = 0; k < reducers.size; ++k)
+					if (*(reduce_fn_t*)array_get(&reducers, k) == action->variant->reducer)
+						break;
+				if (k == reducers.size) {
+					printf("extern void %s(token_t *, const token_t*, void*);\n", action->variant->reducer_name);
+					array_add(&reducers, &action->variant->reducer);
+				}
+			}
+		}
+	}
+
+	array_dispose(&reducers);
+	printf("\n");
+
+
 	array_t rule_ids;
 	array_init(&rule_ids, sizeof(void*));
 
-	printf("/* States of the LR(1) parser. Automatically generated. */\n");
 	printf("const parser_state_t parser_states[] = {\n");
 	for (i = 0; i < states.size; ++i) {
 		state_t *state = array_get(&states, i);
@@ -537,30 +566,11 @@ main (int argc, char** argv) {
 		}
 		printf("\t\t}\n");
 
-		printf("\t}\n");
+		printf("\t},\n");
 	}
-	printf("}\n");
+	printf("};\n");
+	array_dispose(&rule_ids);
 
-	// for (i = 0; i < states.size; ++i) {
-	// 	state_t *state = array_get(&states, i);
-	// 	printf("state %d:\n", i);
-	// 	for (n = 0; n < state->leads.size; ++n) {
-	// 		printf("  ");
-	// 		print_lead(array_get(&state->leads, n));
-	// 		printf("\n");
-	// 	}
-	// 	for (n = 0; n < state->token_actions.size; ++n) {
-	// 		printf("  ");
-	// 		print_token_action(array_get(&state->token_actions, n));
-	// 		printf("\n");
-	// 	}
-	// 	for (n = 0; n < state->rule_actions.size; ++n) {
-	// 		printf("  ");
-	// 		print_rule_action(array_get(&state->rule_actions, n));
-	// 		printf("\n");
-	// 	}
-	// 	printf("\n");
-	// }
 
 	for (i = 0; i < states.size; ++i) {
 		state_t *state = array_get(&states, i);
@@ -569,7 +579,6 @@ main (int argc, char** argv) {
 		array_dispose(&state->leads);
 	}
 	array_dispose(&states);
-	array_dispose(&rule_ids);
 
 	return 0;
 }
