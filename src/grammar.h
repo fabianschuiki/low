@@ -11,6 +11,7 @@ typedef void(*reduce_fn_t)(token_t *, const token_t*, void*);
 struct variant {
 	const rule_t **elements;
 	reduce_fn_t reducer;
+	const char *reducer_name;
 	void *reducer_arg;
 };
 
