@@ -263,5 +263,5 @@ void reduce_unit_1(token_t *red, const token_t *tkn, void *arg) {
 
 void reduce_func_definition(token_t *red, const token_t *tkn, void *arg) {
 	red->func_def = malloc(sizeof(func_def_t));
-	red->func_def->name = strndup(tkn[1].lex.first, tkn[1].lex.last-tkn[1].lex.first);
+	red->func_def->name = strndup(tkn[1].first, tkn[1].last-tkn[1].first);
 }

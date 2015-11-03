@@ -21,13 +21,10 @@ struct rule {
 };
 
 struct token {
-	int token;
-	const rule_t *rule;
+	int id;
+	const char *first;
+	const char *last;
 	union {
-		struct {
-			const char *first;
-			const char *last;
-		} lex;
 		func_def_t *func_def;
 	};
 };

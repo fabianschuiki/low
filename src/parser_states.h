@@ -21,6 +21,9 @@ struct parser_goto {
 struct parser_state {
 	const parser_action_t *actions;
 	const parser_goto_t *gotos;
+	int num_actions;
+	int num_gotos;
 };
 
 extern const parser_state_t parser_states[];
+extern const char *parser_token_names[];

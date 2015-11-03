@@ -7,12 +7,13 @@
 #include <string.h>
 
 
-typedef struct token_set token_set_t;
-typedef struct state state_t;
 typedef struct lead lead_t;
-typedef struct rule_chain rule_chain_t;
-typedef struct token_action token_action_t;
 typedef struct rule_action rule_action_t;
+typedef struct rule_chain rule_chain_t;
+typedef struct state state_t;
+typedef struct symbol symbol_t;
+typedef struct token_action token_action_t;
+typedef struct token_set token_set_t;
 
 
 struct token_set {
@@ -25,11 +26,15 @@ struct state {
 	array_t rule_actions;
 };
 
+struct symbol {
+	int token;
+	const rule_t *rule;
+};
+
 struct lead {
 	const rule_t *rule;
 	const variant_t *variant;
 	unsigned position;
-	token_t token;
 	token_set_t terminals;
 };
 
@@ -88,20 +93,20 @@ equal_token_sets (const token_set_t *s1, const token_set_t *s2) {
 }
 
 
-static token_t
-variant_token(const variant_t *self, unsigned index) {
+static symbol_t
+variant_get_symbol(const variant_t *self, unsigned index) {
 	assert(self);
 	const rule_t *e = self->elements[index];
 	if ((size_t)e < MAX_TOKENS) {
-		return (token_t){(int)(size_t)e, 0};
+		return (symbol_t){(int)(size_t)e, 0};
 	} else {
-		return (token_t){0, e};
+		return (symbol_t){0, e};
 	}
 }
 
 
 static int
-equal_tokens (const token_t *t1, const token_t *t2) {
+equal_symbols (const symbol_t *t1, const symbol_t *t2) {
 	return t1->token == t2->token && t1->rule == t2->rule;
 }
 
@@ -111,7 +116,6 @@ equal_leads (const lead_t *l1, const lead_t *l2) {
 	return l1->rule == l2->rule &&
 	       l1->variant == l2->variant &&
 	       l1->position == l2->position &&
-	       equal_tokens(&l1->token, &l2->token) &&
 	       equal_token_sets(&l1->terminals, &l2->terminals);
 }
 
@@ -179,26 +183,17 @@ equal_set_of_leads (const array_t *a1, const array_t *a2) {
 
 
 // static void
-// print_token (const token_t *token) {
-// 	if (token->token && !token->rule)
-// 		printf("%d", token->token);
-// 	else if (token->rule && !token->token)
-// 		printf("%s", token->rule->name);
-// 	else if (!token->rule && !token->token)
+// print_symbol (const symbol_t *symbol) {
+// 	if (symbol->token && !symbol->rule)
+// 		printf("%d", symbol->token);
+// 	else if (symbol->rule && !symbol->token)
+// 		printf("%s", symbol->rule->name);
+// 	else if (!symbol->rule && !symbol->token)
 // 		printf("<nil>");
 // 	else
-// 		printf("{%d, %s}", token->token, token->rule ? token->rule->name : "<none>");
+// 		printf("{%d, %s}", symbol->token, symbol->rule ? symbol->rule->name : "<none>");
 // }
 
-
-// static void
-// print_lead (const lead_t *lead) {
-// 	printf("{%p, %s, %u, ", lead->variant, lead->rule->name, lead->position);
-// 	print_token(&lead->token);
-// 	printf(", ");
-// 	print_token_set(&lead->terminals);
-// 	printf("}");
-// }
 
 // static void
 // print_lead (const lead_t *lead) {
@@ -243,25 +238,25 @@ equal_set_of_leads (const array_t *a1, const array_t *a2) {
 /// Gathers a list of terminals that may appear as the first symbol of the given
 /// token.
 void
-gather_first (token_set_t *first, const token_t *token, const rule_chain_t *chain) {
+gather_first (token_set_t *first, const symbol_t *symbol, const rule_chain_t *chain) {
 	assert(first);
-	assert(token);
+	assert(symbol);
 
-	if (token->rule) {
+	if (symbol->rule) {
 		const rule_chain_t *check;
 		for (check = chain; check; check = check->prev)
-			if (check->rule == token->rule)
+			if (check->rule == symbol->rule)
 				return;
-		rule_chain_t new_chain = {chain, token->rule};
+		rule_chain_t new_chain = {chain, symbol->rule};
 
 		const variant_t *variant;
-		for (variant = token->rule->variants; variant->elements; ++variant) {
-			token_t t = variant_token(variant, 0);
+		for (variant = symbol->rule->variants; variant->elements; ++variant) {
+			symbol_t t = variant_get_symbol(variant, 0);
 			gather_first(first, &t, &new_chain);
 		}
 	} else {
-		assert(token->token && "no empty rules allowed");
-		token_set_insert(first, token->token);
+		assert(symbol->token && "no empty rules allowed");
+		token_set_insert(first, symbol->token);
 	}
 }
 
@@ -279,10 +274,10 @@ gather_leads (array_t *leads, unsigned index, unsigned length) {
 	for (i = index; i < index+length; ++i) {
 		const lead_t *lead = array_get(leads, i);
 
-		token_t tc = variant_token(lead->variant, lead->position);
+		symbol_t tc = variant_get_symbol(lead->variant, lead->position);
 		if (!tc.rule)
 			continue;
-		token_t tn = variant_token(lead->variant, lead->position+1);
+		symbol_t tn = variant_get_symbol(lead->variant, lead->position+1);
 
 		token_set_t follow;
 		token_set_init(&follow);
@@ -299,7 +294,6 @@ gather_leads (array_t *leads, unsigned index, unsigned length) {
 				tc.rule,
 				variant,
 				0,
-				variant_token(variant, 0),
 				follow
 			};
 
@@ -377,14 +371,17 @@ gather_states (array_t *states, unsigned index, unsigned length) {
 			array_init(&reduce_leads, sizeof(lead_t));
 
 			lead_t *base = array_get(&state.leads, n);
+			symbol_t base_symbol = variant_get_symbol(base->variant, base->position);
 
 			unsigned k;
 			for (k = n; k < state.leads.size; ++k) {
 				lead_t *lead = array_get(&state.leads, k);
-				if (!handled[k] && equal_tokens(&base->token, &lead->token)) {
+				symbol_t lead_symbol = variant_get_symbol(lead->variant, lead->position);
+
+				if (!handled[k] && equal_symbols(&base_symbol, &lead_symbol)) {
 					handled[k] = 1;
 
-					if (lead->token.token == 0 && lead->token.rule == 0) {
+					if (lead_symbol.token == 0 && lead_symbol.rule == 0) {
 						// reduce
 						// printf("  ");
 						// print_token_set(&lead->terminals);
@@ -400,7 +397,6 @@ gather_states (array_t *states, unsigned index, unsigned length) {
 					} else {
 						lead_t nl = *lead;
 						++nl.position;
-						nl.token = variant_token(nl.variant, nl.position);
 						array_add(&shift_leads, &nl);
 					}
 				}
@@ -435,21 +431,21 @@ gather_states (array_t *states, unsigned index, unsigned length) {
 				}
 
 				// printf("  [");
-				// print_token(&base->token);
-				// if (base->token.rule == 0)
+				// print_symbol(&base_symbol);
+				// if (base_symbol.rule == 0)
 				// 	printf("] shift %d\n", state_index);
 				// else
 				// 	printf("] goto %d\n", state_index);
 
-				if (base->token.rule) {
+				if (base_symbol.rule) {
 					rule_action_t *action = array_add(&((state_t*)array_get(states,i))->rule_actions, 0);
 					bzero(action, sizeof(*action));
-					action->rule = base->token.rule;
+					action->rule = base_symbol.rule;
 					action->state = state_index;
 				} else {
 					token_action_t *action = array_add(&((state_t*)array_get(states,i))->token_actions, 0);
 					bzero(action, sizeof(*action));
-					token_set_insert(&action->tokens, base->token.token);
+					token_set_insert(&action->tokens, base_symbol.token);
 					action->state = state_index;
 				}
 			}
@@ -467,7 +463,7 @@ static unsigned
 assign_rule_id(array_t *rule_ids, const rule_t *rule) {
 	unsigned w;
 	for (w = 0; w < rule_ids->size; ++w)
-		if (*(void**)array_get(rule_ids,w) == rule)
+		if (*(rule_t**)array_get(rule_ids,w) == rule)
 			return w+MAX_TOKENS;
 
 	array_add(rule_ids, &rule);
@@ -479,7 +475,7 @@ int
 main (int argc, char** argv) {
 	unsigned i, n;
 
-	lead_t root_lead = {&grammar_root, grammar_root.variants, 0, variant_token(grammar_root.variants,0)};
+	lead_t root_lead = {&grammar_root, grammar_root.variants, 0};
 	token_set_init(&root_lead.terminals);
 	token_set_insert(&root_lead.terminals, TKN_EOF);
 
@@ -492,7 +488,7 @@ main (int argc, char** argv) {
 	consolidate_leads(&initial.leads);
 
 	array_t states;
-	array_init(&states, sizeof(lead_t));
+	array_init(&states, sizeof(state_t));
 	array_add(&states, &initial);
 
 	gather_states(&states, 0, 1);
@@ -528,12 +524,15 @@ main (int argc, char** argv) {
 
 
 	array_t rule_ids;
-	array_init(&rule_ids, sizeof(void*));
+	array_init(&rule_ids, sizeof(rule_t*));
 
 	printf("const parser_state_t parser_states[] = {\n");
 	for (i = 0; i < states.size; ++i) {
 		state_t *state = array_get(&states, i);
 		printf("\t/* state %d */ {\n", i);
+
+		unsigned num_actions = 0;
+		unsigned num_gotos = 0;
 
 		printf("\t\t(const parser_action_t[]){\n");
 		for (n = 0; n < state->token_actions.size; ++n) {
@@ -551,8 +550,9 @@ main (int argc, char** argv) {
 								printf("\t\t\t{%d, %d, %s, %d}, /* reduce %s */\n", u*32+v, -length, action->variant->reducer_name, assign_rule_id(&rule_ids, action->rule), action->rule->name);
 							}
 						} else {
-							printf("\t\t\t{%d, %d, 0, 0}, /* shift */\n", u*32+v, action->state);
+							printf("\t\t\t{%d, %d, 0, 0}, /* shift & goto %d */\n", u*32+v, action->state, action->state);
 						}
+						++num_actions;
 					}
 				}
 			}
@@ -562,13 +562,23 @@ main (int argc, char** argv) {
 		printf("\t\t(const parser_goto_t[]){\n");
 		for (n = 0; n < state->rule_actions.size; ++n) {
 			rule_action_t *action = array_get(&state->rule_actions, n);
-			printf("\t\t\t{%d, %d}, /* [%s] goto */\n", assign_rule_id(&rule_ids, action->rule), action->state, action->rule->name);
+			printf("\t\t\t{%d, %d}, /* [%s] goto %d */\n", assign_rule_id(&rule_ids, action->rule), action->state, action->rule->name, action->state);
+			++num_gotos;
 		}
-		printf("\t\t}\n");
+		printf("\t\t},\n");
 
+		printf("\t\t%d, %d,\n", num_actions, num_gotos);
 		printf("\t},\n");
 	}
+	printf("};\n\n");
+
+	printf("const char *parser_token_names[] = {\n");
+	for (i = 0; i < MAX_TOKENS; ++i)
+		printf("\t0, /* token */\n");
+	for (i = 0; i < rule_ids.size; ++i)
+		printf("\t\"%s\", /* rule */\n", ((rule_t**)rule_ids.items)[i]->name);
 	printf("};\n");
+
 	array_dispose(&rule_ids);
 
 
