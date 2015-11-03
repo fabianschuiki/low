@@ -1,11 +1,12 @@
 /* Copyright (c) 2015 Fabian Schuiki */
 #pragma once
+#include "ast.h"
 
 typedef struct rule rule_t;
 typedef struct variant variant_t;
 typedef struct token token_t;
 
-typedef void(*reduce_fn_t)(const token_t*, unsigned, void*);
+typedef void(*reduce_fn_t)(token_t *, const token_t*, void*);
 
 struct variant {
 	const rule_t **elements;
@@ -26,6 +27,7 @@ struct token {
 			const char *first;
 			const char *last;
 		} lex;
+		func_def_t *func_def;
 	};
 };
 

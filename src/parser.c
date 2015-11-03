@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <string.h>
 
+// #define DEBUG_PARSER
+
 
 typedef struct rule_chain rule_chain_t;
 typedef struct state_stack state_stack_t;
@@ -320,15 +322,13 @@ parse_leads (lexer_t *lex, const array_t *leads, state_stack_t *stack) {
 			print_token(&tokens[i]);
 		}
 		printf("\n");
-	#else
-		printf("%s\n", lead->rule->name);
 	#endif
 
 		tail->token.rule = lead->rule;
 		tail->token.token = 0;
 		reduce_fn_t reducer = lead->variant->reducer;
 		if (reducer) {
-			reducer(tokens, num_tokens, lead->variant->reducer_arg);
+			reducer(&tail->token, tokens, lead->variant->reducer_arg);
 		}
 
 		result = num_tokens-1;

@@ -10,6 +10,7 @@ add_definitions(-Wall)
 
 add_executable(lowc
 	src/array.c
+	src/ast.c
 	src/grammar.c
 	src/lexer.c
 	src/main.c

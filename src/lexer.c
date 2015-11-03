@@ -125,16 +125,16 @@ lexer_next (lexer_t *self) {
 			CHECK_TOKEN("&=", TKN_AND_ASSIGN)
 			CHECK_TOKEN("^=", TKN_XOR_ASSIGN)
 			CHECK_TOKEN("|=", TKN_OR_ASSIGN)
-			CHECK_TOKEN(">>", TKN_RIGHT)
-			CHECK_TOKEN("<<", TKN_LEFT)
-			CHECK_TOKEN("++", TKN_INC)
-			CHECK_TOKEN("--", TKN_DEC)
-			CHECK_TOKEN("&&", TKN_AND)
-			CHECK_TOKEN("||", TKN_OR)
-			CHECK_TOKEN("<=", TKN_LE)
-			CHECK_TOKEN(">=", TKN_GE)
-			CHECK_TOKEN("==", TKN_EQ)
-			CHECK_TOKEN("!=", TKN_NE)
+			CHECK_TOKEN(">>", TKN_RIGHT_OP)
+			CHECK_TOKEN("<<", TKN_LEFT_OP)
+			CHECK_TOKEN("++", TKN_INC_OP)
+			CHECK_TOKEN("--", TKN_DEC_OP)
+			CHECK_TOKEN("&&", TKN_AND_OP)
+			CHECK_TOKEN("||", TKN_OR_OP)
+			CHECK_TOKEN("<=", TKN_LE_OP)
+			CHECK_TOKEN(">=", TKN_GE_OP)
+			CHECK_TOKEN("==", TKN_EQ_OP)
+			CHECK_TOKEN("!=", TKN_NE_OP)
 			#undef CHECK_TOKEN
 		}
 
@@ -152,18 +152,19 @@ lexer_next (lexer_t *self) {
 			CHECK_TOKEN(']', TKN_RBRACK)
 			CHECK_TOKEN('.', TKN_PERIOD)
 			CHECK_TOKEN('&', TKN_BITWISE_AND)
-			CHECK_TOKEN('!', TKN_NOT)
+			CHECK_TOKEN('!', TKN_NOT_OP)
 			CHECK_TOKEN('~', TKN_BITWISE_NOT)
-			CHECK_TOKEN('-', TKN_SUB)
-			CHECK_TOKEN('+', TKN_ADD)
-			CHECK_TOKEN('*', TKN_MUL)
-			CHECK_TOKEN('/', TKN_DIV)
-			CHECK_TOKEN('%', TKN_MOD)
-			CHECK_TOKEN('<', TKN_LT)
-			CHECK_TOKEN('>', TKN_GT)
+			CHECK_TOKEN('-', TKN_SUB_OP)
+			CHECK_TOKEN('+', TKN_ADD_OP)
+			CHECK_TOKEN('*', TKN_MUL_OP)
+			CHECK_TOKEN('/', TKN_DIV_OP)
+			CHECK_TOKEN('%', TKN_MOD_OP)
+			CHECK_TOKEN('<', TKN_LT_OP)
+			CHECK_TOKEN('>', TKN_GT_OP)
 			CHECK_TOKEN('^', TKN_BITWISE_XOR)
 			CHECK_TOKEN('|', TKN_BITWISE_OR)
 			CHECK_TOKEN('?', TKN_QUESTION)
+			CHECK_TOKEN('#', TKN_HASH)
 			#undef CHECK_TOKEN
 		}
 
@@ -200,6 +201,7 @@ lexer_next (lexer_t *self) {
 
 		if (self->token == TKN_IDENT) {
 			#define CHECK_KEYWORD(kw,tkn) if (match_keyword(kw, self->base, self->ptr)) self->token = tkn;
+			CHECK_KEYWORD("alignas",  TKN_ALIGNAS);
 			CHECK_KEYWORD("atomic",   TKN_ATOMIC);
 			CHECK_KEYWORD("break",    TKN_BREAK);
 			CHECK_KEYWORD("case",     TKN_CASE);
