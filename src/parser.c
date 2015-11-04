@@ -1,4 +1,5 @@
 /* Copyright (c) 2015 Fabian Schuiki */
+#include "ast.h"
 #include "array.h"
 #include "parser.h"
 #include "parser_states.h"
@@ -25,6 +26,7 @@ parse (lexer_t *lex) {
 	bzero(&initial, sizeof(initial));
 	array_add(&stack, &initial);
 
+	array_t *result = 0;
 	while (stack.size > 0) {
 		parser_stack_t *current = array_get(&stack, stack.size-1);
 		const parser_state_t *state = parser_states + current->state;
@@ -37,6 +39,7 @@ parse (lexer_t *lex) {
 		const parser_action_t *action = &state->actions[i];
 		if (action->state_or_length < 0) {
 			if (action->rule == 0) {
+				result = current->token.ptr;
 				break;
 			}
 
@@ -55,7 +58,7 @@ parse (lexer_t *lex) {
 				token_t tokens[num_tokens];
 				for (i = 0; i < num_tokens; ++i)
 					tokens[i] = (target+i)->token;
-				action->reducer(&reduced, tokens, 0);
+				action->reducer(&reduced, tokens, action->reducer_tag);
 			} else {
 				// unsigned length = reduced.last-reduced.first;
 				// if (length > 35)
@@ -119,6 +122,9 @@ parse (lexer_t *lex) {
 	// array_dispose(&leads);
 
 	// return stack.token.rule == &grammar_root ? 0 : 1;
+	printf("unit_list:\n");
+	for (i = 0; i < result->size; ++i)
+		printf("  unit #%d type %d\n", i, ((unit_t*)result->items)[i].type);
 
-	return 0;
+	return result == 0;
 }

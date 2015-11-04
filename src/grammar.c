@@ -19,7 +19,9 @@
 	#define VAR
 		#define TKN(name)
 		#define SUB(name)
-	#define VAR_END(reducer)
+	#define REDUCE(reducer)
+	#define REDUCE_TAG(reducer,tag)
+	#define REDUCE_DEFAULT
 #define RULE_END
 
 GRAMMAR
@@ -28,7 +30,9 @@ GRAMMAR
 #undef VAR
 #undef TKN
 #undef SUB
-#undef VAR_END
+#undef REDUCE
+#undef REDUCE_TAG
+#undef REDUCE_DEFAULT
 #undef RULE_END
 
 
@@ -37,7 +41,9 @@ GRAMMAR
 	#define VAR {(const rule_t*[]){
 		#define TKN(name) (void*)TKN_##name,
 		#define SUB(name) &SYMNAME(name),
-	#define VAR_END(reducer) 0}, reducer, #reducer},
+	#define REDUCE(reducer) 0}, "reduce_" #reducer, 0},
+	#define REDUCE_TAG(reducer,tag) 0}, "reduce_" #reducer, tag},
+	#define REDUCE_DEFAULT 0}, 0},
 #define RULE_END {0}}};
 
 GRAMMAR
@@ -46,13 +52,15 @@ GRAMMAR
 #undef VAR
 #undef TKN
 #undef SUB
-#undef VAR_END
+#undef REDUCE
+#undef REDUCE_TAG
+#undef REDUCE_DEFAULT
 #undef RULE_END
 
 // Root rule.
 const rule_t grammar_root = {
 	"root", (const variant_t[]){
-		{(const rule_t*[]){&SYMNAME(GRAMMAR_ROOT), 0}, 0, "0 /* accept */"},
+		{(const rule_t*[]){&SYMNAME(GRAMMAR_ROOT), 0}, "0 /* accept */"},
 		{0},
 	}
 };

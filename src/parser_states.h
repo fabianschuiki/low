@@ -10,6 +10,7 @@ struct parser_action {
 	int token;
 	int state_or_length;
 	reduce_fn_t reducer;
+	int reducer_tag;
 	int rule; // after reduction
 };
 

@@ -500,7 +500,7 @@ main (int argc, char** argv) {
 
 
 	array_t reducers;
-	array_init(&reducers, sizeof(reduce_fn_t));
+	array_init(&reducers, sizeof(variant_t*));
 
 	for (i = 0; i < states.size; ++i) {
 		state_t *state = array_get(&states, i);
@@ -509,11 +509,11 @@ main (int argc, char** argv) {
 			if (action->rule && action->rule != &grammar_root && action->variant->reducer) {
 				unsigned k;
 				for (k = 0; k < reducers.size; ++k)
-					if (*(reduce_fn_t*)array_get(&reducers, k) == action->variant->reducer)
+					if (*(variant_t**)array_get(&reducers, k) == action->variant)
 						break;
 				if (k == reducers.size) {
-					printf("extern void %s(token_t *, const token_t*, void*);\n", action->variant->reducer_name);
-					array_add(&reducers, &action->variant->reducer);
+					printf("extern void %s(token_t *, const token_t*, int);\n", action->variant->reducer);
+					array_add(&reducers, &action->variant);
 				}
 			}
 		}
@@ -545,12 +545,19 @@ main (int argc, char** argv) {
 							unsigned length;
 							for (length = 0; action->variant->elements[length]; ++length);
 							if (action->rule == &grammar_root) {
-								printf("\t\t\t{%d, %d, 0, 0}, /* accept */\n", u*32+v, -length);
+								printf("\t\t\t{%d, %d, 0, 0, 0}, /* accept */\n", u*32+v, -length);
 							} else {
-								printf("\t\t\t{%d, %d, %s, %d}, /* reduce %s */\n", u*32+v, -length, action->variant->reducer_name, assign_rule_id(&rule_ids, action->rule), action->rule->name);
+								printf("\t\t\t{%d, %d, %s, %d, %d}, /* reduce %s */\n",
+									u*32+v,
+									-length,
+									action->variant->reducer ? action->variant->reducer : "0",
+									action->variant->reducer_tag,
+									assign_rule_id(&rule_ids, action->rule),
+									action->rule->name
+								);
 							}
 						} else {
-							printf("\t\t\t{%d, %d, 0, 0}, /* shift & goto %d */\n", u*32+v, action->state, action->state);
+							printf("\t\t\t{%d, %d, 0, 0, 0}, /* shift & goto %d */\n", u*32+v, action->state, action->state);
 						}
 						++num_actions;
 					}
