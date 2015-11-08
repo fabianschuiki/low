@@ -1,0 +1,9 @@
+/* Copyright (c) 2015 Fabian Schuiki */
+void main() {
+	#float a;
+	#int b;
+	// #int* c;
+	// #int[128] d;
+	#int i = 4*4;
+	return 42 + i;
+}

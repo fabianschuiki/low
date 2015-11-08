@@ -148,6 +148,9 @@ block_item_dispose (block_item_t *self) {
 		case AST_STMT_BLOCK_ITEM:
 			stmt_dispose(self->stmt);
 			break;
+		case AST_DECL_BLOCK_ITEM:
+			decl_dispose(self->decl);
+			break;
 		default:
 			fprintf(stderr, "%s.%d: block_item_dispose for block item type %d not handled\n", __FILE__, __LINE__, self->type);
 			abort();
@@ -163,7 +166,7 @@ decl_dispose (decl_t *self) {
 
 	switch (self->type) {
 		case AST_VARIABLE_DECL:
-			// type_dispose(self->variable.type);
+			type_dispose(&self->variable.type);
 			free(self->variable.name);
 			expr_dispose(self->variable.initial);
 			free(self->variable.initial);
@@ -173,6 +176,11 @@ decl_dispose (decl_t *self) {
 			abort();
 			break;
 	}
+}
+
+
+void
+type_dispose (type_t *self) {
 }
 
 

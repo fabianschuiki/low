@@ -21,9 +21,24 @@ typedef struct member_access member_access_t;
 typedef struct selection_stmt selection_stmt_t;
 typedef struct sizeof_op sizeof_op_t;
 typedef struct stmt stmt_t;
+typedef struct type type_t;
 typedef struct unary_op unary_op_t;
-typedef struct variable_decl variable_decl_t;
 typedef struct unit unit_t;
+typedef struct variable_decl variable_decl_t;
+
+
+
+// --- type -------------------------------------------------------------
+
+enum type_type {
+	AST_VOID_TYPE,
+	AST_INTEGER_TYPE,
+	AST_FLOAT_TYPE,
+};
+
+struct type {
+	unsigned type;
+};
 
 
 
@@ -285,7 +300,7 @@ struct stmt {
 
 enum block_item_type {
 	AST_STMT_BLOCK_ITEM,
-	AST_DECLARATION_BLOCK_ITEM,
+	AST_DECL_BLOCK_ITEM,
 };
 
 
@@ -293,6 +308,7 @@ struct block_item {
 	unsigned type;
 	union {
 		stmt_t *stmt;
+		decl_t *decl;
 	};
 };
 
@@ -308,7 +324,7 @@ enum decl_type {
 
 
 struct variable_decl {
-	void *type;
+	type_t type;
 	char *name;
 	expr_t *initial;
 };
@@ -323,7 +339,7 @@ struct decl {
 
 
 
-// --- decl -------------------------------------------------------------
+// --- unit -------------------------------------------------------------
 
 enum unit_type {
 	AST_IMPORT_UNIT,
@@ -353,4 +369,5 @@ void expr_dispose(expr_t *self);
 void stmt_dispose(stmt_t *self);
 void block_item_dispose(block_item_t *self);
 void decl_dispose(decl_t *self);
+void type_dispose(type_t *self);
 void unit_dispose(unit_t *self);

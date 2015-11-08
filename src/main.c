@@ -1,6 +1,9 @@
 /* Copyright (c) 2015 Fabian Schuiki */
+#include "ast.h"
+#include "codegen.h"
 #include "lexer.h"
 #include "parser.h"
+#include <llvm-c/BitWriter.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -74,18 +77,28 @@ compile (const char *filename) {
 	lexer_t lex;
 	lexer_init(&lex, p, fs.st_size);
 	lexer_next(&lex);
-	// for (; lex.token > 0; lexer_next(&lex)) {
-	// 	printf("lexed token %d\n", lex.token);
-	// }
 
-	int err = parse(&lex);
+	array_t *units = parse(&lex);
+	if (units) {
+		LLVMModuleRef mod = LLVMModuleCreateWithName("my_module");
+		codegen(mod,units);
+		LLVMDumpModule(mod);
+		LLVMWriteBitcodeToFile(mod, "parsed.bc");
+		LLVMDisposeModule(mod);
+
+		unsigned i;
+		for (i = 0; i < units->size; ++i)
+			unit_dispose(array_get(units,i));
+		array_dispose(units);
+		free(units);
+	}
 
 	if (munmap(p, fs.st_size) == -1) {
 		perror("munmap");
 		return 1;
 	}
 
-	return err || lex.token != TKN_EOF;
+	return !units || lex.token != TKN_EOF;
 }
 
 

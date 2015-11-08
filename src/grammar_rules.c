@@ -325,6 +325,14 @@ REDUCER(block_item_list) {
 	}
 }
 
+REDUCER(block_item_decl) {
+	block_item_t *b = malloc(sizeof(block_item_t));
+	bzero(b, sizeof(*b));
+	b->type = AST_DECL_BLOCK_ITEM;
+	b->decl = in->ptr;
+	out->ptr = b;
+}
+
 REDUCER(block_item_stmt) {
 	block_item_t *b = malloc(sizeof(block_item_t));
 	bzero(b, sizeof(*b));
@@ -468,10 +476,40 @@ REDUCER(variable_decl) {
 	decl_t *d = malloc(sizeof(decl_t));
 	bzero(d, sizeof(*d));
 	d->type = AST_VARIABLE_DECL;
+	d->variable.type = *(type_t*)in[0].ptr;
+	free(in[0].ptr);
 	d->variable.name = strndup(in[1].first, in[1].last-in[1].first);
 	if (tag == 1)
 		d->variable.initial = in[3].ptr;
 	out->ptr = d;
+}
+
+
+// --- type -------------------------------------------------------------------
+
+REDUCER(type_void) {
+	type_t *t = malloc(sizeof(type_t));
+	bzero(t, sizeof(*t));
+	t->type = AST_VOID_TYPE;
+	out->ptr = t;
+}
+
+REDUCER(type_name) {
+	type_t *t = malloc(sizeof(type_t));
+	bzero(t, sizeof(*t));
+	const char *name = in[1].first;
+	unsigned len = in[1].last-in[1].first;
+	if (len == 3 && strncmp(name, "int", 3) == 0)
+		t->type = AST_INTEGER_TYPE;
+	else if (len == 5 && strncmp(name, "float", 5) == 0)
+		t->type = AST_FLOAT_TYPE;
+	else {
+		char *buf = strndup(name,len);
+		fprintf(stderr, "unknown type name %s\n", buf);
+		free(buf);
+		abort();
+	}
+	out->ptr = t;
 }
 
 
@@ -500,8 +538,6 @@ REDUCER(func_unit) {
 	u->func.name = strndup(in[1].first, in[1].last-in[1].first);
 	u->func.body = in[4].ptr;
 	out->ptr = u;
-
-	printf("parsed func %s\n", u->func.name);
 }
 
 REDUCER(unit_list) {

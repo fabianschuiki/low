@@ -157,7 +157,7 @@ RULE(block_item_list) \
 RULE_END \
 \
 RULE(block_item) \
-	VAR SUB(decl) REDUCE_DEFAULT \
+	VAR SUB(decl) REDUCE(block_item_decl) \
 	VAR SUB(stmt) REDUCE(block_item_stmt) \
 RULE_END \
 \
@@ -202,12 +202,21 @@ RULE_END \
 /* --- decl ---------------------------------------------------------------- */\
 \
 RULE(variable_decl) \
-	VAR SUB(type) TKN(IDENT) TKN(SEMICOLON) REDUCE(variable_decl) \
-	VAR SUB(type) TKN(IDENT) TKN(ASSIGN) SUB(assignment_expr) TKN(SEMICOLON) REDUCE(variable_decl) \
+	VAR SUB(type) TKN(IDENT) TKN(SEMICOLON) REDUCE_TAG(variable_decl, 0) \
+	VAR SUB(type) TKN(IDENT) TKN(ASSIGN) SUB(assignment_expr) TKN(SEMICOLON) REDUCE_TAG(variable_decl, 1) \
 RULE_END \
 \
 RULE(decl) \
 	VAR SUB(variable_decl) REDUCE_DEFAULT \
+RULE_END \
+\
+\
+\
+/* --- type ---------------------------------------------------------------- */\
+\
+RULE(type) \
+	VAR TKN(VOID) REDUCE(type_void) \
+	VAR TKN(HASH) TKN(IDENT) REDUCE(type_name) \
 RULE_END \
 \
 \
@@ -297,11 +306,6 @@ RULE_END \
 RULE(initializer_list) \
 	VAR SUB(initializer) REDUCE_DEFAULT \
 	VAR SUB(initializer_list) TKN(COMMA) SUB(initializer) REDUCE_DEFAULT \
-RULE_END \
-\
-RULE(type) \
-	VAR TKN(VOID) REDUCE_DEFAULT \
-	VAR TKN(HASH) TKN(IDENT) REDUCE_DEFAULT \
 RULE_END \
 
 // The root node of the grammar.
