@@ -499,17 +499,30 @@ REDUCER(type_name) {
 	bzero(t, sizeof(*t));
 	const char *name = in[1].first;
 	unsigned len = in[1].last-in[1].first;
-	if (len == 3 && strncmp(name, "int", 3) == 0)
+	if (len >= 3 && strncmp(name, "int", 3) == 0) {
 		t->type = AST_INTEGER_TYPE;
-	else if (len == 5 && strncmp(name, "float", 5) == 0)
+		if (len > 3) {
+			char suffix[len-3+1];
+			strncpy(suffix, name+3, len-3);
+			suffix[len-3] = 0;
+			t->width = atoi(suffix);
+		} else {
+			t->width = 32;
+		}
+	} else if (len == 5 && strncmp(name, "float", 5) == 0) {
 		t->type = AST_FLOAT_TYPE;
-	else {
+	} else {
 		char *buf = strndup(name,len);
 		fprintf(stderr, "unknown type name %s\n", buf);
 		free(buf);
 		abort();
 	}
 	out->ptr = t;
+}
+
+REDUCER(type_pointer) {
+	type_t *t = in[0].ptr;
+	++t->pointer;
 }
 
 
@@ -535,6 +548,8 @@ REDUCER(func_unit) {
 	unit_t *u = malloc(sizeof(unit_t));
 	bzero(u, sizeof(*u));
 	u->type = AST_FUNC_UNIT;
+	u->func.return_type = *(type_t*)in[0].ptr;
+	free(in[0].ptr);
 	u->func.name = strndup(in[1].first, in[1].last-in[1].first);
 	u->func.body = in[4].ptr;
 	out->ptr = u;

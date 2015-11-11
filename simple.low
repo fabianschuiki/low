@@ -1,9 +1,17 @@
 /* Copyright (c) 2015 Fabian Schuiki */
-void main() {
-	#float a;
-	#int b;
-	// #int* c;
-	// #int[128] d;
-	#int i = 4*4;
-	return 42 + i;
+void some_func() {
+	#int32 i = 128;
+	i *= 256;
+	return;
+}
+
+#int8 main() {
+	// #float a;
+	// #int b;
+	// #int i = 4*4;
+	#int8* str = "hello world";
+	some_func();
+	// puts(str);
+	// return 42 + i;
+	return str[5];
 }

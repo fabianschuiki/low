@@ -217,6 +217,7 @@ RULE_END \
 RULE(type) \
 	VAR TKN(VOID) REDUCE(type_void) \
 	VAR TKN(HASH) TKN(IDENT) REDUCE(type_name) \
+	VAR SUB(type) TKN(MUL_OP) REDUCE(type_pointer) \
 RULE_END \
 \
 \

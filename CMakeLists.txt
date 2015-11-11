@@ -14,7 +14,7 @@ set(LLVM_HINT_PATHS
 	/opt
 	/usr/local/opt/llvm # Homebrew
 )
-set(LLVM_LIBS core bitwriter target)
+set(LLVM_LIBS core bitwriter target analysis)
 
 if (NOT LLVM_CONFIG_BIN)
 	find_program(LLVM_CONFIG_BIN llvm-config HINTS ${LLVM_HINT_PATHS} ENV LLVM_DIR PATH_SUFFIXES bin)

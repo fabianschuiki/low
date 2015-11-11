@@ -3,6 +3,7 @@
 #include "codegen.h"
 #include "lexer.h"
 #include "parser.h"
+#include <llvm-c/Analysis.h>
 #include <llvm-c/BitWriter.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -80,10 +81,19 @@ compile (const char *filename) {
 
 	array_t *units = parse(&lex);
 	if (units) {
-		LLVMModuleRef mod = LLVMModuleCreateWithName("my_module");
-		codegen(mod,units);
+		LLVMModuleRef mod = LLVMModuleCreateWithName(filename);
+		codegen(mod, units);
 		LLVMDumpModule(mod);
-		LLVMWriteBitcodeToFile(mod, "parsed.bc");
+
+		char *error = NULL;
+		LLVMVerifyModule(mod, LLVMAbortProcessAction, &error);
+		LLVMDisposeMessage(error);
+
+		// LLVMWriteBitcodeToFile(mod, "parsed.bc");
+		error = NULL;
+		LLVMPrintModuleToFile(mod, "parsed.ll", &error);
+		LLVMDisposeMessage(error);
+
 		LLVMDisposeModule(mod);
 
 		unsigned i;

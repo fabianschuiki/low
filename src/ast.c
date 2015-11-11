@@ -4,10 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void func_def_dispose(func_def_t *self) {
-	if (self->name)
-		free(self->name);
-}
 
 void
 expr_dispose (expr_t *self) {
@@ -198,6 +194,7 @@ unit_dispose (unit_t *self) {
 			free(self->decl);
 			break;
 		case AST_FUNC_UNIT:
+			type_dispose(&self->func.return_type);
 			free(self->func.name);
 			stmt_dispose(self->func.body);
 			free(self->func.body);

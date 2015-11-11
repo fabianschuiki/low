@@ -11,7 +11,6 @@ typedef struct compound_stmt compound_stmt_t;
 typedef struct conditional conditional_t;
 typedef struct decl decl_t;
 typedef struct expr expr_t;
-typedef struct func_def func_def_t;
 typedef struct func_unit func_unit_t;
 typedef struct incdec_op incdec_op_t;
 typedef struct index_access index_access_t;
@@ -38,6 +37,8 @@ enum type_type {
 
 struct type {
 	unsigned type;
+	unsigned width;
+	unsigned pointer;
 };
 
 
@@ -61,20 +62,6 @@ enum expr_type {
 	AST_ASSIGNMENT,
 	AST_COMMA_EXPR,
 };
-
-struct func_def {
-	char *name;
-	unsigned flags;
-	unsigned num_inputs;
-	void *inputs;
-};
-
-enum func_def_flags {
-	FUNC_DEF_STATIC = 1 << 0,
-	FUNC_DEF_EXTERN = 1 << 1,
-};
-
-void func_def_dispose(func_def_t *self);
 
 
 struct index_access {
@@ -349,6 +336,7 @@ enum unit_type {
 
 
 struct func_unit {
+	type_t return_type;
 	char *name;
 	stmt_t *body;
 };
