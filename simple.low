@@ -1,18 +1,18 @@
 /* Copyright (c) 2015 Fabian Schuiki */
 void some_func() {
-	#int32 i = 128;
+	var int32 i = 128;
 	i *= 256;
 	return;
 }
 
-#int32 main() {
-	// #float a;
-	// #int b;
-	// #int i = 4*4;
-	#int8* str = "hello world";
-	#int16* other = (#int16*)str;
+int32 main() {
+	// var float a;
+	// var int b;
+	// var int i = 4*4;
+	var int8* str = "hello world";
+	var int16* other = #(int16*)str;
 	some_func();
 	// puts(str);
 	// return 42 + i;
-	return (#int32)str[5];
+	return #(int32)str[5];
 }

@@ -172,9 +172,9 @@ REDUCER(cast_expr) {
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));
 	e->type = AST_CAST;
-	e->cast.target = in[3].ptr;
-	e->cast.type = *(type_t*)in[1].ptr;
-	free(in[1].ptr);
+	e->cast.target = in[4].ptr;
+	e->cast.type = *(type_t*)in[2].ptr;
+	free(in[2].ptr);
 	out->ptr = e;
 }
 
@@ -478,11 +478,11 @@ REDUCER(variable_decl) {
 	decl_t *d = malloc(sizeof(decl_t));
 	bzero(d, sizeof(*d));
 	d->type = AST_VARIABLE_DECL;
-	d->variable.type = *(type_t*)in[0].ptr;
-	free(in[0].ptr);
-	d->variable.name = strndup(in[1].first, in[1].last-in[1].first);
+	d->variable.type = *(type_t*)in[1].ptr;
+	free(in[1].ptr);
+	d->variable.name = strndup(in[2].first, in[2].last-in[2].first);
 	if (tag == 1)
-		d->variable.initial = in[3].ptr;
+		d->variable.initial = in[4].ptr;
 	out->ptr = d;
 }
 
@@ -499,8 +499,8 @@ REDUCER(type_void) {
 REDUCER(type_name) {
 	type_t *t = malloc(sizeof(type_t));
 	bzero(t, sizeof(*t));
-	const char *name = in[1].first;
-	unsigned len = in[1].last-in[1].first;
+	const char *name = in[0].first;
+	unsigned len = in[0].last-in[0].first;
 	if (len >= 3 && strncmp(name, "int", 3) == 0) {
 		t->type = AST_INTEGER_TYPE;
 		if (len > 3) {

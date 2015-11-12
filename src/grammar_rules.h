@@ -18,8 +18,8 @@ RULE(postfix_expr) \
 	VAR SUB(postfix_expr) TKN(PERIOD) TKN(IDENT) REDUCE(postfix_expr_member) \
 	VAR SUB(postfix_expr) TKN(INC_OP) REDUCE_TAG(postfix_expr_incdec, 0) \
 	VAR SUB(postfix_expr) TKN(DEC_OP) REDUCE_TAG(postfix_expr_incdec, 1) \
-	VAR TKN(LPAREN) SUB(type) TKN(RPAREN) TKN(LBRACE) SUB(initializer_list) TKN(RBRACE) REDUCE(postfix_expr_initializer) \
-	VAR TKN(LPAREN) SUB(type) TKN(RPAREN) TKN(LBRACE) SUB(initializer_list) TKN(COMMA) TKN(RBRACE) REDUCE(postfix_expr_initializer) \
+	/*VAR TKN(LPAREN) SUB(type) TKN(RPAREN) TKN(LBRACE) SUB(initializer_list) TKN(RBRACE) REDUCE(postfix_expr_initializer)*/ \
+	/*VAR TKN(LPAREN) SUB(type) TKN(RPAREN) TKN(LBRACE) SUB(initializer_list) TKN(COMMA) TKN(RBRACE) REDUCE(postfix_expr_initializer)*/ \
 RULE_END \
 \
 RULE(argument_expr_list) \
@@ -33,7 +33,7 @@ RULE(unary_expr) \
 	VAR TKN(DEC_OP) SUB(unary_expr) REDUCE_TAG(unary_expr_incdec, 1) \
 	VAR SUB(unary_op) SUB(cast_expr) REDUCE(unary_expr_op) \
 	VAR TKN(SIZEOF) SUB(unary_expr) REDUCE_TAG(unary_expr_sizeof, 0) \
-	VAR TKN(SIZEOF) TKN(LPAREN) SUB(type) TKN(RPAREN) REDUCE_TAG(unary_expr_sizeof, 1) \
+	/*VAR TKN(SIZEOF) TKN(LPAREN) SUB(type) TKN(RPAREN) REDUCE_TAG(unary_expr_sizeof, 1)*/ \
 RULE_END \
 \
 RULE(unary_op) \
@@ -47,7 +47,7 @@ RULE_END \
 \
 RULE(cast_expr) \
 	VAR SUB(unary_expr) REDUCE_DEFAULT \
-	VAR TKN(LPAREN) SUB(type) TKN(RPAREN) SUB(cast_expr) REDUCE(cast_expr) \
+	VAR TKN(HASH) TKN(LPAREN) SUB(type) TKN(RPAREN) SUB(cast_expr) REDUCE(cast_expr) \
 RULE_END \
 \
 RULE(multiplicative_expr) \
@@ -202,8 +202,8 @@ RULE_END \
 /* --- decl ---------------------------------------------------------------- */\
 \
 RULE(variable_decl) \
-	VAR SUB(type) TKN(IDENT) TKN(SEMICOLON) REDUCE_TAG(variable_decl, 0) \
-	VAR SUB(type) TKN(IDENT) TKN(ASSIGN) SUB(assignment_expr) TKN(SEMICOLON) REDUCE_TAG(variable_decl, 1) \
+	VAR TKN(VAR) SUB(type) TKN(IDENT) TKN(SEMICOLON) REDUCE_TAG(variable_decl, 0) \
+	VAR TKN(VAR) SUB(type) TKN(IDENT) TKN(ASSIGN) SUB(assignment_expr) TKN(SEMICOLON) REDUCE_TAG(variable_decl, 1) \
 RULE_END \
 \
 RULE(decl) \
@@ -216,7 +216,7 @@ RULE_END \
 \
 RULE(type) \
 	VAR TKN(VOID) REDUCE(type_void) \
-	VAR TKN(HASH) TKN(IDENT) REDUCE(type_name) \
+	VAR /*TKN(HASH)*/ TKN(IDENT) REDUCE(type_name) \
 	VAR SUB(type) TKN(MUL_OP) REDUCE(type_pointer) \
 RULE_END \
 \

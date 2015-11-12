@@ -213,6 +213,7 @@ lexer_next (lexer_t *self) {
 			CHECK_KEYWORD("enum",     TKN_ENUM);
 			CHECK_KEYWORD("extern",   TKN_EXTERN);
 			CHECK_KEYWORD("for",      TKN_FOR);
+			CHECK_KEYWORD("func",     TKN_FUNC);
 			CHECK_KEYWORD("goto",     TKN_GOTO);
 			CHECK_KEYWORD("if",       TKN_IF);
 			CHECK_KEYWORD("import",   TKN_IMPORT);
@@ -224,6 +225,7 @@ lexer_next (lexer_t *self) {
 			CHECK_KEYWORD("switch",   TKN_SWITCH);
 			CHECK_KEYWORD("typedef",  TKN_TYPEDEF);
 			CHECK_KEYWORD("union",    TKN_UNION);
+			CHECK_KEYWORD("var",      TKN_VAR);
 			CHECK_KEYWORD("void",     TKN_VOID);
 			CHECK_KEYWORD("volatile", TKN_VOLATILE);
 			CHECK_KEYWORD("while",    TKN_WHILE);
