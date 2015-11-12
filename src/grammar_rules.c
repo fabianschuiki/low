@@ -159,7 +159,8 @@ REDUCER(unary_expr_sizeof) {
 		e->sizeof_op.expr = in[1].ptr;
 	} else {
 		e->sizeof_op.mode = AST_SIZEOF_TYPE;
-		e->sizeof_op.type = in[2].ptr;
+		e->sizeof_op.type = *(type_t*)in[2].ptr;
+		free(in[2].ptr);
 	}
 	out->ptr = e;
 }
@@ -172,7 +173,8 @@ REDUCER(cast_expr) {
 	bzero(e, sizeof(*e));
 	e->type = AST_CAST;
 	e->cast.target = in[3].ptr;
-	e->cast.type = in[1].ptr;
+	e->cast.type = *(type_t*)in[1].ptr;
+	free(in[1].ptr);
 	out->ptr = e;
 }
 

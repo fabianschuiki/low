@@ -24,45 +24,61 @@ expr_dispose (expr_t *self) {
 		case AST_INDEX_ACCESS:
 			expr_dispose(self->index_access.target);
 			expr_dispose(self->index_access.index);
+			free(self->index_access.target);
+			free(self->index_access.index);
 			break;
 		case AST_CALL:
 			expr_dispose(self->index_access.target);
 			for (i = 0; i < self->call.num_args; ++i)
 				expr_dispose(self->call.args + i);
+			free(self->index_access.target);
 			free(self->call.args);
 			break;
 		case AST_MEMBER_ACCESS:
 			expr_dispose(self->member_access.target);
+			free(self->member_access.target);
 			free(self->member_access.name);
 			break;
 		case AST_INCDEC_OP:
 			expr_dispose(self->incdec_op.target);
+			free(self->incdec_op.target);
 			break;
 		case AST_UNARY_OP:
 			expr_dispose(self->unary_op.target);
+			free(self->unary_op.target);
 			break;
 		case AST_SIZEOF_OP:
-			if (self->sizeof_op.mode == AST_SIZEOF_EXPR)
+			if (self->sizeof_op.mode == AST_SIZEOF_EXPR) {
 				expr_dispose(self->sizeof_op.expr);
+				free(self->sizeof_op.expr);
+			}
 			if (self->sizeof_op.mode == AST_SIZEOF_TYPE)
-				/*type_dispose(self->sizeof_op.type)*/;
+				type_dispose(&self->sizeof_op.type);
 			break;
 		case AST_CAST:
 			expr_dispose(self->cast.target);
-			// type_dispose(self->cast.type);
+			type_dispose(&self->cast.type);
+			free(self->cast.target);
 			break;
 		case AST_BINARY_OP:
 			expr_dispose(self->binary_op.lhs);
 			expr_dispose(self->binary_op.rhs);
+			free(self->binary_op.lhs);
+			free(self->binary_op.rhs);
 			break;
 		case AST_CONDITIONAL:
 			expr_dispose(self->conditional.condition);
 			expr_dispose(self->conditional.true_expr);
 			expr_dispose(self->conditional.false_expr);
+			free(self->conditional.condition);
+			free(self->conditional.true_expr);
+			free(self->conditional.false_expr);
 			break;
 		case AST_ASSIGNMENT:
 			expr_dispose(self->assignment.target);
 			expr_dispose(self->assignment.expr);
+			free(self->assignment.target);
+			free(self->assignment.expr);
 			break;
 		case AST_COMMA_EXPR:
 			for (i = 0; i < self->comma_expr.num_exprs; ++i)
@@ -97,6 +113,9 @@ stmt_dispose (stmt_t *self) {
 			expr_dispose(self->selection.condition);
 			stmt_dispose(self->selection.stmt);
 			stmt_dispose(self->selection.else_stmt);
+			free(self->selection.condition);
+			free(self->selection.stmt);
+			free(self->selection.else_stmt);
 			break;
 		case AST_WHILE_STMT:
 		case AST_DO_STMT:
@@ -105,6 +124,10 @@ stmt_dispose (stmt_t *self) {
 			expr_dispose(self->iteration.condition);
 			expr_dispose(self->iteration.step);
 			stmt_dispose(self->iteration.stmt);
+			free(self->iteration.initial);
+			free(self->iteration.condition);
+			free(self->iteration.step);
+			free(self->iteration.stmt);
 			break;
 		case AST_GOTO_STMT:
 			free(self->name);
@@ -115,17 +138,22 @@ stmt_dispose (stmt_t *self) {
 			break;
 		case AST_RETURN_STMT:
 			expr_dispose(self->expr);
+			free(self->expr);
 			break;
 		case AST_LABEL_STMT:
-			free(self->label.name);
 			stmt_dispose(self->label.stmt);
+			free(self->label.name);
+			free(self->label.stmt);
 			break;
 		case AST_CASE_STMT:
 			expr_dispose(self->label.expr);
 			stmt_dispose(self->label.stmt);
+			free(self->label.expr);
+			free(self->label.stmt);
 			break;
 		case AST_DEFAULT_STMT:
 			stmt_dispose(self->label.stmt);
+			free(self->label.stmt);
 			break;
 		default:
 			fprintf(stderr, "%s.%d: stmt_dispose for stmt type %d not handled\n", __FILE__, __LINE__, self->type);
@@ -143,9 +171,11 @@ block_item_dispose (block_item_t *self) {
 	switch (self->type) {
 		case AST_STMT_BLOCK_ITEM:
 			stmt_dispose(self->stmt);
+			free(self->stmt);
 			break;
 		case AST_DECL_BLOCK_ITEM:
 			decl_dispose(self->decl);
+			free(self->decl);
 			break;
 		default:
 			fprintf(stderr, "%s.%d: block_item_dispose for block item type %d not handled\n", __FILE__, __LINE__, self->type);
@@ -163,8 +193,8 @@ decl_dispose (decl_t *self) {
 	switch (self->type) {
 		case AST_VARIABLE_DECL:
 			type_dispose(&self->variable.type);
-			free(self->variable.name);
 			expr_dispose(self->variable.initial);
+			free(self->variable.name);
 			free(self->variable.initial);
 			break;
 		default:

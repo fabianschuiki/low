@@ -124,14 +124,14 @@ struct sizeof_op {
 	unsigned mode;
 	union {
 		expr_t *expr;
-		void *type;
+		type_t type;
 	};
 };
 
 
 struct cast {
 	expr_t *target;
-	void *type;
+	type_t type;
 };
 
 

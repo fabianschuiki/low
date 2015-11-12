@@ -113,6 +113,36 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			}
 		}
 
+		case AST_CAST: {
+			LLVMValueRef target = codegen_expr(module, builder, context, expr->cast.target, 0);
+			LLVMTypeRef type_from = LLVMTypeOf(target);
+			LLVMTypeRef type_to = codegen_type(&expr->cast.type);
+			LLVMTypeKind kind_from = LLVMGetTypeKind(type_from);
+			LLVMTypeKind kind_to = LLVMGetTypeKind(type_to);
+			switch (kind_from) {
+				case LLVMIntegerTypeKind: {
+					switch (kind_to) {
+						case LLVMIntegerTypeKind:
+							return LLVMBuildIntCast(builder, target, type_to, "");
+					}
+					break;
+				}
+				case LLVMPointerTypeKind: {
+					if (kind_to == LLVMPointerTypeKind)
+						return LLVMBuildPointerCast(builder, target, type_to, "");
+					break;
+				}
+			}
+
+			char *str_from = LLVMPrintTypeToString(type_from);
+			char *str_to = LLVMPrintTypeToString(type_to);
+			fprintf(stderr, "cannot cast from %s to %s\n", str_from, str_to);
+			free(str_from);
+			free(str_to);
+			abort();
+			return 0;
+		}
+
 		case AST_BINARY_OP: {
 			if (lvalue)
 				return 0;

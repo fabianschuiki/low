@@ -5,13 +5,14 @@ void some_func() {
 	return;
 }
 
-#int8 main() {
+#int32 main() {
 	// #float a;
 	// #int b;
 	// #int i = 4*4;
 	#int8* str = "hello world";
+	#int16* other = (#int16*)str;
 	some_func();
 	// puts(str);
 	// return 42 + i;
-	return str[5];
+	return (#int32)str[5];
 }
