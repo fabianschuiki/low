@@ -75,24 +75,24 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 	assert(expr);
 	assert(context);
 	unsigned i;
-	switch (expr->type) {
-		case AST_IDENT: {
+	switch (expr->kind) {
+		case AST_IDENT_EXPR: {
 			LLVMValueRef ptr = context_find_local(context, expr->ident);
 			return lvalue ? ptr : LLVMBuildLoad(builder, ptr, "");
 		}
-		case AST_NUMBER_LITERAL:
+		case AST_NUMBER_LITERAL_EXPR:
 			return LLVMConstIntOfString(LLVMInt32Type(), expr->number_literal, 10);
-		case AST_STRING_LITERAL:
+		case AST_STRING_LITERAL_EXPR:
 			return LLVMBuildGlobalStringPtr(builder, expr->string_literal, ".str");
-		case AST_INDEX_ACCESS: {
+		case AST_INDEX_ACCESS_EXPR: {
 			LLVMValueRef target = codegen_expr(module, builder, context, expr->index_access.target, 0);
 			LLVMValueRef index = codegen_expr(module, builder, context, expr->index_access.index, 0);
 			LLVMValueRef ptr = LLVMBuildInBoundsGEP(builder, target, &index, 1, "");
 			return lvalue ? ptr : LLVMBuildLoad(builder, ptr, "");
 		}
 
-		case AST_CALL: {
-			assert(expr->call.target->type == AST_IDENT && "can only call functions by name at the moment");
+		case AST_CALL_EXPR: {
+			assert(expr->call.target->kind == AST_IDENT_EXPR && "can only call functions by name at the moment");
 			LLVMValueRef target = LLVMGetNamedFunction(module, expr->call.target->ident);
 			assert(target);
 			LLVMValueRef args[expr->call.num_args];
@@ -101,7 +101,7 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			return LLVMBuildCall(builder, target, args, expr->call.num_args, "");
 		}
 
-		case AST_UNARY_OP: {
+		case AST_UNARY_EXPR: {
 			LLVMValueRef target = codegen_expr(module, builder, context, expr->unary_op.target, 0);
 			switch (expr->unary_op.op) {
 				case AST_DEREF:
@@ -113,7 +113,7 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			}
 		}
 
-		case AST_CAST: {
+		case AST_CAST_EXPR: {
 			LLVMValueRef target = codegen_expr(module, builder, context, expr->cast.target, 0);
 			LLVMTypeRef type_from = LLVMTypeOf(target);
 			LLVMTypeRef type_to = codegen_type(&expr->cast.type);
@@ -143,7 +143,7 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			return 0;
 		}
 
-		case AST_BINARY_OP: {
+		case AST_BINARY_EXPR: {
 			if (lvalue)
 				return 0;
 			LLVMValueRef lhs = codegen_expr(module, builder, context, expr->binary_op.lhs, 0);
@@ -164,7 +164,7 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			}
 		}
 
-		case AST_ASSIGNMENT: {
+		case AST_ASSIGNMENT_EXPR: {
 			LLVMValueRef lv = codegen_expr(module, builder, context, expr->assignment.target, 1);
 			if (!lv) {
 				fprintf(stderr, "expr cannot be assigned a value\n");
@@ -192,7 +192,7 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 		}
 
 		default:
-			fprintf(stderr, "%s.%d: codegen for expr type %d not implemented\n", __FILE__, __LINE__, expr->type);
+			fprintf(stderr, "%s.%d: codegen for expr type %d not implemented\n", __FILE__, __LINE__, expr->kind);
 			abort();
 			return 0;
 	}

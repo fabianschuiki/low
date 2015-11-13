@@ -11,62 +11,62 @@ expr_dispose (expr_t *self) {
 		return;
 
 	unsigned i;
-	switch (self->type) {
-		case AST_IDENT:
+	switch (self->kind) {
+		case AST_IDENT_EXPR:
 			free(self->ident);
 			break;
-		case AST_STRING_LITERAL:
+		case AST_STRING_LITERAL_EXPR:
 			free(self->string_literal);
 			break;
-		case AST_NUMBER_LITERAL:
+		case AST_NUMBER_LITERAL_EXPR:
 			free(self->number_literal);
 			break;
-		case AST_INDEX_ACCESS:
+		case AST_INDEX_ACCESS_EXPR:
 			expr_dispose(self->index_access.target);
 			expr_dispose(self->index_access.index);
 			free(self->index_access.target);
 			free(self->index_access.index);
 			break;
-		case AST_CALL:
+		case AST_CALL_EXPR:
 			expr_dispose(self->index_access.target);
 			for (i = 0; i < self->call.num_args; ++i)
 				expr_dispose(self->call.args + i);
 			free(self->index_access.target);
 			free(self->call.args);
 			break;
-		case AST_MEMBER_ACCESS:
+		case AST_MEMBER_ACCESS_EXPR:
 			expr_dispose(self->member_access.target);
 			free(self->member_access.target);
 			free(self->member_access.name);
 			break;
-		case AST_INCDEC_OP:
+		case AST_INCDEC_EXPR:
 			expr_dispose(self->incdec_op.target);
 			free(self->incdec_op.target);
 			break;
-		case AST_UNARY_OP:
+		case AST_UNARY_EXPR:
 			expr_dispose(self->unary_op.target);
 			free(self->unary_op.target);
 			break;
-		case AST_SIZEOF_OP:
-			if (self->sizeof_op.mode == AST_SIZEOF_EXPR) {
+		case AST_SIZEOF_EXPR:
+			if (self->sizeof_op.mode == AST_EXPR_SIZEOF) {
 				expr_dispose(self->sizeof_op.expr);
 				free(self->sizeof_op.expr);
 			}
-			if (self->sizeof_op.mode == AST_SIZEOF_TYPE)
+			if (self->sizeof_op.mode == AST_TYPE_SIZEOF)
 				type_dispose(&self->sizeof_op.type);
 			break;
-		case AST_CAST:
+		case AST_CAST_EXPR:
 			expr_dispose(self->cast.target);
 			type_dispose(&self->cast.type);
 			free(self->cast.target);
 			break;
-		case AST_BINARY_OP:
+		case AST_BINARY_EXPR:
 			expr_dispose(self->binary_op.lhs);
 			expr_dispose(self->binary_op.rhs);
 			free(self->binary_op.lhs);
 			free(self->binary_op.rhs);
 			break;
-		case AST_CONDITIONAL:
+		case AST_CONDITIONAL_EXPR:
 			expr_dispose(self->conditional.condition);
 			expr_dispose(self->conditional.true_expr);
 			expr_dispose(self->conditional.false_expr);
@@ -74,7 +74,7 @@ expr_dispose (expr_t *self) {
 			free(self->conditional.true_expr);
 			free(self->conditional.false_expr);
 			break;
-		case AST_ASSIGNMENT:
+		case AST_ASSIGNMENT_EXPR:
 			expr_dispose(self->assignment.target);
 			expr_dispose(self->assignment.expr);
 			free(self->assignment.target);
@@ -86,7 +86,7 @@ expr_dispose (expr_t *self) {
 			free(self->comma_expr.exprs);
 			break;
 		default:
-			fprintf(stderr, "%s.%d: expr_dispose for expr type %d not handled\n", __FILE__, __LINE__, self->type);
+			fprintf(stderr, "%s.%d: expr_dispose for expr type %d not handled\n", __FILE__, __LINE__, self->kind);
 			abort();
 			break;
 	}

@@ -1,27 +1,27 @@
 /* Copyright (c) 2015 Fabian Schuiki */
 #pragma once
 
-typedef struct assignment assignment_t;
-typedef struct binary_op binary_op_t;
+typedef struct assignment_expr assignment_expr_t;
+typedef struct binary_expr binary_expr_t;
 typedef struct block_item block_item_t;
-typedef struct call call_t;
-typedef struct cast cast_t;
+typedef struct call_expr call_expr_t;
+typedef struct cast_expr cast_expr_t;
 typedef struct comma_expr comma_expr_t;
 typedef struct compound_stmt compound_stmt_t;
-typedef struct conditional conditional_t;
+typedef struct conditional_expr conditional_expr_t;
 typedef struct decl decl_t;
 typedef struct expr expr_t;
 typedef struct func_unit func_unit_t;
-typedef struct incdec_op incdec_op_t;
-typedef struct index_access index_access_t;
+typedef struct incdec_expr incdec_expr_t;
+typedef struct index_access_expr index_access_expr_t;
 typedef struct iteration_stmt iteration_stmt_t;
 typedef struct label_stmt label_stmt_t;
-typedef struct member_access member_access_t;
+typedef struct member_access_expr member_access_expr_t;
 typedef struct selection_stmt selection_stmt_t;
-typedef struct sizeof_op sizeof_op_t;
+typedef struct sizeof_expr sizeof_expr_t;
 typedef struct stmt stmt_t;
 typedef struct type type_t;
-typedef struct unary_op unary_op_t;
+typedef struct unary_expr unary_expr_t;
 typedef struct unit unit_t;
 typedef struct variable_decl variable_decl_t;
 
@@ -45,62 +45,62 @@ struct type {
 
 // --- expr --------------------------------------------------------------------
 
-enum expr_type {
-	AST_IDENT = 0,
-	AST_STRING_LITERAL,
-	AST_NUMBER_LITERAL,
-	AST_INDEX_ACCESS,
-	AST_CALL,
-	AST_MEMBER_ACCESS,
-	AST_INCDEC_OP,
-	AST_INITIALIZER,
-	AST_UNARY_OP,
-	AST_SIZEOF_OP,
-	AST_CAST,
-	AST_BINARY_OP,
-	AST_CONDITIONAL,
-	AST_ASSIGNMENT,
+enum expr_kind {
+	AST_IDENT_EXPR = 0,
+	AST_STRING_LITERAL_EXPR,
+	AST_NUMBER_LITERAL_EXPR,
+	AST_INDEX_ACCESS_EXPR,
+	AST_CALL_EXPR,
+	AST_MEMBER_ACCESS_EXPR,
+	AST_INCDEC_EXPR,
+	AST_INITIALIZER_EXPR,
+	AST_UNARY_EXPR,
+	AST_SIZEOF_EXPR,
+	AST_CAST_EXPR,
+	AST_BINARY_EXPR,
+	AST_CONDITIONAL_EXPR,
+	AST_ASSIGNMENT_EXPR,
 	AST_COMMA_EXPR,
 };
 
 
-struct index_access {
+struct index_access_expr {
 	expr_t *target;
 	expr_t *index;
 };
 
 
-struct call {
+struct call_expr {
 	expr_t *target;
 	unsigned num_args;
 	expr_t *args;
 };
 
 
-struct member_access {
+struct member_access_expr {
 	expr_t *target;
 	char *name;
 };
 
 
-enum incdec_op_order {
+enum incdec_order {
 	AST_PRE,
 	AST_POST,
 };
 
-enum incdec_op_direction {
+enum incdec_direction {
 	AST_INC,
 	AST_DEC,
 };
 
-struct incdec_op {
+struct incdec_expr {
 	expr_t *target;
 	char order;
 	char direction;
 };
 
 
-enum unary_ops {
+enum unary_op {
 	AST_ADDRESS,
 	AST_DEREF,
 	AST_POSITIVE,
@@ -109,18 +109,18 @@ enum unary_ops {
 	AST_NOT,
 };
 
-struct unary_op {
+struct unary_expr {
 	expr_t *target;
 	unsigned op;
 };
 
 
-enum sizeof_op_mode {
-	AST_SIZEOF_EXPR,
-	AST_SIZEOF_TYPE,
+enum sizeof_mode {
+	AST_EXPR_SIZEOF,
+	AST_TYPE_SIZEOF,
 };
 
-struct sizeof_op {
+struct sizeof_expr {
 	unsigned mode;
 	union {
 		expr_t *expr;
@@ -129,13 +129,13 @@ struct sizeof_op {
 };
 
 
-struct cast {
+struct cast_expr {
 	expr_t *target;
 	type_t type;
 };
 
 
-enum binary_ops {
+enum binary_op {
 	AST_MUL,
 	AST_DIV,
 	AST_MOD,
@@ -156,14 +156,14 @@ enum binary_ops {
 	AST_OR,
 };
 
-struct binary_op {
+struct binary_expr {
 	expr_t *lhs;
 	expr_t *rhs;
 	unsigned op;
 };
 
 
-struct conditional {
+struct conditional_expr {
 	expr_t *condition;
 	expr_t *true_expr;
 	expr_t *false_expr;
@@ -184,7 +184,7 @@ enum assignment_op {
 	AST_XOR_ASSIGN,
 };
 
-struct assignment {
+struct assignment_expr {
 	expr_t *target;
 	expr_t *expr;
 	unsigned op;
@@ -198,21 +198,21 @@ struct comma_expr {
 
 
 struct expr {
-	unsigned type;
+	unsigned kind;
 	union {
 		char *ident;
 		char *string_literal;
 		char *number_literal;
-		index_access_t index_access;
-		call_t call;
-		member_access_t member_access;
-		incdec_op_t incdec_op;
-		unary_op_t unary_op;
-		sizeof_op_t sizeof_op;
-		cast_t cast;
-		binary_op_t binary_op;
-		conditional_t conditional;
-		assignment_t assignment;
+		index_access_expr_t index_access;
+		call_expr_t call;
+		member_access_expr_t member_access;
+		incdec_expr_t incdec_op;
+		unary_expr_t unary_op;
+		sizeof_expr_t sizeof_op;
+		cast_expr_t cast;
+		binary_expr_t binary_op;
+		conditional_expr_t conditional;
+		assignment_expr_t assignment;
 		comma_expr_t comma_expr;
 	};
 };

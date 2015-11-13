@@ -16,7 +16,7 @@
 REDUCER(primary_expr_ident) {
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));
-	e->type = AST_IDENT;
+	e->kind = AST_IDENT_EXPR;
 	e->ident = strndup(in->first, in->last - in->first);
 	out->ptr = e;
 }
@@ -24,7 +24,7 @@ REDUCER(primary_expr_ident) {
 REDUCER(primary_expr_string) {
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));
-	e->type = AST_STRING_LITERAL;
+	e->kind = AST_STRING_LITERAL_EXPR;
 	e->string_literal = strndup(in->first+1, in->last-in->first-2);
 	out->ptr = e;
 }
@@ -32,7 +32,7 @@ REDUCER(primary_expr_string) {
 REDUCER(primary_expr_number) {
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));
-	e->type = AST_NUMBER_LITERAL;
+	e->kind = AST_NUMBER_LITERAL_EXPR;
 	e->number_literal = strndup(in->first, in->last-in->first);
 	out->ptr = e;
 }
@@ -47,7 +47,7 @@ REDUCER(primary_expr_paren) {
 REDUCER(postfix_expr_index) {
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));
-	e->type = AST_INDEX_ACCESS;
+	e->kind = AST_INDEX_ACCESS_EXPR;
 	e->index_access.target = in[0].ptr;
 	e->index_access.index = in[2].ptr;
 	out->ptr = e;
@@ -56,7 +56,7 @@ REDUCER(postfix_expr_index) {
 REDUCER(postfix_expr_call) {
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));
-	e->type = AST_CALL;
+	e->kind = AST_CALL_EXPR;
 	e->call.target = in[0].ptr;
 	if (tag == 1) {
 		array_t *args = in[2].ptr;
@@ -72,7 +72,7 @@ REDUCER(postfix_expr_call) {
 REDUCER(postfix_expr_member) {
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));
-	e->type = AST_MEMBER_ACCESS;
+	e->kind = AST_MEMBER_ACCESS_EXPR;
 	e->member_access.target = in[0].ptr;
 	e->member_access.name = strndup(in[2].first, in[2].last-in[2].first);
 	out->ptr = e;
@@ -81,7 +81,7 @@ REDUCER(postfix_expr_member) {
 REDUCER(postfix_expr_incdec) {
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));
-	e->type = AST_INCDEC_OP;
+	e->kind = AST_INCDEC_EXPR;
 	e->incdec_op.order = AST_POST;
 	if (tag == 0) {
 		e->incdec_op.direction = AST_INC;
@@ -115,7 +115,7 @@ REDUCER(postfix_expr_initializer) {
 REDUCER(unary_expr_incdec) {
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));
-	e->type = AST_INCDEC_OP;
+	e->kind = AST_INCDEC_EXPR;
 	e->incdec_op.order = AST_PRE;
 	if (tag == 0) {
 		e->incdec_op.direction = AST_INC;
@@ -129,7 +129,7 @@ REDUCER(unary_expr_incdec) {
 REDUCER(unary_expr_op) {
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));
-	e->type = AST_UNARY_OP;
+	e->kind = AST_UNARY_EXPR;
 	e->unary_op.target = in[1].ptr;
 	e->unary_op.op = in[0].tag;
 	out->ptr = e;
@@ -153,12 +153,12 @@ REDUCER(unary_op) {
 REDUCER(unary_expr_sizeof) {
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));
-	e->type = AST_SIZEOF_OP;
+	e->kind = AST_SIZEOF_EXPR;
 	if (tag == 0) {
-		e->sizeof_op.mode = AST_SIZEOF_EXPR;
+		e->sizeof_op.mode = AST_EXPR_SIZEOF;
 		e->sizeof_op.expr = in[1].ptr;
 	} else {
-		e->sizeof_op.mode = AST_SIZEOF_TYPE;
+		e->sizeof_op.mode = AST_TYPE_SIZEOF;
 		e->sizeof_op.type = *(type_t*)in[2].ptr;
 		free(in[2].ptr);
 	}
@@ -171,7 +171,7 @@ REDUCER(unary_expr_sizeof) {
 REDUCER(cast_expr) {
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));
-	e->type = AST_CAST;
+	e->kind = AST_CAST_EXPR;
 	e->cast.target = in[4].ptr;
 	e->cast.type = *(type_t*)in[2].ptr;
 	free(in[2].ptr);
@@ -184,7 +184,7 @@ REDUCER(cast_expr) {
 REDUCER(binary_expr) {
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));
-	e->type = AST_BINARY_OP;
+	e->kind = AST_BINARY_EXPR;
 	e->binary_op.lhs = in[0].ptr;
 	e->binary_op.rhs = in[2].ptr;
 	switch (in[1].id) {
@@ -220,7 +220,7 @@ REDUCER(binary_expr) {
 REDUCER(conditional_expr) {
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));
-	e->type = AST_CONDITIONAL;
+	e->kind = AST_CONDITIONAL_EXPR;
 	e->conditional.condition = in[0].ptr;
 	e->conditional.true_expr = in[2].ptr;
 	e->conditional.false_expr = in[4].ptr;
@@ -233,7 +233,7 @@ REDUCER(conditional_expr) {
 REDUCER(assignment_expr) {
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));
-	e->type = AST_ASSIGNMENT;
+	e->kind = AST_ASSIGNMENT_EXPR;
 	e->assignment.target = in[0].ptr;
 	e->assignment.expr = in[2].ptr;
 	e->assignment.op = in[1].tag;
@@ -265,10 +265,10 @@ REDUCER(assignment_op) {
 
 REDUCER(expr_comma) {
 	expr_t *e = in->ptr;
-	if (e->type != AST_COMMA_EXPR) {
+	if (e->kind != AST_COMMA_EXPR) {
 		expr_t *ce = malloc(sizeof(expr_t));
 		bzero(ce, sizeof(*ce));
-		ce->type = AST_COMMA_EXPR;
+		ce->kind = AST_COMMA_EXPR;
 		ce->comma_expr.num_exprs = 2;
 		ce->comma_expr.exprs = malloc(2 * sizeof(expr_t));
 		ce->comma_expr.exprs[0] = *e;
