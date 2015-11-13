@@ -11,6 +11,10 @@ int32 main() {
 	// var int i = 4*4;
 	var int8* str = "hello world";
 	var int16* other = #(int16*)str;
+	str;
+	other;
+	str[0];
+	*other;
 	some_func();
 	// puts(str);
 	// return 42 + i;

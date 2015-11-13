@@ -290,7 +290,7 @@ REDUCER(expr_comma) {
 REDUCER(expr_stmt) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
-	s->type = AST_EXPR_STMT;
+	s->kind = AST_EXPR_STMT;
 	s->expr = in->ptr;
 	out->ptr = s;
 }
@@ -301,7 +301,7 @@ REDUCER(expr_stmt) {
 REDUCER(compound_stmt) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
-	s->type = AST_COMPOUND_STMT;
+	s->kind = AST_COMPOUND_STMT;
 	array_t *items = in[1].ptr;
 	array_shrink(items);
 	s->compound.num_items = items->size;
@@ -330,7 +330,7 @@ REDUCER(block_item_list) {
 REDUCER(block_item_decl) {
 	block_item_t *b = malloc(sizeof(block_item_t));
 	bzero(b, sizeof(*b));
-	b->type = AST_DECL_BLOCK_ITEM;
+	b->kind = AST_DECL_BLOCK_ITEM;
 	b->decl = in->ptr;
 	out->ptr = b;
 }
@@ -338,7 +338,7 @@ REDUCER(block_item_decl) {
 REDUCER(block_item_stmt) {
 	block_item_t *b = malloc(sizeof(block_item_t));
 	bzero(b, sizeof(*b));
-	b->type = AST_STMT_BLOCK_ITEM;
+	b->kind = AST_STMT_BLOCK_ITEM;
 	b->stmt = in->ptr;
 	out->ptr = b;
 }
@@ -349,7 +349,7 @@ REDUCER(block_item_stmt) {
 REDUCER(selection_stmt_if) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
-	s->type = AST_IF_STMT;
+	s->kind = AST_IF_STMT;
 	s->selection.condition = in[2].ptr;
 	s->selection.stmt = in[4].ptr;
 	if (tag == 1)
@@ -360,7 +360,7 @@ REDUCER(selection_stmt_if) {
 REDUCER(selection_stmt_switch) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
-	s->type = AST_SWITCH_STMT;
+	s->kind = AST_SWITCH_STMT;
 	s->selection.condition = in[2].ptr;
 	s->selection.stmt = in[4].ptr;
 	out->ptr = s;
@@ -372,7 +372,7 @@ REDUCER(selection_stmt_switch) {
 REDUCER(iteration_stmt_while) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
-	s->type = AST_WHILE_STMT;
+	s->kind = AST_WHILE_STMT;
 	s->iteration.condition = in[2].ptr;
 	s->iteration.stmt = in[4].ptr;
 	out->ptr = s;
@@ -381,7 +381,7 @@ REDUCER(iteration_stmt_while) {
 REDUCER(iteration_stmt_do) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
-	s->type = AST_DO_STMT;
+	s->kind = AST_DO_STMT;
 	s->iteration.stmt = in[1].ptr;
 	s->iteration.condition = in[4].ptr;
 	out->ptr = s;
@@ -390,7 +390,7 @@ REDUCER(iteration_stmt_do) {
 REDUCER(iteration_stmt_for) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
-	s->type = AST_FOR_STMT;
+	s->kind = AST_FOR_STMT;
 	if (in[2].ptr) {
 		s->iteration.initial = ((stmt_t*)in[2].ptr)->expr;
 		free(in[2].ptr);
@@ -414,7 +414,7 @@ REDUCER(iteration_stmt_for) {
 REDUCER(jump_stmt_goto) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
-	s->type = AST_GOTO_STMT;
+	s->kind = AST_GOTO_STMT;
 	s->name = strndup(in[1].first, in[1].last-in[1].first);
 	out->ptr = s;
 }
@@ -422,21 +422,21 @@ REDUCER(jump_stmt_goto) {
 REDUCER(jump_stmt_continue) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
-	s->type = AST_CONTINUE_STMT;
+	s->kind = AST_CONTINUE_STMT;
 	out->ptr = s;
 }
 
 REDUCER(jump_stmt_break) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
-	s->type = AST_BREAK_STMT;
+	s->kind = AST_BREAK_STMT;
 	out->ptr = s;
 }
 
 REDUCER(jump_stmt_return) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
-	s->type = AST_RETURN_STMT;
+	s->kind = AST_RETURN_STMT;
 	if (tag == 1)
 		s->expr = in[1].ptr;
 	out->ptr = s;
@@ -448,7 +448,7 @@ REDUCER(jump_stmt_return) {
 REDUCER(labeled_stmt_name) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
-	s->type = AST_LABEL_STMT;
+	s->kind = AST_LABEL_STMT;
 	s->label.name = strndup(in[0].first, in[0].last-in[0].first);
 	s->label.stmt = in[2].ptr;
 	out->ptr = s;
@@ -457,7 +457,7 @@ REDUCER(labeled_stmt_name) {
 REDUCER(labeled_stmt_case) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
-	s->type = AST_CASE_STMT;
+	s->kind = AST_CASE_STMT;
 	s->label.expr = in[1].ptr;
 	s->label.stmt = in[3].ptr;
 	out->ptr = s;
@@ -466,7 +466,7 @@ REDUCER(labeled_stmt_case) {
 REDUCER(labeled_stmt_default) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
-	s->type = AST_DEFAULT_STMT;
+	s->kind = AST_DEFAULT_STMT;
 	s->label.stmt = in[2].ptr;
 	out->ptr = s;
 }
@@ -477,7 +477,7 @@ REDUCER(labeled_stmt_default) {
 REDUCER(variable_decl) {
 	decl_t *d = malloc(sizeof(decl_t));
 	bzero(d, sizeof(*d));
-	d->type = AST_VARIABLE_DECL;
+	d->kind = AST_VARIABLE_DECL;
 	d->variable.type = *(type_t*)in[1].ptr;
 	free(in[1].ptr);
 	d->variable.name = strndup(in[2].first, in[2].last-in[2].first);
@@ -492,7 +492,7 @@ REDUCER(variable_decl) {
 REDUCER(type_void) {
 	type_t *t = malloc(sizeof(type_t));
 	bzero(t, sizeof(*t));
-	t->type = AST_VOID_TYPE;
+	t->kind = AST_VOID_TYPE;
 	out->ptr = t;
 }
 
@@ -502,7 +502,7 @@ REDUCER(type_name) {
 	const char *name = in[0].first;
 	unsigned len = in[0].last-in[0].first;
 	if (len >= 3 && strncmp(name, "int", 3) == 0) {
-		t->type = AST_INTEGER_TYPE;
+		t->kind = AST_INTEGER_TYPE;
 		if (len > 3) {
 			char suffix[len-3+1];
 			strncpy(suffix, name+3, len-3);
@@ -512,7 +512,7 @@ REDUCER(type_name) {
 			t->width = 32;
 		}
 	} else if (len == 5 && strncmp(name, "float", 5) == 0) {
-		t->type = AST_FLOAT_TYPE;
+		t->kind = AST_FLOAT_TYPE;
 	} else {
 		char *buf = strndup(name,len);
 		fprintf(stderr, "unknown type name %s\n", buf);
@@ -533,7 +533,7 @@ REDUCER(type_pointer) {
 REDUCER(import_unit) {
 	unit_t *u = malloc(sizeof(unit_t));
 	bzero(u, sizeof(*u));
-	u->type = AST_IMPORT_UNIT;
+	u->kind = AST_IMPORT_UNIT;
 	u->import_name = strndup(in[1].first, in[1].last-in[1].first);
 	out->ptr = u;
 }
@@ -541,7 +541,7 @@ REDUCER(import_unit) {
 REDUCER(decl_unit) {
 	unit_t *u = malloc(sizeof(unit_t));
 	bzero(u, sizeof(*u));
-	u->type = AST_DECL_UNIT;
+	u->kind = AST_DECL_UNIT;
 	u->decl = in->ptr;
 	out->ptr = u;
 }
@@ -549,7 +549,7 @@ REDUCER(decl_unit) {
 REDUCER(func_unit) {
 	unit_t *u = malloc(sizeof(unit_t));
 	bzero(u, sizeof(*u));
-	u->type = AST_FUNC_UNIT;
+	u->kind = AST_FUNC_UNIT;
 	u->func.return_type = *(type_t*)in[0].ptr;
 	free(in[0].ptr);
 	u->func.name = strndup(in[1].first, in[1].last-in[1].first);

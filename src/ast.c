@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 void
@@ -99,7 +100,7 @@ stmt_dispose (stmt_t *self) {
 		return;
 
 	unsigned i;
-	switch (self->type) {
+	switch (self->kind) {
 		case AST_EXPR_STMT:
 			expr_dispose(self->expr);
 			break;
@@ -156,7 +157,7 @@ stmt_dispose (stmt_t *self) {
 			free(self->label.stmt);
 			break;
 		default:
-			fprintf(stderr, "%s.%d: stmt_dispose for stmt type %d not handled\n", __FILE__, __LINE__, self->type);
+			fprintf(stderr, "%s.%d: stmt_dispose for stmt type %d not handled\n", __FILE__, __LINE__, self->kind);
 			abort();
 			break;
 	}
@@ -168,7 +169,7 @@ block_item_dispose (block_item_t *self) {
 	if (self == 0)
 		return;
 
-	switch (self->type) {
+	switch (self->kind) {
 		case AST_STMT_BLOCK_ITEM:
 			stmt_dispose(self->stmt);
 			free(self->stmt);
@@ -178,7 +179,7 @@ block_item_dispose (block_item_t *self) {
 			free(self->decl);
 			break;
 		default:
-			fprintf(stderr, "%s.%d: block_item_dispose for block item type %d not handled\n", __FILE__, __LINE__, self->type);
+			fprintf(stderr, "%s.%d: block_item_dispose for block item type %d not handled\n", __FILE__, __LINE__, self->kind);
 			abort();
 			break;
 	}
@@ -190,7 +191,7 @@ decl_dispose (decl_t *self) {
 	if (self == 0)
 		return;
 
-	switch (self->type) {
+	switch (self->kind) {
 		case AST_VARIABLE_DECL:
 			type_dispose(&self->variable.type);
 			expr_dispose(self->variable.initial);
@@ -198,12 +199,43 @@ decl_dispose (decl_t *self) {
 			free(self->variable.initial);
 			break;
 		default:
-			fprintf(stderr, "%s.%d: decl_dispose for decl type %d not handled\n", __FILE__, __LINE__, self->type);
+			fprintf(stderr, "%s.%d: decl_dispose for decl type %d not handled\n", __FILE__, __LINE__, self->kind);
 			abort();
 			break;
 	}
 }
 
+
+char *
+type_describe(type_t *self) {
+	char *s = 0;
+	switch (self->kind) {
+		case AST_VOID_TYPE:
+			s = strdup("void");
+			break;
+		case AST_INTEGER_TYPE:
+			asprintf(&s, "int%d", self->width);
+			break;
+		case AST_FLOAT_TYPE:
+			asprintf(&s, "float%d", self->width);
+			break;
+	}
+	if (s && self->pointer > 0) {
+		char suffix[self->pointer+1];
+		memset(suffix, '*', self->pointer);
+		suffix[self->pointer] = 0;
+		char *sn = 0;
+		asprintf(&sn, "%s%s", s, suffix);
+		free(s);
+		s = sn;
+	}
+	return s;
+}
+
+void
+type_copy (type_t *dst, const type_t *src) {
+	*dst = *src;
+}
 
 void
 type_dispose (type_t *self) {
@@ -215,7 +247,7 @@ unit_dispose (unit_t *self) {
 	if (self == 0)
 		return;
 
-	switch (self->type) {
+	switch (self->kind) {
 		case AST_IMPORT_UNIT:
 			free(self->import_name);
 			break;
@@ -230,7 +262,7 @@ unit_dispose (unit_t *self) {
 			free(self->func.body);
 			break;
 		default:
-			fprintf(stderr, "%s.%d: unit_dispose for unit type %d not handled\n", __FILE__, __LINE__, self->type);
+			fprintf(stderr, "%s.%d: unit_dispose for unit type %d not handled\n", __FILE__, __LINE__, self->kind);
 			abort();
 			break;
 	}

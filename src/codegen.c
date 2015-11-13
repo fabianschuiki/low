@@ -13,6 +13,7 @@ typedef struct local local_t;
 
 struct local {
 	const decl_t *decl;
+	const type_t *type;
 	LLVMValueRef value;
 };
 
@@ -32,15 +33,15 @@ context_dispose (context_t *self) {
 	array_dispose(&self->locals);
 }
 
-static LLVMValueRef
+static local_t*
 context_find_local (context_t *self, const char *name) {
 	assert(self);
 
 	unsigned i;
 	for (i = 0; i < self->locals.size; ++i) {
-		const local_t *local = array_get(&self->locals, i);
+		local_t *local = array_get(&self->locals, i);
 		if (strcmp(local->decl->variable.name, name) == 0)
-			return local->value;
+			return local;
 	}
 
 	return self->prev ? context_find_local(self->prev, name) : 0;
@@ -55,7 +56,7 @@ codegen_type (const type_t *type) {
 		--inner.pointer;
 		return LLVMPointerType(codegen_type(&inner), 0);
 	}
-	switch(type->type) {
+	switch(type->kind) {
 		case AST_VOID_TYPE:
 			return LLVMVoidType();
 		case AST_INTEGER_TYPE:
@@ -63,7 +64,7 @@ codegen_type (const type_t *type) {
 		case AST_FLOAT_TYPE:
 			return LLVMFloatType();
 		default:
-			fprintf(stderr, "%s.%d: codegen for type %d not implemented\n", __FILE__, __LINE__, type->type);
+			fprintf(stderr, "%s.%d: codegen for type %d not implemented\n", __FILE__, __LINE__, type->kind);
 			abort();
 			return 0;
 	}
@@ -71,28 +72,48 @@ codegen_type (const type_t *type) {
 
 
 static LLVMValueRef
-codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, const expr_t *expr, char lvalue) {
+codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, expr_t *expr, char lvalue) {
 	assert(expr);
 	assert(context);
 	unsigned i;
 	switch (expr->kind) {
 		case AST_IDENT_EXPR: {
-			LLVMValueRef ptr = context_find_local(context, expr->ident);
+			local_t *local = context_find_local(context, expr->ident);
+			type_copy(&expr->type, local->type);
+			LLVMValueRef ptr = local->value;
 			return lvalue ? ptr : LLVMBuildLoad(builder, ptr, "");
 		}
-		case AST_NUMBER_LITERAL_EXPR:
+		case AST_NUMBER_LITERAL_EXPR: {
+			if (lvalue)
+				return 0;
+			expr->type.kind = AST_INTEGER_TYPE;
+			expr->type.width = 32;
 			return LLVMConstIntOfString(LLVMInt32Type(), expr->number_literal, 10);
-		case AST_STRING_LITERAL_EXPR:
+		}
+		case AST_STRING_LITERAL_EXPR: {
+			if (lvalue)
+				return 0;
+			expr->type.kind = AST_INTEGER_TYPE;
+			expr->type.width = 8;
+			expr->type.pointer = 1;
 			return LLVMBuildGlobalStringPtr(builder, expr->string_literal, ".str");
+		}
 		case AST_INDEX_ACCESS_EXPR: {
 			LLVMValueRef target = codegen_expr(module, builder, context, expr->index_access.target, 0);
 			LLVMValueRef index = codegen_expr(module, builder, context, expr->index_access.index, 0);
+			expr->type = expr->index_access.target->type;
+			assert(expr->type.pointer > 0 && "cannot index into non-pointer");
+			--expr->type.pointer;
+			assert(expr->index_access.index->type.kind == AST_INTEGER_TYPE && "index needs to be an integer");
 			LLVMValueRef ptr = LLVMBuildInBoundsGEP(builder, target, &index, 1, "");
 			return lvalue ? ptr : LLVMBuildLoad(builder, ptr, "");
 		}
 
 		case AST_CALL_EXPR: {
+			if (lvalue)
+				return 0;
 			assert(expr->call.target->kind == AST_IDENT_EXPR && "can only call functions by name at the moment");
+			expr->type.kind = AST_VOID_TYPE;
 			LLVMValueRef target = LLVMGetNamedFunction(module, expr->call.target->ident);
 			assert(target);
 			LLVMValueRef args[expr->call.num_args];
@@ -105,6 +126,9 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			LLVMValueRef target = codegen_expr(module, builder, context, expr->unary_op.target, 0);
 			switch (expr->unary_op.op) {
 				case AST_DEREF:
+					expr->type = expr->unary_op.target->type;
+					assert(expr->type.pointer > 0 && "cannot dereference non-pointer");
+					--expr->type.pointer;
 					return lvalue ? target : LLVMBuildLoad(builder, target, "");
 				default:
 					fprintf(stderr, "%s.%d: codegen for unary op %d not implemented\n", __FILE__, __LINE__, expr->unary_op.op);
@@ -114,7 +138,10 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 		}
 
 		case AST_CAST_EXPR: {
+			if (lvalue)
+				return 0;
 			LLVMValueRef target = codegen_expr(module, builder, context, expr->cast.target, 0);
+			expr->type = expr->cast.type;
 			LLVMTypeRef type_from = LLVMTypeOf(target);
 			LLVMTypeRef type_to = codegen_type(&expr->cast.type);
 			LLVMTypeKind kind_from = LLVMGetTypeKind(type_from);
@@ -124,6 +151,7 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 					switch (kind_to) {
 						case LLVMIntegerTypeKind:
 							return LLVMBuildIntCast(builder, target, type_to, "");
+						default: break;
 					}
 					break;
 				}
@@ -132,6 +160,7 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 						return LLVMBuildPointerCast(builder, target, type_to, "");
 					break;
 				}
+				default: break;
 			}
 
 			char *str_from = LLVMPrintTypeToString(type_from);
@@ -148,6 +177,11 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 				return 0;
 			LLVMValueRef lhs = codegen_expr(module, builder, context, expr->binary_op.lhs, 0);
 			LLVMValueRef rhs = codegen_expr(module, builder, context, expr->binary_op.rhs, 0);
+			assert(expr->binary_op.lhs->type.kind == expr->binary_op.rhs->type.kind &&
+			       expr->binary_op.lhs->type.width == expr->binary_op.rhs->type.width &&
+			       expr->binary_op.lhs->type.pointer == expr->binary_op.rhs->type.pointer &&
+			       "operands to binary operator must be of the same type");
+			expr->type = expr->assignment.expr->type;
 			switch (expr->binary_op.op) {
 				case AST_ADD:
 					return LLVMBuildAdd(builder, lhs, rhs, "");
@@ -167,11 +201,16 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 		case AST_ASSIGNMENT_EXPR: {
 			LLVMValueRef lv = codegen_expr(module, builder, context, expr->assignment.target, 1);
 			if (!lv) {
-				fprintf(stderr, "expr cannot be assigned a value\n");
+				fprintf(stderr, "expr %d cannot be assigned a value\n", expr->assignment.target->kind);
 				abort();
 				return 0;
 			}
 			LLVMValueRef rv = codegen_expr(module, builder, context, expr->assignment.expr, 0);
+			assert(expr->assignment.target->type.kind == expr->assignment.expr->type.kind &&
+			       expr->assignment.target->type.width == expr->assignment.expr->type.width &&
+			       expr->assignment.target->type.pointer == expr->assignment.expr->type.pointer &&
+			       "incompatible types in assignment");
+			expr->type = expr->assignment.expr->type;
 			LLVMValueRef v;
 			if (expr->assignment.op == AST_ASSIGN) {
 				v = rv;
@@ -188,7 +227,8 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 						return 0;
 				}
 			}
-			return LLVMBuildStore(builder, v, lv);
+			LLVMBuildStore(builder, v, lv);
+			return rv;
 		}
 
 		default:
@@ -203,16 +243,20 @@ static void
 codegen_decl (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, const decl_t *decl) {
 	assert(decl);
 	assert(context);
-	switch(decl->type) {
+	switch(decl->kind) {
 		case AST_VARIABLE_DECL: {
 			LLVMValueRef var = LLVMBuildAlloca(builder, codegen_type(&decl->variable.type), decl->variable.name);
-			local_t local = { .decl = decl, .value = var };
+			local_t local = {
+				.decl = decl,
+				.type = &decl->variable.type,
+				.value = var
+			};
 			array_add(&context->locals, &local);
 			if (decl->variable.initial)
 				LLVMBuildStore(builder, codegen_expr(module, builder, context, decl->variable.initial, 0), var);
 		} break;
 		default:
-			fprintf(stderr, "%s.%d: codegen for decl type %d not implemented\n", __FILE__, __LINE__, decl->type);
+			fprintf(stderr, "%s.%d: codegen for decl type %d not implemented\n", __FILE__, __LINE__, decl->kind);
 			abort();
 			break;
 	}
@@ -224,9 +268,12 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 	assert(stmt);
 	assert(context);
 	unsigned i;
-	switch(stmt->type) {
+	switch(stmt->kind) {
 		case AST_EXPR_STMT:
 			codegen_expr(module, builder, context, stmt->expr, 0);
+			char *type = type_describe(&stmt->expr->type);
+			printf("stmt expr type = %s\n", type);
+			free(type);
 			break;
 		case AST_COMPOUND_STMT: {
 			context_t subcontext;
@@ -235,7 +282,7 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 
 			for (i = 0; i < stmt->compound.num_items; ++i) {
 				const block_item_t *item = stmt->compound.items+i;
-				switch (item->type) {
+				switch (item->kind) {
 					case AST_STMT_BLOCK_ITEM:
 						codegen_stmt(module, builder, &subcontext, item->stmt);
 						break;
@@ -243,7 +290,7 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 						codegen_decl(module, builder, &subcontext, item->decl);
 						break;
 					default:
-						fprintf(stderr, "%s.%d: codegen for block_item type %d not implemented\n", __FILE__, __LINE__, item->type);
+						fprintf(stderr, "%s.%d: codegen for block_item type %d not implemented\n", __FILE__, __LINE__, item->kind);
 						abort();
 						break;
 				}
@@ -258,7 +305,7 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 				LLVMBuildRetVoid(builder);
 			break;
 		default:
-			fprintf(stderr, "%s.%d: codegen for stmt type %d not implemented\n", __FILE__, __LINE__, stmt->type);
+			fprintf(stderr, "%s.%d: codegen for stmt type %d not implemented\n", __FILE__, __LINE__, stmt->kind);
 			abort();
 			break;
 	}
@@ -268,7 +315,7 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 static void
 codegen_unit (LLVMModuleRef module, const unit_t *unit) {
 	assert(unit);
-	switch (unit->type) {
+	switch (unit->kind) {
 		case AST_IMPORT_UNIT: {
 
 		} break;
@@ -297,7 +344,7 @@ codegen_unit (LLVMModuleRef module, const unit_t *unit) {
 		} break;
 
 		default:
-			fprintf(stderr, "%s.%d: codegen for unit type %d not implemented\n", __FILE__, __LINE__, unit->type);
+			fprintf(stderr, "%s.%d: codegen for unit type %d not implemented\n", __FILE__, __LINE__, unit->kind);
 			abort();
 			break;
 	}

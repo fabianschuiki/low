@@ -29,14 +29,14 @@ typedef struct variable_decl variable_decl_t;
 
 // --- type -------------------------------------------------------------
 
-enum type_type {
+enum type_kind {
 	AST_VOID_TYPE,
 	AST_INTEGER_TYPE,
 	AST_FLOAT_TYPE,
 };
 
 struct type {
-	unsigned type;
+	unsigned kind;
 	unsigned width;
 	unsigned pointer;
 };
@@ -199,6 +199,7 @@ struct comma_expr {
 
 struct expr {
 	unsigned kind;
+	type_t type;
 	union {
 		char *ident;
 		char *string_literal;
@@ -221,7 +222,7 @@ struct expr {
 
 // --- stmt --------------------------------------------------------------------
 
-enum stmt_type {
+enum stmt_kind {
 	AST_EXPR_STMT,
 	AST_COMPOUND_STMT,
 	AST_IF_STMT,
@@ -270,7 +271,7 @@ struct label_stmt {
 
 
 struct stmt {
-	unsigned type;
+	unsigned kind;
 	union {
 		expr_t *expr;
 		compound_stmt_t compound;
@@ -285,14 +286,14 @@ struct stmt {
 
 // --- block_item --------------------------------------------------------------
 
-enum block_item_type {
+enum block_item_kind {
 	AST_STMT_BLOCK_ITEM,
 	AST_DECL_BLOCK_ITEM,
 };
 
 
 struct block_item {
-	unsigned type;
+	unsigned kind;
 	union {
 		stmt_t *stmt;
 		decl_t *decl;
@@ -303,7 +304,7 @@ struct block_item {
 
 // --- decl -------------------------------------------------------------
 
-enum decl_type {
+enum decl_kind {
 	AST_VARIABLE_DECL,
 	// AST_TYPE_DECL,
 	// AST_FUNCTION_DECL,
@@ -318,7 +319,7 @@ struct variable_decl {
 
 
 struct decl {
-	unsigned type;
+	unsigned kind;
 	union {
 		variable_decl_t variable;
 	};
@@ -328,7 +329,7 @@ struct decl {
 
 // --- unit -------------------------------------------------------------
 
-enum unit_type {
+enum unit_kind {
 	AST_IMPORT_UNIT,
 	AST_DECL_UNIT,
 	AST_FUNC_UNIT,
@@ -343,7 +344,7 @@ struct func_unit {
 
 
 struct unit {
-	unsigned type;
+	unsigned kind;
 	union {
 		char *import_name;
 		decl_t *decl;
@@ -352,10 +353,11 @@ struct unit {
 };
 
 
-
 void expr_dispose(expr_t *self);
 void stmt_dispose(stmt_t *self);
 void block_item_dispose(block_item_t *self);
 void decl_dispose(decl_t *self);
+char *type_describe(type_t *self);
+void type_copy(type_t *dst, const type_t *src);
 void type_dispose(type_t *self);
 void unit_dispose(unit_t *self);
