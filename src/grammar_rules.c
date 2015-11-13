@@ -25,7 +25,31 @@ REDUCER(primary_expr_string) {
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));
 	e->kind = AST_STRING_LITERAL_EXPR;
-	e->string_literal = strndup(in->first+1, in->last-in->first-2);
+	unsigned length = in->last-in->first-2;
+	const char *data = in->first+1;
+	char *str = malloc(length+1);
+	char *ptr = str;
+	unsigned i;
+	for (i = 0; i < length; ++i) {
+		if (data[i] == '\\') {
+			++i;
+			switch (data[i]) {
+				case '"': *ptr++ = '"'; break;
+				case 't': *ptr++ = '\t'; break;
+				case 'n': *ptr++ = '\n'; break;
+				case 'r': *ptr++ = '\r'; break;
+				default:
+					fprintf(stderr, "unknown escape sequence \\%c\n", data[i]);
+					abort();
+					break;
+			}
+		} else {
+			*ptr++ = data[i];
+		}
+	}
+	*ptr = 0;
+	e->string_literal = str;
+	// e->string_literal = strndup(in->first+1, in->last-in->first-2);
 	out->ptr = e;
 }
 
@@ -587,8 +611,8 @@ REDUCER(parameter_list) {
 		free(in[0].ptr);
 		out->ptr = a;
 	} else {
-		array_add(in[0].ptr, in[1].ptr);
-		free(in[1].ptr);
+		array_add(in[0].ptr, in[2].ptr);
+		free(in[2].ptr);
 	}
 }
 

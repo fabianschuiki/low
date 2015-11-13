@@ -246,7 +246,7 @@ RULE_END \
 \
 RULE(parameter_list) \
 	VAR SUB(parameter) REDUCE_TAG(parameter_list, 0) \
-	VAR SUB(parameter_list) TKN(COMMA) SUB(parameter) REDUCE_TAG(parameter_list, 0) \
+	VAR SUB(parameter_list) TKN(COMMA) SUB(parameter) REDUCE_TAG(parameter_list, 1) \
 RULE_END \
 \
 RULE(parameter) \

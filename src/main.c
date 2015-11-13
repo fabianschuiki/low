@@ -79,11 +79,17 @@ compile (const char *filename) {
 	lexer_init(&lex, p, fs.st_size);
 	lexer_next(&lex);
 
+	const char *last_slash = strrchr(filename, '/');
+	const char *last_dot = strrchr(last_slash, '.');
+	unsigned basename_len = (last_dot ? last_dot-filename : strlen(filename));
+	char out_name[basename_len+4];
+	strncpy(out_name, filename, basename_len);
+	strcpy(out_name+basename_len, ".ll");
+
 	array_t *units = parse(&lex);
 	if (units) {
 		LLVMModuleRef mod = LLVMModuleCreateWithName(filename);
 		codegen(mod, units);
-		LLVMDumpModule(mod);
 
 		char *error = NULL;
 		LLVMVerifyModule(mod, LLVMAbortProcessAction, &error);
@@ -91,7 +97,7 @@ compile (const char *filename) {
 
 		// LLVMWriteBitcodeToFile(mod, "parsed.bc");
 		error = NULL;
-		LLVMPrintModuleToFile(mod, "parsed.ll", &error);
+		LLVMPrintModuleToFile(mod, out_name, &error);
 		LLVMDisposeMessage(error);
 
 		LLVMDisposeModule(mod);

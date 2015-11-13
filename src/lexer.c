@@ -175,6 +175,14 @@ lexer_next (lexer_t *self) {
 				if (*self->ptr == '"') {
 					++self->ptr;
 					return;
+				} else if (*self->ptr == '\\') {
+					++self->ptr;
+					if (self->ptr == self->end) {
+						fprintf(stderr, "unexpected end of file in the middle of escape sequence\n");
+						self->token = TKN_INVALID;
+						return;
+					}
+					++self->ptr;
 				} else {
 					++self->ptr;
 				}

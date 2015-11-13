@@ -3,3 +3,5 @@ _*
 *~
 !.git*
 build
+*.ll
+*.bc

@@ -14,6 +14,7 @@ typedef struct local local_t;
 struct local {
 	const decl_t *decl;
 	const type_t *type;
+	const char *name;
 	LLVMValueRef value;
 };
 
@@ -40,7 +41,9 @@ context_find_local (context_t *self, const char *name) {
 	unsigned i;
 	for (i = 0; i < self->locals.size; ++i) {
 		local_t *local = array_get(&self->locals, i);
-		if (strcmp(local->decl->variable.name, name) == 0)
+		if (local->decl && strcmp(local->decl->variable.name, name) == 0)
+			return local;
+		if (local->name && strcmp(local->name, name) == 0)
 			return local;
 	}
 
@@ -79,6 +82,7 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 	switch (expr->kind) {
 		case AST_IDENT_EXPR: {
 			local_t *local = context_find_local(context, expr->ident);
+			assert(local && "identifier unknown");
 			type_copy(&expr->type, local->type);
 			LLVMValueRef ptr = local->value;
 			return lvalue ? ptr : LLVMBuildLoad(builder, ptr, "");
@@ -120,6 +124,31 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			for (i = 0; i < expr->call.num_args; ++i)
 				args[i] = codegen_expr(module, builder, context, &expr->call.args[i], 0);
 			return LLVMBuildCall(builder, target, args, expr->call.num_args, "");
+		}
+
+		case AST_INCDEC_EXPR: {
+			assert(expr->incdec_op.order == AST_PRE && "post-increment/-decrement not yet implemented");
+
+			LLVMValueRef target = codegen_expr(module, builder, context, expr->incdec_op.target, 1);
+			if (!target) {
+				fprintf(stderr, "expr %d is not a valid lvalue and thus cannot be incremented/decremented\n", expr->assignment.target->kind);
+				abort();
+				return 0;
+			}
+			expr->type = expr->incdec_op.target->type;
+			assert(expr->type.kind == AST_INTEGER_TYPE && "increment/decrement operator only supported for integers");
+
+			LLVMValueRef value = LLVMBuildLoad(builder, target, "");
+			LLVMValueRef const_one = LLVMConstInt(codegen_type(&expr->type), 1, 0);
+			LLVMValueRef new_value;
+			if (expr->incdec_op.direction == AST_INC) {
+				new_value = LLVMBuildAdd(builder, value, const_one, "");
+			} else {
+				new_value = LLVMBuildSub(builder, value, const_one, "");
+			}
+
+			LLVMBuildStore(builder, new_value, target);
+			return lvalue ? target : new_value;
 		}
 
 		case AST_UNARY_EXPR: {
@@ -191,6 +220,18 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 					return LLVMBuildMul(builder, lhs, rhs, "");
 				case AST_DIV:
 					return LLVMBuildSDiv(builder, lhs, rhs, "");
+				case AST_LT:
+					return LLVMBuildICmp(builder, LLVMIntSLT, lhs, rhs, "");
+				case AST_GT:
+					return LLVMBuildICmp(builder, LLVMIntSGT, lhs, rhs, "");
+				case AST_LE:
+					return LLVMBuildICmp(builder, LLVMIntSLE, lhs, rhs, "");
+				case AST_GE:
+					return LLVMBuildICmp(builder, LLVMIntSGE, lhs, rhs, "");
+				case AST_EQ:
+					return LLVMBuildICmp(builder, LLVMIntEQ, lhs, rhs, "");
+				case AST_NE:
+					return LLVMBuildICmp(builder, LLVMIntNE, lhs, rhs, "");
 				default:
 					fprintf(stderr, "%s.%d: codegen for binary op %d not implemented\n", __FILE__, __LINE__, expr->binary_op.op);
 					abort();
@@ -271,9 +312,6 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 	switch(stmt->kind) {
 		case AST_EXPR_STMT:
 			codegen_expr(module, builder, context, stmt->expr, 0);
-			char *type = type_describe(&stmt->expr->type);
-			printf("stmt expr type = %s\n", type);
-			free(type);
 			break;
 		case AST_COMPOUND_STMT: {
 			context_t subcontext;
@@ -297,7 +335,38 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			}
 
 			context_dispose(&subcontext);
-		} break;
+			break;
+		}
+
+		case AST_FOR_STMT: {
+			context_t subcontext;
+			context_init(&subcontext);
+			subcontext.prev = context;
+			codegen_expr(module, builder, &subcontext, stmt->iteration.initial, 0);
+
+			LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
+			LLVMBasicBlockRef loop_block = LLVMAppendBasicBlock(func, "loop");
+			LLVMBasicBlockRef body_block = LLVMAppendBasicBlock(func, "body");
+			LLVMBasicBlockRef exit_block = LLVMAppendBasicBlock(func, "exit");
+			LLVMBuildBr(builder, loop_block);
+
+			LLVMPositionBuilderAtEnd(builder, loop_block);
+			LLVMValueRef cond = codegen_expr(module, builder, &subcontext, stmt->iteration.condition, 0);
+			LLVMBuildCondBr(builder, cond, body_block, exit_block);
+
+			LLVMPositionBuilderAtEnd(builder, body_block);
+			if (stmt->iteration.stmt)
+				codegen_stmt(module, builder, &subcontext, stmt->iteration.stmt);
+			if (stmt->iteration.step)
+				codegen_expr(module, builder, &subcontext, stmt->iteration.step, 0);
+			LLVMBuildBr(builder, loop_block);
+
+			LLVMPositionBuilderAtEnd(builder, exit_block);
+
+			context_dispose(&subcontext);
+			break;
+		}
+
 		case AST_RETURN_STMT:
 			if (stmt->expr)
 				LLVMBuildRet(builder, codegen_expr(module, builder, context, stmt->expr, 0));
@@ -329,18 +398,34 @@ codegen_unit (LLVMModuleRef module, const unit_t *unit) {
 			LLVMValueRef func = LLVMAddFunction(module, unit->func.name, func_type);
 
 			if (unit->func.body) {
-				for (i = 0; i < unit->func.num_params; ++i) {
-					if (unit->func.params[i].name)
-						LLVMSetValueName(LLVMGetParam(func, i), unit->func.params[i].name);
-				}
-
 				LLVMBasicBlockRef block = LLVMAppendBasicBlock(func, "entry");
 				LLVMBuilderRef builder = LLVMCreateBuilder();
 				LLVMPositionBuilderAtEnd(builder, block);
+
 				context_t context;
 				context_init(&context);
+
+				for (i = 0; i < unit->func.num_params; ++i) {
+					const func_param_t *param = unit->func.params + i;
+
+					LLVMValueRef param_value = LLVMGetParam(func, i);
+					if (param->name)
+						LLVMSetValueName(param_value, param->name);
+
+					LLVMValueRef var = LLVMBuildAlloca(builder, codegen_type(&param->type), "");
+					LLVMBuildStore(builder, param_value, var);
+
+					local_t local = {
+						.name = param->name,
+						.type = &param->type,
+						.value = var
+					};
+					array_add(&context.locals, &local);
+				}
+
 				codegen_stmt(module, builder, &context, unit->func.body);
 				context_dispose(&context);
+
 				// LLVMBuildRetVoid(builder);
 				LLVMDisposeBuilder(builder);
 

@@ -2,6 +2,10 @@
 int32 puts(int8* str);
 void printf(int8* fmt, ...);
 
+int8* fopen(int8*,int8*);
+void fprintf(int8*,int8*,...);
+void fclose(int8*);
+
 void some_func(int32 alpha) {
 	var int32 i = 128;
 	i *= 256;
@@ -13,10 +17,22 @@ int8* form_a_string() {
 	return str;
 }
 
-int32 main() {
+int32 main(int32 argc, int8** argv) {
 	// var float a;
 	// var int b;
 	// var int i = 4*4;
+	printf("argc = \"%d\"\n", argc);
+
+	// Dump the arguments we have received.
+	var int32 i;
+	for (i = 0; i < argc; ++i) {
+		printf("arg #%d = %s\n", i, argv[i]);
+	}
+
+	var int8* fp = fopen("hello.txt", "w");
+	fprintf(fp, "got %d arguments\n", argc);
+	fclose(fp);
+
 	var int8* str = "hello world";
 	var int16* other = #(int16*)str;
 	// some_func();
