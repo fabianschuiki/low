@@ -216,7 +216,7 @@ RULE_END \
 \
 RULE(type) \
 	VAR TKN(VOID) REDUCE(type_void) \
-	VAR /*TKN(HASH)*/ TKN(IDENT) REDUCE(type_name) \
+	VAR TKN(IDENT) REDUCE(type_name) \
 	VAR SUB(type) TKN(MUL_OP) REDUCE(type_pointer) \
 RULE_END \
 \
@@ -233,7 +233,25 @@ RULE(decl_unit) \
 RULE_END \
 \
 RULE(func_unit) \
-	VAR SUB(type) TKN(IDENT) TKN(LPAREN) TKN(RPAREN) SUB(compound_stmt) REDUCE(func_unit) \
+	VAR SUB(func_unit_decl) TKN(SEMICOLON) REDUCE_TAG(func_unit, 0) \
+	VAR SUB(func_unit_decl) SUB(compound_stmt) REDUCE_TAG(func_unit, 1) \
+RULE_END \
+\
+RULE(func_unit_decl) \
+	VAR SUB(type) TKN(IDENT) TKN(LPAREN) TKN(RPAREN) REDUCE_TAG(func_unit_decl, 0) \
+	VAR SUB(type) TKN(IDENT) TKN(LPAREN) TKN(ELLIPSIS) TKN(RPAREN) REDUCE_TAG(func_unit_decl, 1) \
+	VAR SUB(type) TKN(IDENT) TKN(LPAREN) SUB(parameter_list) TKN(RPAREN) REDUCE_TAG(func_unit_decl, 2) \
+	VAR SUB(type) TKN(IDENT) TKN(LPAREN) SUB(parameter_list) TKN(COMMA) TKN(ELLIPSIS) TKN(RPAREN) REDUCE_TAG(func_unit_decl, 3) \
+RULE_END \
+\
+RULE(parameter_list) \
+	VAR SUB(parameter) REDUCE_TAG(parameter_list, 0) \
+	VAR SUB(parameter_list) TKN(COMMA) SUB(parameter) REDUCE_TAG(parameter_list, 0) \
+RULE_END \
+\
+RULE(parameter) \
+	VAR SUB(type) REDUCE_TAG(parameter, 0) \
+	VAR SUB(type) TKN(IDENT) REDUCE_TAG(parameter, 1) \
 RULE_END \
 \
 RULE(unit_list) \

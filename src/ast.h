@@ -12,6 +12,7 @@ typedef struct conditional_expr conditional_expr_t;
 typedef struct decl decl_t;
 typedef struct expr expr_t;
 typedef struct func_unit func_unit_t;
+typedef struct func_param func_param_t;
 typedef struct incdec_expr incdec_expr_t;
 typedef struct index_access_expr index_access_expr_t;
 typedef struct iteration_stmt iteration_stmt_t;
@@ -340,6 +341,14 @@ struct func_unit {
 	type_t return_type;
 	char *name;
 	stmt_t *body;
+	unsigned num_params;
+	func_param_t *params;
+	unsigned variadic;
+};
+
+struct func_param {
+	type_t type;
+	char *name;
 };
 
 

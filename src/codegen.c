@@ -315,31 +315,41 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 static void
 codegen_unit (LLVMModuleRef module, const unit_t *unit) {
 	assert(unit);
+	unsigned i;
 	switch (unit->kind) {
 		case AST_IMPORT_UNIT: {
 
 		} break;
 
 		case AST_FUNC_UNIT: {
-			LLVMTypeRef ret_type = LLVMFunctionType(codegen_type(&unit->func.return_type), 0, 0, 0);
-			LLVMValueRef func = LLVMAddFunction(module, unit->func.name, ret_type);
-			LLVMBasicBlockRef block = LLVMAppendBasicBlock(func, "entry");
-			LLVMBuilderRef builder = LLVMCreateBuilder();
-			LLVMPositionBuilderAtEnd(builder, block);
+			LLVMTypeRef param_types[unit->func.num_params];
+			for (i = 0; i < unit->func.num_params; ++i)
+				param_types[i] = codegen_type(&unit->func.params[i].type);
+			LLVMTypeRef func_type = LLVMFunctionType(codegen_type(&unit->func.return_type), param_types, unit->func.num_params, unit->func.variadic);
+			LLVMValueRef func = LLVMAddFunction(module, unit->func.name, func_type);
+
 			if (unit->func.body) {
+				for (i = 0; i < unit->func.num_params; ++i) {
+					if (unit->func.params[i].name)
+						LLVMSetValueName(LLVMGetParam(func, i), unit->func.params[i].name);
+				}
+
+				LLVMBasicBlockRef block = LLVMAppendBasicBlock(func, "entry");
+				LLVMBuilderRef builder = LLVMCreateBuilder();
+				LLVMPositionBuilderAtEnd(builder, block);
 				context_t context;
 				context_init(&context);
 				codegen_stmt(module, builder, &context, unit->func.body);
 				context_dispose(&context);
-			}
-			// LLVMBuildRetVoid(builder);
-			LLVMDisposeBuilder(builder);
+				// LLVMBuildRetVoid(builder);
+				LLVMDisposeBuilder(builder);
 
-			// Verify that the function is well-formed.
-			LLVMBool failed = LLVMVerifyFunction(func, LLVMPrintMessageAction);
-			if (failed) {
-				fprintf(stderr, "Function %s contained errors, aborting\n", unit->func.name);
-				abort();
+				// Verify that the function is well-formed.
+				LLVMBool failed = LLVMVerifyFunction(func, LLVMPrintMessageAction);
+				if (failed) {
+					fprintf(stderr, "Function %s contained errors, aborting\n", unit->func.name);
+					abort();
+				}
 			}
 		} break;
 
@@ -354,6 +364,11 @@ codegen_unit (LLVMModuleRef module, const unit_t *unit) {
 void
 codegen (LLVMModuleRef module, const array_t *units) {
 	assert(units);
+
+	// LLVMTypeRef func_args[1] = { LLVMPointerType(LLVMInt8Type(), 0) };
+	// LLVMTypeRef func_type = LLVMFunctionType(LLVMInt32Type(), func_args, 1, 0);
+	// LLVMAddFunction(module, "puts", func_type);
+
 	unsigned i;
 	for (i = 0; i < units->size; ++i) {
 		codegen_unit(module, array_get(units, i));

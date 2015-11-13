@@ -246,7 +246,7 @@ void
 unit_dispose (unit_t *self) {
 	if (self == 0)
 		return;
-
+	unsigned i;
 	switch (self->kind) {
 		case AST_IMPORT_UNIT:
 			free(self->import_name);
@@ -260,6 +260,11 @@ unit_dispose (unit_t *self) {
 			free(self->func.name);
 			stmt_dispose(self->func.body);
 			free(self->func.body);
+			for (i = 0; i < self->func.num_params; ++i) {
+				type_dispose(&self->func.params[i].type);
+				free(self->func.params[i].name);
+			}
+			free(self->func.params);
 			break;
 		default:
 			fprintf(stderr, "%s.%d: unit_dispose for unit type %d not handled\n", __FILE__, __LINE__, self->kind);

@@ -513,6 +513,14 @@ REDUCER(type_name) {
 		}
 	} else if (len == 5 && strncmp(name, "float", 5) == 0) {
 		t->kind = AST_FLOAT_TYPE;
+		if (len > 5) {
+			char suffix[len-5+1];
+			strncpy(suffix, name+5, len-5);
+			suffix[len-5] = 0;
+			t->width = atoi(suffix);
+		} else {
+			t->width = 32;
+		}
 	} else {
 		char *buf = strndup(name,len);
 		fprintf(stderr, "unknown type name %s\n", buf);
@@ -547,14 +555,51 @@ REDUCER(decl_unit) {
 }
 
 REDUCER(func_unit) {
+	unit_t *u = in->ptr;
+	if (tag == 1)
+		u->func.body = in[1].ptr;
+	out->ptr = u;
+}
+
+REDUCER(func_unit_decl) {
 	unit_t *u = malloc(sizeof(unit_t));
 	bzero(u, sizeof(*u));
 	u->kind = AST_FUNC_UNIT;
 	u->func.return_type = *(type_t*)in[0].ptr;
 	free(in[0].ptr);
 	u->func.name = strndup(in[1].first, in[1].last-in[1].first);
-	u->func.body = in[4].ptr;
+	u->func.variadic = (tag == 1 || tag == 3);
+	if (tag == 2 || tag == 3) {
+		array_t *p = in[3].ptr;
+		array_shrink(p);
+		u->func.num_params = p->size;
+		u->func.params = p->items;
+		free(p);
+	}
 	out->ptr = u;
+}
+
+REDUCER(parameter_list) {
+	if (tag == 0) {
+		array_t *a = malloc(sizeof(array_t));
+		array_init(a, sizeof(func_param_t));
+		array_add(a, in[0].ptr);
+		free(in[0].ptr);
+		out->ptr = a;
+	} else {
+		array_add(in[0].ptr, in[1].ptr);
+		free(in[1].ptr);
+	}
+}
+
+REDUCER(parameter) {
+	func_param_t *p = malloc(sizeof(func_param_t));
+	bzero(p, sizeof(*p));
+	p->type = *(type_t*)in[0].ptr;
+	free(in[0].ptr);
+	if (tag == 1)
+		p->name = strndup(in[1].first, in[1].last-in[1].first);
+	out->ptr = p;
 }
 
 REDUCER(unit_list) {
