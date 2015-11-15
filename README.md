@@ -1,5 +1,5 @@
 # low
-## No fuss, just systems programming
+**No fuss, just systems programming.**
 
 Refer to [1] and [2] for the C grammar and lexical analysis specification. Refer to [3] for the LLVM IR specification, and [4] for the LLVM C API documentation.
 

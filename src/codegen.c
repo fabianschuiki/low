@@ -21,11 +21,13 @@ struct local {
 struct context {
 	context_t *prev;
 	array_t locals;
+	unsigned is_terminated;
 };
 
 static void
 context_init (context_t *self) {
 	self->prev = 0;
+	self->is_terminated = 0;
 	array_init(&self->locals, sizeof(local_t));
 }
 
@@ -180,6 +182,8 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 					switch (kind_to) {
 						case LLVMIntegerTypeKind:
 							return LLVMBuildIntCast(builder, target, type_to, "");
+						case LLVMPointerTypeKind:
+							return LLVMBuildIntToPtr(builder, target, type_to, "");
 						default: break;
 					}
 					break;
@@ -334,6 +338,46 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 				}
 			}
 
+			if (subcontext.is_terminated)
+				context->is_terminated = 1;
+			context_dispose(&subcontext);
+			break;
+		}
+
+		case AST_IF_STMT: {
+			context_t subcontext;
+			context_init(&subcontext);
+			subcontext.prev = context;
+			LLVMValueRef cond = codegen_expr(module, builder, &subcontext, stmt->selection.condition, 0);
+
+			LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
+			LLVMBasicBlockRef true_block = LLVMAppendBasicBlock(func, "iftrue");
+			LLVMBasicBlockRef false_block = stmt->selection.else_stmt ? LLVMAppendBasicBlock(func, "iffalse") : 0;
+			LLVMBasicBlockRef exit_block = LLVMAppendBasicBlock(func, "ifexit");
+			LLVMBuildCondBr(builder, cond, true_block, false_block ? false_block : exit_block);
+
+			context_t true_context;
+			context_init(&true_context);
+			true_context.prev = context;
+			LLVMPositionBuilderAtEnd(builder, true_block);
+			if (stmt->selection.stmt)
+				codegen_stmt(module, builder, &true_context, stmt->selection.stmt);
+			if (!true_context.is_terminated)
+				LLVMBuildBr(builder, exit_block);
+			context_dispose(&true_context);
+
+			if (false_block) {
+				context_t false_context;
+				context_init(&false_context);
+				false_context.prev = context;
+				LLVMPositionBuilderAtEnd(builder, false_block);
+				codegen_stmt(module, builder, &false_context, stmt->selection.else_stmt);
+				if (!false_context.is_terminated)
+					LLVMBuildBr(builder, exit_block);
+				context_dispose(&false_context);
+			}
+
+			LLVMPositionBuilderAtEnd(builder, exit_block);
 			context_dispose(&subcontext);
 			break;
 		}
@@ -345,9 +389,9 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			codegen_expr(module, builder, &subcontext, stmt->iteration.initial, 0);
 
 			LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
-			LLVMBasicBlockRef loop_block = LLVMAppendBasicBlock(func, "loop");
-			LLVMBasicBlockRef body_block = LLVMAppendBasicBlock(func, "body");
-			LLVMBasicBlockRef exit_block = LLVMAppendBasicBlock(func, "exit");
+			LLVMBasicBlockRef loop_block = LLVMAppendBasicBlock(func, "loopinit");
+			LLVMBasicBlockRef body_block = LLVMAppendBasicBlock(func, "loopbody");
+			LLVMBasicBlockRef exit_block = LLVMAppendBasicBlock(func, "loopexit");
 			LLVMBuildBr(builder, loop_block);
 
 			LLVMPositionBuilderAtEnd(builder, loop_block);
@@ -362,7 +406,6 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			LLVMBuildBr(builder, loop_block);
 
 			LLVMPositionBuilderAtEnd(builder, exit_block);
-
 			context_dispose(&subcontext);
 			break;
 		}
@@ -372,6 +415,7 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 				LLVMBuildRet(builder, codegen_expr(module, builder, context, stmt->expr, 0));
 			else
 				LLVMBuildRetVoid(builder);
+			context->is_terminated = 1;
 			break;
 		default:
 			fprintf(stderr, "%s.%d: codegen for stmt type %d not implemented\n", __FILE__, __LINE__, stmt->kind);

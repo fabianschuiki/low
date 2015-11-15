@@ -5,6 +5,7 @@ void printf(int8* fmt, ...);
 int8* fopen(int8*,int8*);
 void fprintf(int8*,int8*,...);
 void fclose(int8*);
+int32 atoi(int8*);
 
 void some_func(int32 alpha) {
 	var int32 i = 128;
@@ -18,6 +19,23 @@ int8* form_a_string() {
 }
 
 int32 main(int32 argc, int8** argv) {
+
+	// Verify that we have enough arguments.
+	if (argc <= 1) {
+		// fprintf(stderr, "usage: %s NUM...\n", argv[0]);
+		printf("usage: %s NUM...\n", argv[0]);
+		return 1;
+	}
+
+	// Sum up the arguments.
+	var int32 i;
+	var int32 sum = 0;
+	for (i = 1; i < argc; ++i) {
+		var int32 n = atoi(argv[i]);
+		sum = sum + n;
+	}
+	printf("%d\n", sum);
+
 	// var float a;
 	// var int b;
 	// var int i = 4*4;
