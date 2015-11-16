@@ -27,6 +27,8 @@ int32 main(int32 argc, int8** argv) {
 		return 1;
 	}
 
+	puts(argc == 2 ? #(int8*)form_a_string() : "multiple arguments provided");
+
 	// Sum up the arguments.
 	var int32 i;
 	var int32 sum = 0;

@@ -243,6 +243,33 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			}
 		}
 
+		case AST_CONDITIONAL_EXPR: {
+			LLVMValueRef cond = codegen_expr(module, builder, context, expr->conditional.condition, 0);
+
+			LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
+			LLVMBasicBlockRef true_block = LLVMAppendBasicBlock(func, "iftrue");
+			LLVMBasicBlockRef false_block = LLVMAppendBasicBlock(func, "iffalse");
+			LLVMBasicBlockRef exit_block = LLVMAppendBasicBlock(func, "ifexit");
+			LLVMBuildCondBr(builder, cond, true_block, false_block ? false_block : exit_block);
+
+			LLVMPositionBuilderAtEnd(builder, true_block);
+			LLVMValueRef true_value = codegen_expr(module, builder, context, expr->conditional.true_expr, 0);
+			LLVMBuildBr(builder, exit_block);
+
+			LLVMPositionBuilderAtEnd(builder, false_block);
+			LLVMValueRef false_value = codegen_expr(module, builder, context, expr->conditional.false_expr, 0);
+			LLVMBuildBr(builder, exit_block);
+
+			// TODO: Make sure types of true and false branch match, otherwise cast.
+
+			LLVMPositionBuilderAtEnd(builder, exit_block);
+			LLVMValueRef incoming_values[2] = { true_value, false_value };
+			LLVMBasicBlockRef incoming_blocks[2] = { true_block, false_block };
+			LLVMValueRef phi = LLVMBuildPhi(builder, codegen_type(&expr->conditional.true_expr->type), "");
+			LLVMAddIncoming(phi, incoming_values, incoming_blocks, 2);
+			return phi;
+		}
+
 		case AST_ASSIGNMENT_EXPR: {
 			LLVMValueRef lv = codegen_expr(module, builder, context, expr->assignment.target, 1);
 			if (!lv) {
