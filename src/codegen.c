@@ -261,6 +261,7 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			LLVMBuildBr(builder, exit_block);
 
 			// TODO: Make sure types of true and false branch match, otherwise cast.
+			expr->type = expr->conditional.true_expr->type;
 
 			LLVMPositionBuilderAtEnd(builder, exit_block);
 			LLVMValueRef incoming_values[2] = { true_value, false_value };
@@ -305,8 +306,12 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 
 		case AST_COMMA_EXPR: {
 			LLVMValueRef value;
-			for (i = 0; i < expr->comma.num_exprs; ++i)
+			type_t *type;
+			for (i = 0; i < expr->comma.num_exprs; ++i) {
 				value = codegen_expr(module, builder, context, &expr->comma.exprs[i], 0);
+				type = &expr->comma.exprs[i].type;
+			}
+			expr->type = *type;
 			return value;
 		}
 
