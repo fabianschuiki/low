@@ -303,6 +303,13 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			return rv;
 		}
 
+		case AST_COMMA_EXPR: {
+			LLVMValueRef value;
+			for (i = 0; i < expr->comma.num_exprs; ++i)
+				value = codegen_expr(module, builder, context, &expr->comma.exprs[i], 0);
+			return value;
+		}
+
 		default:
 			fprintf(stderr, "%s.%d: codegen for expr type %d not implemented\n", __FILE__, __LINE__, expr->kind);
 			abort();

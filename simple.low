@@ -45,7 +45,8 @@ int32 main(int32 argc, int8** argv) {
 
 	// Dump the arguments we have received.
 	var int32 i;
-	for (i = 0; i < argc; ++i) {
+	var int32 n;
+	for (i = 0, n = 0; i < argc; ++i, ++n) {
 		printf("arg #%d = %s\n", i, argv[i]);
 	}
 

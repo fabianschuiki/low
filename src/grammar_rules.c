@@ -293,17 +293,17 @@ REDUCER(expr_comma) {
 		expr_t *ce = malloc(sizeof(expr_t));
 		bzero(ce, sizeof(*ce));
 		ce->kind = AST_COMMA_EXPR;
-		ce->comma_expr.num_exprs = 2;
-		ce->comma_expr.exprs = malloc(2 * sizeof(expr_t));
-		ce->comma_expr.exprs[0] = *e;
-		ce->comma_expr.exprs[1] = *(expr_t*)in[2].ptr;
+		ce->comma.num_exprs = 2;
+		ce->comma.exprs = malloc(2 * sizeof(expr_t));
+		ce->comma.exprs[0] = *e;
+		ce->comma.exprs[1] = *(expr_t*)in[2].ptr;
 		out->ptr = ce;
 		free(e);
 		free(in[2].ptr);
 	} else {
-		e->comma_expr.exprs = realloc(e->comma_expr.exprs, (e->comma_expr.num_exprs+1)*sizeof(expr_t));
-		e->comma_expr.exprs[e->comma_expr.num_exprs] = *(expr_t*)in[2].ptr;
-		++e->comma_expr.num_exprs;
+		e->comma.exprs = realloc(e->comma.exprs, (e->comma.num_exprs+1)*sizeof(expr_t));
+		e->comma.exprs[e->comma.num_exprs] = *(expr_t*)in[2].ptr;
+		++e->comma.num_exprs;
 		free(in[2].ptr);
 	}
 }

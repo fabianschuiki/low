@@ -82,9 +82,9 @@ expr_dispose (expr_t *self) {
 			free(self->assignment.expr);
 			break;
 		case AST_COMMA_EXPR:
-			for (i = 0; i < self->comma_expr.num_exprs; ++i)
-				expr_dispose(self->comma_expr.exprs + i);
-			free(self->comma_expr.exprs);
+			for (i = 0; i < self->comma.num_exprs; ++i)
+				expr_dispose(self->comma.exprs + i);
+			free(self->comma.exprs);
 			break;
 		default:
 			fprintf(stderr, "%s.%d: expr_dispose for expr type %d not handled\n", __FILE__, __LINE__, self->kind);

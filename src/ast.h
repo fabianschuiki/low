@@ -215,7 +215,7 @@ struct expr {
 		binary_expr_t binary_op;
 		conditional_expr_t conditional;
 		assignment_expr_t assignment;
-		comma_expr_t comma_expr;
+		comma_expr_t comma;
 	};
 };
 
