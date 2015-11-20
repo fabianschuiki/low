@@ -27,14 +27,13 @@ int32 main(int32 argc, int8** argv) {
 		return 1;
 	}
 
-	puts(argc == 2 ? #(int8*)form_a_string() : "multiple arguments provided");
+	puts(argc == 2 ? form_a_string() : "multiple arguments provided");
 
 	// Sum up the arguments.
 	var int32 i;
 	var int32 sum = 0;
 	for (i = 1; i < argc; ++i) {
-		var int32 n = atoi(argv[i]);
-		sum = sum + n;
+		sum = sum + atoi(argv[i]);
 	}
 	printf("%d\n", sum);
 

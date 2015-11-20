@@ -119,7 +119,12 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			if (lvalue)
 				return 0;
 			assert(expr->call.target->kind == AST_IDENT_EXPR && "can only call functions by name at the moment");
-			expr->type.kind = AST_VOID_TYPE;
+
+			local_t *local = context_find_local(context, expr->call.target->ident);
+			assert(local && "identifier unknown");
+			assert(local->type->kind == AST_FUNC_TYPE && "identifier is not a function");
+			type_copy(&expr->type, local->type->func.return_type);
+
 			LLVMValueRef target = LLVMGetNamedFunction(module, expr->call.target->ident);
 			assert(target);
 			LLVMValueRef args[expr->call.num_args];
@@ -465,7 +470,8 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 
 
 static void
-codegen_unit (LLVMModuleRef module, const unit_t *unit) {
+codegen_unit (LLVMModuleRef module, context_t *context, unit_t *unit) {
+	assert(context);
 	assert(unit);
 	unsigned i;
 	switch (unit->kind) {
@@ -480,13 +486,34 @@ codegen_unit (LLVMModuleRef module, const unit_t *unit) {
 			LLVMTypeRef func_type = LLVMFunctionType(codegen_type(&unit->func.return_type), param_types, unit->func.num_params, unit->func.variadic);
 			LLVMValueRef func = LLVMAddFunction(module, unit->func.name, func_type);
 
+			// Declare the function in the context.
+			type_t *type = &unit->func.type;
+			bzero(type, sizeof(*type));
+			type->kind = AST_FUNC_TYPE;
+			type->func.return_type = malloc(sizeof(type_t));
+			type_copy(type->func.return_type, &unit->func.return_type);
+			type->func.num_args = unit->func.num_params;
+			type->func.args = malloc(unit->func.num_params * sizeof(type_t));
+			for (i = 0; i < unit->func.num_params; ++i) {
+				type_copy(type->func.args+i, &unit->func.params[i].type);
+			}
+
+			local_t local = {
+				.type = &unit->func.type,
+				.name = unit->func.name,
+				.value = func,
+			};
+			array_add(&context->locals, &local);
+
+			// Generate code for the function body.
 			if (unit->func.body) {
 				LLVMBasicBlockRef block = LLVMAppendBasicBlock(func, "entry");
 				LLVMBuilderRef builder = LLVMCreateBuilder();
 				LLVMPositionBuilderAtEnd(builder, block);
 
-				context_t context;
-				context_init(&context);
+				context_t subcontext;
+				context_init(&subcontext);
+				subcontext.prev = context;
 
 				for (i = 0; i < unit->func.num_params; ++i) {
 					const func_param_t *param = unit->func.params + i;
@@ -503,11 +530,11 @@ codegen_unit (LLVMModuleRef module, const unit_t *unit) {
 						.type = &param->type,
 						.value = var
 					};
-					array_add(&context.locals, &local);
+					array_add(&subcontext.locals, &local);
 				}
 
-				codegen_stmt(module, builder, &context, unit->func.body);
-				context_dispose(&context);
+				codegen_stmt(module, builder, &subcontext, unit->func.body);
+				context_dispose(&subcontext);
 
 				// LLVMBuildRetVoid(builder);
 				LLVMDisposeBuilder(builder);
@@ -537,8 +564,11 @@ codegen (LLVMModuleRef module, const array_t *units) {
 	// LLVMTypeRef func_type = LLVMFunctionType(LLVMInt32Type(), func_args, 1, 0);
 	// LLVMAddFunction(module, "puts", func_type);
 
+	context_t context;
+	context_init(&context);
 	unsigned i;
 	for (i = 0; i < units->size; ++i) {
-		codegen_unit(module, array_get(units, i));
+		codegen_unit(module, &context, array_get(units, i));
 	}
+	context_dispose(&context);
 }

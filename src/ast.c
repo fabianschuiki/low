@@ -87,7 +87,7 @@ expr_dispose (expr_t *self) {
 			free(self->comma.exprs);
 			break;
 		default:
-			fprintf(stderr, "%s.%d: expr_dispose for expr type %d not handled\n", __FILE__, __LINE__, self->kind);
+			fprintf(stderr, "%s.%d: expr_dispose for expr kind %d not implemented\n", __FILE__, __LINE__, self->kind);
 			abort();
 			break;
 	}
@@ -157,7 +157,7 @@ stmt_dispose (stmt_t *self) {
 			free(self->label.stmt);
 			break;
 		default:
-			fprintf(stderr, "%s.%d: stmt_dispose for stmt type %d not handled\n", __FILE__, __LINE__, self->kind);
+			fprintf(stderr, "%s.%d: stmt_dispose for stmt kind %d not implemented\n", __FILE__, __LINE__, self->kind);
 			abort();
 			break;
 	}
@@ -179,7 +179,7 @@ block_item_dispose (block_item_t *self) {
 			free(self->decl);
 			break;
 		default:
-			fprintf(stderr, "%s.%d: block_item_dispose for block item type %d not handled\n", __FILE__, __LINE__, self->kind);
+			fprintf(stderr, "%s.%d: block_item_dispose for block item kind %d not implemented\n", __FILE__, __LINE__, self->kind);
 			abort();
 			break;
 	}
@@ -199,7 +199,7 @@ decl_dispose (decl_t *self) {
 			free(self->variable.initial);
 			break;
 		default:
-			fprintf(stderr, "%s.%d: decl_dispose for decl type %d not handled\n", __FILE__, __LINE__, self->kind);
+			fprintf(stderr, "%s.%d: decl_dispose for decl kind %d not implemented\n", __FILE__, __LINE__, self->kind);
 			abort();
 			break;
 	}
@@ -208,6 +208,7 @@ decl_dispose (decl_t *self) {
 
 char *
 type_describe(type_t *self) {
+	assert(self);
 	char *s = 0;
 	switch (self->kind) {
 		case AST_VOID_TYPE:
@@ -218,6 +219,43 @@ type_describe(type_t *self) {
 			break;
 		case AST_FLOAT_TYPE:
 			asprintf(&s, "float%d", self->width);
+			break;
+		case AST_FUNC_TYPE: {
+			char *ret = type_describe(self->func.return_type);
+			char *arg[self->func.num_args];
+			unsigned len = strlen(ret);
+			len += 2; // " ("
+			unsigned i;
+			for (i = 0; i < self->func.num_args; ++i) {
+				arg[i] = type_describe(self->func.args+i);
+				if (i > 0)
+					len += 2; // ", "
+				len += strlen(arg[i]);
+			}
+			len += 1; // ")"
+			if (self->pointer > 0)
+				s += 2; // "()" around func pointers
+			s = malloc((len+1) * sizeof(char));
+			s[0] = 0;
+			if (self->pointer > 0)
+				strcat(s, "(");
+			strcat(s, ret);
+			free(ret);
+			strcat(s, " (");
+			for (i = 0; i < self->func.num_args; ++i) {
+				if (i > 0)
+					strcat(s, ", ");
+				strcat(s, arg[i]);
+				free(arg[i]);
+			}
+			strcat(s, ")");
+			if (self->pointer > 0)
+				strcat(s, ")");
+			break;
+		}
+		default:
+			fprintf(stderr, "%s.%d: type_describe for type kind %d not implemented\n", __FILE__, __LINE__, self->kind);
+			abort();
 			break;
 	}
 	if (s && self->pointer > 0) {
@@ -235,10 +273,42 @@ type_describe(type_t *self) {
 void
 type_copy (type_t *dst, const type_t *src) {
 	*dst = *src;
+	unsigned i;
+	switch (src->kind) {
+		case AST_FUNC_TYPE:
+			dst->func.return_type = malloc(sizeof(type_t));
+			type_copy(dst->func.return_type, src->func.return_type);
+			dst->func.args = malloc(src->func.num_args * sizeof(type_t));
+			for (i = 0; i < src->func.num_args; ++i)
+				type_copy(dst->func.args+i, src->func.args+i);
+			break;
+		default:
+			break;
+	}
 }
 
 void
 type_dispose (type_t *self) {
+	if (self == 0)
+		return;
+	unsigned i;
+	switch (self->kind) {
+		case AST_VOID_TYPE:
+		case AST_INTEGER_TYPE:
+		case AST_FLOAT_TYPE:
+			break;
+		case AST_FUNC_TYPE:
+			type_dispose(self->func.return_type);
+			for (i = 0; i < self->func.num_args; ++i)
+				type_dispose(self->func.args + i);
+			free(self->func.return_type);
+			free(self->func.args);
+			break;
+		default:
+			fprintf(stderr, "%s.%d: type_dispose for type kind %d not implemented\n", __FILE__, __LINE__, self->kind);
+			abort();
+			break;
+	}
 }
 
 
@@ -267,7 +337,7 @@ unit_dispose (unit_t *self) {
 			free(self->func.params);
 			break;
 		default:
-			fprintf(stderr, "%s.%d: unit_dispose for unit type %d not handled\n", __FILE__, __LINE__, self->kind);
+			fprintf(stderr, "%s.%d: unit_dispose for unit kind %d not implemented\n", __FILE__, __LINE__, self->kind);
 			abort();
 			break;
 	}

@@ -11,8 +11,9 @@ typedef struct compound_stmt compound_stmt_t;
 typedef struct conditional_expr conditional_expr_t;
 typedef struct decl decl_t;
 typedef struct expr expr_t;
-typedef struct func_unit func_unit_t;
 typedef struct func_param func_param_t;
+typedef struct func_type func_type_t;
+typedef struct func_unit func_unit_t;
 typedef struct incdec_expr incdec_expr_t;
 typedef struct index_access_expr index_access_expr_t;
 typedef struct iteration_stmt iteration_stmt_t;
@@ -34,12 +35,22 @@ enum type_kind {
 	AST_VOID_TYPE,
 	AST_INTEGER_TYPE,
 	AST_FLOAT_TYPE,
+	AST_FUNC_TYPE,
 };
+
+
+struct func_type {
+	type_t *return_type;
+	unsigned num_args;
+	type_t *args;
+};
+
 
 struct type {
 	unsigned kind;
 	unsigned width;
 	unsigned pointer;
+	func_type_t func;
 };
 
 
@@ -344,6 +355,7 @@ struct func_unit {
 	unsigned num_params;
 	func_param_t *params;
 	unsigned variadic;
+	type_t type;
 };
 
 struct func_param {
