@@ -218,6 +218,16 @@ RULE(type) \
 	VAR TKN(VOID) REDUCE(type_void) \
 	VAR TKN(IDENT) REDUCE(type_name) \
 	VAR SUB(type) TKN(MUL_OP) REDUCE(type_pointer) \
+	VAR TKN(STRUCT) TKN(LBRACE) SUB(struct_member_list) TKN(RBRACE) REDUCE(type_struct) \
+RULE_END \
+\
+RULE(struct_member_list) \
+	VAR SUB(struct_member) REDUCE_TAG(struct_member_list, 0) \
+	VAR SUB(struct_member_list) SUB(struct_member) REDUCE_TAG(struct_member_list, 1) \
+RULE_END \
+\
+RULE(struct_member) \
+	VAR SUB(type) TKN(IDENT) TKN(SEMICOLON) REDUCE(struct_member) \
 RULE_END \
 \
 \
@@ -254,6 +264,10 @@ RULE(parameter) \
 	VAR SUB(type) TKN(IDENT) REDUCE_TAG(parameter, 1) \
 RULE_END \
 \
+RULE(type_unit) \
+	VAR TKN(TYPE) TKN(IDENT) TKN(COLON) SUB(type) TKN(SEMICOLON) REDUCE(type_unit) \
+RULE_END \
+\
 RULE(unit_list) \
 	VAR SUB(unit) REDUCE_TAG(unit_list, 0) \
 	VAR SUB(unit_list) SUB(unit) REDUCE_TAG(unit_list, 1) \
@@ -263,6 +277,7 @@ RULE(unit) \
 	VAR SUB(import_unit) REDUCE_DEFAULT \
 	VAR SUB(decl_unit) REDUCE_DEFAULT \
 	VAR SUB(func_unit) REDUCE_DEFAULT \
+	VAR SUB(type_unit) REDUCE_DEFAULT \
 RULE_END \
 \
 \

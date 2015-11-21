@@ -16,6 +16,7 @@ struct local {
 	const type_t *type;
 	const char *name;
 	LLVMValueRef value;
+	LLVMTypeRef lltype;
 };
 
 struct context {
@@ -53,14 +54,28 @@ context_find_local (context_t *self, const char *name) {
 }
 
 
+static const type_t *
+resolve_type_name (context_t *context, const type_t *type) {
+	assert(type);
+	if (type->kind == AST_NAMED_TYPE) {
+		local_t *local = context_find_local(context, type->name);
+		assert(local && "unknown type name");
+		return resolve_type_name(context, local->type);
+	} else {
+		return type;
+	}
+}
+
+
 static LLVMTypeRef
-codegen_type (const type_t *type) {
+codegen_type (context_t *context, const type_t *type) {
 	assert(type);
 	if (type->pointer > 0) {
 		type_t inner = *type;
 		--inner.pointer;
-		return LLVMPointerType(codegen_type(&inner), 0);
+		return LLVMPointerType(codegen_type(context, &inner), 0);
 	}
+	unsigned i;
 	switch(type->kind) {
 		case AST_VOID_TYPE:
 			return LLVMVoidType();
@@ -68,8 +83,19 @@ codegen_type (const type_t *type) {
 			return LLVMIntType(type->width);
 		case AST_FLOAT_TYPE:
 			return LLVMFloatType();
+		case AST_NAMED_TYPE: {
+			local_t *local = context_find_local(context, type->name);
+			assert(local && "unknown type name");
+			return codegen_type(context, local->type);
+		}
+		case AST_STRUCT_TYPE: {
+			LLVMTypeRef members[type->strct.num_members];
+			for (i = 0; i < type->strct.num_members; ++i)
+				members[i] = codegen_type(context, type->strct.members[i].type);
+			return LLVMStructType(members, type->strct.num_members, 0);
+		}
 		default:
-			fprintf(stderr, "%s.%d: codegen for type %d not implemented\n", __FILE__, __LINE__, type->kind);
+			fprintf(stderr, "%s.%d: codegen for type kind %d not implemented\n", __FILE__, __LINE__, type->kind);
 			abort();
 			return 0;
 	}
@@ -90,15 +116,13 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			return lvalue ? ptr : LLVMBuildLoad(builder, ptr, "");
 		}
 		case AST_NUMBER_LITERAL_EXPR: {
-			if (lvalue)
-				return 0;
+			assert(!lvalue && "number literal is not a valid lvalue");
 			expr->type.kind = AST_INTEGER_TYPE;
 			expr->type.width = 32;
 			return LLVMConstIntOfString(LLVMInt32Type(), expr->number_literal, 10);
 		}
 		case AST_STRING_LITERAL_EXPR: {
-			if (lvalue)
-				return 0;
+			assert(!lvalue && "string literal is not a valid lvalue");
 			expr->type.kind = AST_INTEGER_TYPE;
 			expr->type.width = 8;
 			expr->type.pointer = 1;
@@ -116,21 +140,43 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 		}
 
 		case AST_CALL_EXPR: {
-			if (lvalue)
-				return 0;
 			assert(expr->call.target->kind == AST_IDENT_EXPR && "can only call functions by name at the moment");
 
 			local_t *local = context_find_local(context, expr->call.target->ident);
 			assert(local && "identifier unknown");
 			assert(local->type->kind == AST_FUNC_TYPE && "identifier is not a function");
 			type_copy(&expr->type, local->type->func.return_type);
-
 			LLVMValueRef target = LLVMGetNamedFunction(module, expr->call.target->ident);
 			assert(target);
 			LLVMValueRef args[expr->call.num_args];
 			for (i = 0; i < expr->call.num_args; ++i)
 				args[i] = codegen_expr(module, builder, context, &expr->call.args[i], 0);
-			return LLVMBuildCall(builder, target, args, expr->call.num_args, "");
+			LLVMValueRef result = LLVMBuildCall(builder, target, args, expr->call.num_args, "");
+
+			if (lvalue) {
+				LLVMValueRef ptr = LLVMBuildAlloca(builder, LLVMTypeOf(result), "");
+				LLVMBuildStore(builder, result, ptr);
+				return ptr;
+			} else {
+				return result;
+			}
+		}
+
+		case AST_MEMBER_ACCESS_EXPR: {
+			LLVMValueRef target = codegen_expr(module, builder, context, expr->member_access.target, 1);
+			assert(target && "cannot member-access target");
+			const type_t *st = resolve_type_name(context, &expr->member_access.target->type);
+			assert(st->pointer <= 1 && "cannot access member across multiple indirection");
+			LLVMValueRef struct_ptr = st->pointer == 1 ? LLVMBuildLoad(builder, target, "") : target;
+			assert(st->kind == AST_STRUCT_TYPE && "cannot access member of non-struct");
+			for (i = 0; i < st->strct.num_members; ++i)
+				if (strcmp(expr->member_access.name, st->strct.members[i].name) == 0)
+					break;
+			assert(i < st->strct.num_members && "struct has no such member");
+			type_copy(&expr->type, st->strct.members[i].type);
+			LLVMValueRef ptr = LLVMBuildStructGEP(builder, struct_ptr, i, "");
+			return lvalue ? ptr : LLVMBuildLoad(builder, ptr, "");
+			// assert(0 && "not yet implemented");
 		}
 
 		case AST_INCDEC_EXPR: {
@@ -146,7 +192,7 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			assert(expr->type.kind == AST_INTEGER_TYPE && "increment/decrement operator only supported for integers");
 
 			LLVMValueRef value = LLVMBuildLoad(builder, target, "");
-			LLVMValueRef const_one = LLVMConstInt(codegen_type(&expr->type), 1, 0);
+			LLVMValueRef const_one = LLVMConstInt(codegen_type(context, &expr->type), 1, 0);
 			LLVMValueRef new_value;
 			if (expr->incdec_op.direction == AST_INC) {
 				new_value = LLVMBuildAdd(builder, value, const_one, "");
@@ -174,12 +220,11 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 		}
 
 		case AST_CAST_EXPR: {
-			if (lvalue)
-				return 0;
+			assert(!lvalue && "result of a cast is not a valid lvalue");
 			LLVMValueRef target = codegen_expr(module, builder, context, expr->cast.target, 0);
 			expr->type = expr->cast.type;
 			LLVMTypeRef type_from = LLVMTypeOf(target);
-			LLVMTypeRef type_to = codegen_type(&expr->cast.type);
+			LLVMTypeRef type_to = codegen_type(context, &expr->cast.type);
 			LLVMTypeKind kind_from = LLVMGetTypeKind(type_from);
 			LLVMTypeKind kind_to = LLVMGetTypeKind(type_to);
 			switch (kind_from) {
@@ -211,8 +256,7 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 		}
 
 		case AST_BINARY_EXPR: {
-			if (lvalue)
-				return 0;
+			assert(!lvalue && "result of a binary operation is not a valid lvalue");
 			LLVMValueRef lhs = codegen_expr(module, builder, context, expr->binary_op.lhs, 0);
 			LLVMValueRef rhs = codegen_expr(module, builder, context, expr->binary_op.rhs, 0);
 			assert(expr->binary_op.lhs->type.kind == expr->binary_op.rhs->type.kind &&
@@ -249,6 +293,7 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 		}
 
 		case AST_CONDITIONAL_EXPR: {
+			assert(!lvalue && "result of a conditional is not a valid lvalue");
 			LLVMValueRef cond = codegen_expr(module, builder, context, expr->conditional.condition, 0);
 
 			LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
@@ -271,7 +316,7 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			LLVMPositionBuilderAtEnd(builder, exit_block);
 			LLVMValueRef incoming_values[2] = { true_value, false_value };
 			LLVMBasicBlockRef incoming_blocks[2] = { true_block, false_block };
-			LLVMValueRef phi = LLVMBuildPhi(builder, codegen_type(&expr->conditional.true_expr->type), "");
+			LLVMValueRef phi = LLVMBuildPhi(builder, codegen_type(context, &expr->conditional.true_expr->type), "");
 			LLVMAddIncoming(phi, incoming_values, incoming_blocks, 2);
 			return phi;
 		}
@@ -310,6 +355,7 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 		}
 
 		case AST_COMMA_EXPR: {
+			assert(!lvalue && "comma expression is not a valid lvalue");
 			LLVMValueRef value;
 			type_t *type;
 			for (i = 0; i < expr->comma.num_exprs; ++i) {
@@ -321,7 +367,7 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 		}
 
 		default:
-			fprintf(stderr, "%s.%d: codegen for expr type %d not implemented\n", __FILE__, __LINE__, expr->kind);
+			fprintf(stderr, "%s.%d: codegen for expr kind %d not implemented\n", __FILE__, __LINE__, expr->kind);
 			abort();
 			return 0;
 	}
@@ -334,7 +380,7 @@ codegen_decl (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 	assert(context);
 	switch(decl->kind) {
 		case AST_VARIABLE_DECL: {
-			LLVMValueRef var = LLVMBuildAlloca(builder, codegen_type(&decl->variable.type), decl->variable.name);
+			LLVMValueRef var = LLVMBuildAlloca(builder, codegen_type(context, &decl->variable.type), decl->variable.name);
 			local_t local = {
 				.decl = decl,
 				.type = &decl->variable.type,
@@ -345,7 +391,7 @@ codegen_decl (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 				LLVMBuildStore(builder, codegen_expr(module, builder, context, decl->variable.initial, 0), var);
 		} break;
 		default:
-			fprintf(stderr, "%s.%d: codegen for decl type %d not implemented\n", __FILE__, __LINE__, decl->kind);
+			fprintf(stderr, "%s.%d: codegen for decl kind %d not implemented\n", __FILE__, __LINE__, decl->kind);
 			abort();
 			break;
 	}
@@ -376,7 +422,7 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 						codegen_decl(module, builder, &subcontext, item->decl);
 						break;
 					default:
-						fprintf(stderr, "%s.%d: codegen for block_item type %d not implemented\n", __FILE__, __LINE__, item->kind);
+						fprintf(stderr, "%s.%d: codegen for block_item kind %d not implemented\n", __FILE__, __LINE__, item->kind);
 						abort();
 						break;
 				}
@@ -462,7 +508,7 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			context->is_terminated = 1;
 			break;
 		default:
-			fprintf(stderr, "%s.%d: codegen for stmt type %d not implemented\n", __FILE__, __LINE__, stmt->kind);
+			fprintf(stderr, "%s.%d: codegen for stmt kind %d not implemented\n", __FILE__, __LINE__, stmt->kind);
 			abort();
 			break;
 	}
@@ -475,15 +521,14 @@ codegen_unit (LLVMModuleRef module, context_t *context, unit_t *unit) {
 	assert(unit);
 	unsigned i;
 	switch (unit->kind) {
-		case AST_IMPORT_UNIT: {
-
-		} break;
+		case AST_IMPORT_UNIT:
+			break;
 
 		case AST_FUNC_UNIT: {
 			LLVMTypeRef param_types[unit->func.num_params];
 			for (i = 0; i < unit->func.num_params; ++i)
-				param_types[i] = codegen_type(&unit->func.params[i].type);
-			LLVMTypeRef func_type = LLVMFunctionType(codegen_type(&unit->func.return_type), param_types, unit->func.num_params, unit->func.variadic);
+				param_types[i] = codegen_type(context, &unit->func.params[i].type);
+			LLVMTypeRef func_type = LLVMFunctionType(codegen_type(context, &unit->func.return_type), param_types, unit->func.num_params, unit->func.variadic);
 			LLVMValueRef func = LLVMAddFunction(module, unit->func.name, func_type);
 
 			// Declare the function in the context.
@@ -522,7 +567,7 @@ codegen_unit (LLVMModuleRef module, context_t *context, unit_t *unit) {
 					if (param->name)
 						LLVMSetValueName(param_value, param->name);
 
-					LLVMValueRef var = LLVMBuildAlloca(builder, codegen_type(&param->type), "");
+					LLVMValueRef var = LLVMBuildAlloca(builder, codegen_type(context, &param->type), "");
 					LLVMBuildStore(builder, param_value, var);
 
 					local_t local = {
@@ -546,10 +591,20 @@ codegen_unit (LLVMModuleRef module, context_t *context, unit_t *unit) {
 					abort();
 				}
 			}
-		} break;
+			break;
+		}
+
+		case AST_TYPE_UNIT: {
+			local_t local = { 0,
+				.type = &unit->type.type,
+				.name = unit->type.name,
+			};
+			array_add(&context->locals, &local);
+			break;
+		}
 
 		default:
-			fprintf(stderr, "%s.%d: codegen for unit type %d not implemented\n", __FILE__, __LINE__, unit->kind);
+			fprintf(stderr, "%s.%d: codegen for unit kind %d not implemented\n", __FILE__, __LINE__, unit->kind);
 			abort();
 			break;
 	}

@@ -22,10 +22,13 @@ typedef struct member_access_expr member_access_expr_t;
 typedef struct selection_stmt selection_stmt_t;
 typedef struct sizeof_expr sizeof_expr_t;
 typedef struct stmt stmt_t;
+typedef struct struct_type struct_type_t;
+typedef struct struct_member struct_member_t;
 typedef struct type type_t;
 typedef struct unary_expr unary_expr_t;
 typedef struct unit unit_t;
 typedef struct variable_decl variable_decl_t;
+typedef struct type_unit type_unit_t;
 
 
 
@@ -36,6 +39,8 @@ enum type_kind {
 	AST_INTEGER_TYPE,
 	AST_FLOAT_TYPE,
 	AST_FUNC_TYPE,
+	AST_NAMED_TYPE,
+	AST_STRUCT_TYPE,
 };
 
 
@@ -46,11 +51,27 @@ struct func_type {
 };
 
 
+struct struct_type {
+	char *name;
+	unsigned num_members;
+	struct_member_t *members;
+};
+
+struct struct_member {
+	type_t *type;
+	char *name;
+};
+
+
 struct type {
 	unsigned kind;
-	unsigned width;
 	unsigned pointer;
-	func_type_t func;
+	union {
+		unsigned width;
+		func_type_t func;
+		struct_type_t strct;
+		char *name;
+	};
 };
 
 
@@ -345,6 +366,7 @@ enum unit_kind {
 	AST_IMPORT_UNIT,
 	AST_DECL_UNIT,
 	AST_FUNC_UNIT,
+	AST_TYPE_UNIT,
 };
 
 
@@ -364,12 +386,19 @@ struct func_param {
 };
 
 
+struct type_unit {
+	type_t type;
+	char *name;
+};
+
+
 struct unit {
 	unsigned kind;
 	union {
 		char *import_name;
 		decl_t *decl;
 		func_unit_t func;
+		type_unit_t type;
 	};
 };
 

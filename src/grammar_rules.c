@@ -546,10 +546,8 @@ REDUCER(type_name) {
 			t->width = 32;
 		}
 	} else {
-		char *buf = strndup(name,len);
-		fprintf(stderr, "unknown type name %s\n", buf);
-		free(buf);
-		abort();
+		t->kind = AST_NAMED_TYPE;
+		t->name = strndup(name,len);
 	}
 	out->ptr = t;
 }
@@ -557,6 +555,39 @@ REDUCER(type_name) {
 REDUCER(type_pointer) {
 	type_t *t = in[0].ptr;
 	++t->pointer;
+}
+
+REDUCER(type_struct) {
+	type_t *t = malloc(sizeof(type_t));
+	bzero(t, sizeof(*t));
+	t->kind = AST_STRUCT_TYPE;
+	array_t *a = in[2].ptr;
+	array_shrink(a);
+	t->strct.num_members = a->size;
+	t->strct.members = a->items;
+	free(a);
+	out->ptr = t;
+}
+
+REDUCER(struct_member_list) {
+	if (tag == 0) {
+		array_t *a = malloc(sizeof(array_t));
+		array_init(a, sizeof(struct_member_t));
+		array_add(a, in[0].ptr);
+		free(in[0].ptr);
+		out->ptr = a;
+	} else {
+		array_add(in[0].ptr, in[1].ptr);
+		free(in[1].ptr);
+	}
+}
+
+REDUCER(struct_member) {
+	struct_member_t *m = malloc(sizeof(struct_member_t));
+	bzero(m, sizeof(*m));
+	m->type = in[0].ptr;
+	m->name = strndup(in[1].first, in[1].last-in[1].first);
+	out->ptr = m;
 }
 
 
@@ -624,6 +655,16 @@ REDUCER(parameter) {
 	if (tag == 1)
 		p->name = strndup(in[1].first, in[1].last-in[1].first);
 	out->ptr = p;
+}
+
+REDUCER(type_unit) {
+	unit_t *u = malloc(sizeof(unit_t));
+	bzero(u, sizeof(*u));
+	u->kind = AST_TYPE_UNIT;
+	u->type.type = *(type_t*)in[3].ptr;
+	free(in[3].ptr);
+	u->type.name = strndup(in[1].first, in[1].last-in[1].first);
+	out->ptr = u;
 }
 
 REDUCER(unit_list) {

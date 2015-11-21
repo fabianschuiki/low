@@ -231,6 +231,7 @@ lexer_next (lexer_t *self) {
 			CHECK_KEYWORD("static",   TKN_STATIC);
 			CHECK_KEYWORD("struct",   TKN_STRUCT);
 			CHECK_KEYWORD("switch",   TKN_SWITCH);
+			CHECK_KEYWORD("type",     TKN_TYPE);
 			CHECK_KEYWORD("typedef",  TKN_TYPEDEF);
 			CHECK_KEYWORD("union",    TKN_UNION);
 			CHECK_KEYWORD("var",      TKN_VAR);

@@ -253,6 +253,12 @@ type_describe(type_t *self) {
 				strcat(s, ")");
 			break;
 		}
+		case AST_NAMED_TYPE:
+			s = strdup(self->name);
+			break;
+		case AST_STRUCT_TYPE:
+			s = strdup("struct{...}");
+			break;
 		default:
 			fprintf(stderr, "%s.%d: type_describe for type kind %d not implemented\n", __FILE__, __LINE__, self->kind);
 			abort();
@@ -282,6 +288,16 @@ type_copy (type_t *dst, const type_t *src) {
 			for (i = 0; i < src->func.num_args; ++i)
 				type_copy(dst->func.args+i, src->func.args+i);
 			break;
+		case AST_NAMED_TYPE:
+			dst->name = strdup(src->name);
+			break;
+		case AST_STRUCT_TYPE:
+			dst->strct.members = malloc(src->strct.num_members * sizeof(struct_member_t));
+			for (i = 0; i < src->strct.num_members; ++i) {
+				dst->strct.members[i].type = malloc(sizeof(type_t));
+				type_copy(dst->strct.members[i].type, src->strct.members[i].type);
+				dst->strct.members[i].name = strdup(src->strct.members[i].name);
+			}
 		default:
 			break;
 	}
@@ -303,6 +319,17 @@ type_dispose (type_t *self) {
 				type_dispose(self->func.args + i);
 			free(self->func.return_type);
 			free(self->func.args);
+			break;
+		case AST_NAMED_TYPE:
+			free(self->name);
+			break;
+		case AST_STRUCT_TYPE:
+			for (i = 0; i < self->strct.num_members; ++i) {
+				type_dispose(self->strct.members[i].type);
+				free(self->strct.members[i].type);
+				free(self->strct.members[i].name);
+			}
+			free(self->strct.members);
 			break;
 		default:
 			fprintf(stderr, "%s.%d: type_dispose for type kind %d not implemented\n", __FILE__, __LINE__, self->kind);
@@ -335,6 +362,10 @@ unit_dispose (unit_t *self) {
 				free(self->func.params[i].name);
 			}
 			free(self->func.params);
+			break;
+		case AST_TYPE_UNIT:
+			type_dispose(&self->type.type);
+			free(self->type.name);
 			break;
 		default:
 			fprintf(stderr, "%s.%d: unit_dispose for unit kind %d not implemented\n", __FILE__, __LINE__, self->kind);
