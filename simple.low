@@ -12,27 +12,27 @@ type arg: struct {
 	int8* value;
 };
 
-void some_func(int32 alpha) {
+func some_func: (int32 alpha) -> void {
 	var int32 i = 128;
 	i *= 256;
 	return;
 }
 
-int8* form_a_string() {
+func form_a_string: () -> int8* {
 	var int8* str = "formed a string";
 	return str;
 }
 
 type retval: struct { int8 a; int8 b; };
 
-retval form_a_struct(int8 v) {
+func form_a_struct: (int8 v) -> retval {
 	var retval x;
 	x.a = v*#(int8)2;
 	x.b = v*v;
 	return x;
 }
 
-int32 main(int32 argc, int8** argv) {
+func main: (int32 argc, int8** argv) -> int32 {
 
 	// Verify that we have enough arguments.
 	if (argc <= 1) {

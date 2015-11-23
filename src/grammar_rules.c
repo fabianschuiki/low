@@ -634,6 +634,27 @@ REDUCER(func_unit_decl) {
 	out->ptr = u;
 }
 
+REDUCER(func_unit_decl2) {
+	unit_t *u = malloc(sizeof(unit_t));
+	bzero(u, sizeof(*u));
+	u->kind = AST_FUNC_UNIT;
+	u->func.name = strndup(in[1].first, in[1].last-in[1].first);
+	u->func.variadic = (tag == 1 || tag == 3);
+	if (tag == 2 || tag == 3) {
+		array_t *p = in[4].ptr;
+		array_shrink(p);
+		u->func.num_params = p->size;
+		u->func.params = p->items;
+		free(p);
+	}
+	unsigned i = 6;
+	if (tag == 1 || tag == 2) i = 7;
+	if (tag == 3) i = 8;
+	u->func.return_type = *(type_t*)in[i].ptr;
+	free(in[i].ptr);
+	out->ptr = u;
+}
+
 REDUCER(parameter_list) {
 	if (tag == 0) {
 		array_t *a = malloc(sizeof(array_t));

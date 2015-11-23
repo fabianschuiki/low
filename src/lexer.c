@@ -135,6 +135,7 @@ lexer_next (lexer_t *self) {
 			CHECK_TOKEN(">=", TKN_GE_OP)
 			CHECK_TOKEN("==", TKN_EQ_OP)
 			CHECK_TOKEN("!=", TKN_NE_OP)
+			CHECK_TOKEN("->", TKN_MAPTO)
 			#undef CHECK_TOKEN
 		}
 
