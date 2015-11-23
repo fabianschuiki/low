@@ -10,6 +10,15 @@
 
 typedef struct context context_t;
 typedef struct local local_t;
+typedef struct codegen codegen_t;
+
+
+struct codegen {
+	LLVMModuleRef module;
+	LLVMValueRef func;
+	LLVMBuilderRef builder;
+};
+
 
 struct local {
 	const decl_t *decl;
@@ -516,7 +525,7 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 
 
 static void
-codegen_unit (LLVMModuleRef module, context_t *context, unit_t *unit) {
+codegen_unit (LLVMModuleRef module, context_t *context, unit_t *unit, int stage) {
 	assert(context);
 	assert(unit);
 	unsigned i;
@@ -525,33 +534,41 @@ codegen_unit (LLVMModuleRef module, context_t *context, unit_t *unit) {
 			break;
 
 		case AST_FUNC_UNIT: {
-			LLVMTypeRef param_types[unit->func.num_params];
-			for (i = 0; i < unit->func.num_params; ++i)
-				param_types[i] = codegen_type(context, &unit->func.params[i].type);
-			LLVMTypeRef func_type = LLVMFunctionType(codegen_type(context, &unit->func.return_type), param_types, unit->func.num_params, unit->func.variadic);
-			LLVMValueRef func = LLVMAddFunction(module, unit->func.name, func_type);
+			LLVMValueRef func;
 
-			// Declare the function in the context.
-			type_t *type = &unit->func.type;
-			bzero(type, sizeof(*type));
-			type->kind = AST_FUNC_TYPE;
-			type->func.return_type = malloc(sizeof(type_t));
-			type_copy(type->func.return_type, &unit->func.return_type);
-			type->func.num_args = unit->func.num_params;
-			type->func.args = malloc(unit->func.num_params * sizeof(type_t));
-			for (i = 0; i < unit->func.num_params; ++i) {
-				type_copy(type->func.args+i, &unit->func.params[i].type);
+			if (stage == 1) {
+				LLVMTypeRef param_types[unit->func.num_params];
+				for (i = 0; i < unit->func.num_params; ++i)
+					param_types[i] = codegen_type(context, &unit->func.params[i].type);
+				LLVMTypeRef func_type = LLVMFunctionType(codegen_type(context, &unit->func.return_type), param_types, unit->func.num_params, unit->func.variadic);
+				LLVMValueRef func = LLVMAddFunction(module, unit->func.name, func_type);
+
+				// Declare the function in the context.
+				type_t *type = &unit->func.type;
+				bzero(type, sizeof(*type));
+				type->kind = AST_FUNC_TYPE;
+				type->func.return_type = malloc(sizeof(type_t));
+				type_copy(type->func.return_type, &unit->func.return_type);
+				type->func.num_args = unit->func.num_params;
+				type->func.args = malloc(unit->func.num_params * sizeof(type_t));
+				for (i = 0; i < unit->func.num_params; ++i) {
+					type_copy(type->func.args+i, &unit->func.params[i].type);
+				}
+
+				local_t local = {
+					.type = &unit->func.type,
+					.name = unit->func.name,
+					.value = func,
+				};
+				array_add(&context->locals, &local);
+			} else if (stage == 2) {
+				local_t *local = context_find_local(context, unit->func.name);
+				assert(local && "could not found declaration of function");
+				func = local->value;
 			}
 
-			local_t local = {
-				.type = &unit->func.type,
-				.name = unit->func.name,
-				.value = func,
-			};
-			array_add(&context->locals, &local);
-
 			// Generate code for the function body.
-			if (unit->func.body) {
+			if (unit->func.body && stage == 2) {
 				LLVMBasicBlockRef block = LLVMAppendBasicBlock(func, "entry");
 				LLVMBuilderRef builder = LLVMCreateBuilder();
 				LLVMPositionBuilderAtEnd(builder, block);
@@ -595,6 +612,8 @@ codegen_unit (LLVMModuleRef module, context_t *context, unit_t *unit) {
 		}
 
 		case AST_TYPE_UNIT: {
+			if (stage != 0)
+				break;
 			local_t local = { 0,
 				.type = &unit->type.type,
 				.name = unit->type.name,
@@ -615,15 +634,13 @@ void
 codegen (LLVMModuleRef module, const array_t *units) {
 	assert(units);
 
-	// LLVMTypeRef func_args[1] = { LLVMPointerType(LLVMInt8Type(), 0) };
-	// LLVMTypeRef func_type = LLVMFunctionType(LLVMInt32Type(), func_args, 1, 0);
-	// LLVMAddFunction(module, "puts", func_type);
-
 	context_t context;
 	context_init(&context);
-	unsigned i;
-	for (i = 0; i < units->size; ++i) {
-		codegen_unit(module, &context, array_get(units, i));
-	}
+	unsigned i, s;
+
+	for (s = 0; s < 3; ++s)
+		for (i = 0; i < units->size; ++i)
+			codegen_unit(module, &context, array_get(units, i), s);
+
 	context_dispose(&context);
 }

@@ -7,20 +7,10 @@ void fprintf(int8*,int8*,...);
 void fclose(int8*);
 int32 atoi(int8*);
 
-type arg: struct {
-	int32 index;
-	int8* value;
-};
-
 func some_func: (int32 alpha) -> void {
 	var int32 i = 128;
 	i *= 256;
 	return;
-}
-
-func form_a_string: () -> int8* {
-	var int8* str = "formed a string";
-	return str;
 }
 
 type retval: struct { int8 a; int8 b; };
@@ -85,3 +75,13 @@ func main: (int32 argc, int8** argv) -> int32 {
 	// return 42 + i;
 	return #(int32)str[5];
 }
+
+func form_a_string: () -> int8* {
+	var int8* str = "formed a string";
+	return str;
+}
+
+type arg: struct {
+	int32 index;
+	int8* value;
+};
