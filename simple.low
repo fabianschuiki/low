@@ -7,22 +7,22 @@ void fprintf(int8*,int8*,...);
 void fclose(int8*);
 int32 atoi(int8*);
 
-func some_func: (int32 alpha) -> void {
+some_func: (int32 alpha) void {
 	var int32 i = 128;
 	i *= 256;
 	return;
 }
 
-type retval: struct { int8 a; int8 b; };
+retval: struct { int8 a; int8 b; };
 
-func form_a_struct: (int8 v) -> retval {
+form_a_struct: (int8 v) retval {
 	var retval x;
 	x.a = v*#(int8)2;
 	x.b = v*v;
 	return x;
 }
 
-func main: (int32 argc, int8** argv) -> int32 {
+main: (int32 argc, int8** argv) int32 {
 
 	// Verify that we have enough arguments.
 	if (argc <= 1) {
@@ -76,12 +76,12 @@ func main: (int32 argc, int8** argv) -> int32 {
 	return #(int32)str[5];
 }
 
-func form_a_string: () -> int8* {
+form_a_string: () int8* {
 	var int8* str = "formed a string";
 	return str;
 }
 
-type arg: struct {
+arg: struct {
 	int32 index;
 	int8* value;
 };
