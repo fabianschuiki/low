@@ -36,7 +36,7 @@ if (NOT APPLE)
 endif()
 
 
-add_definitions(-Wall)
+add_definitions(-Wall -Werror=implicit-function-declaration)
 include_directories(src)
 
 add_executable(parser-generator

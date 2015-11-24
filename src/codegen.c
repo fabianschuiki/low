@@ -8,53 +8,56 @@
 #include <string.h>
 
 
-typedef struct context context_t;
-typedef struct local local_t;
-typedef struct codegen codegen_t;
+typedef codegen_context_t context_t;
+typedef codegen_symbol_t local_t;
 
 
-struct codegen {
-	LLVMModuleRef module;
-	LLVMValueRef func;
-	LLVMBuilderRef builder;
-};
-
-
-struct local {
-	const decl_t *decl;
-	const type_t *type;
-	const char *name;
-	LLVMValueRef value;
-	LLVMTypeRef lltype;
-};
-
-struct context {
-	context_t *prev;
-	array_t locals;
-	unsigned is_terminated;
-};
-
-static void
-context_init (context_t *self) {
-	self->prev = 0;
-	self->is_terminated = 0;
-	array_init(&self->locals, sizeof(local_t));
+void
+codegen_context_init (codegen_context_t *self) {
+	assert(self);
+	bzero(self, sizeof *self);
+	array_init(&self->symbols, sizeof(codegen_symbol_t));
 }
 
-static void
-context_dispose (context_t *self) {
-	array_dispose(&self->locals);
+void
+codegen_context_dispose (codegen_context_t *self) {
+	assert(self);
+	array_dispose(&self->symbols);
 }
+
+void
+codegen_context_add_symbol (codegen_context_t *self, const codegen_symbol_t *symbol) {
+	assert(self);
+	assert(symbol);
+	array_add(&self->symbols, symbol);
+}
+
+codegen_symbol_t *
+codegen_context_find_symbol (codegen_context_t *self, const char *name) {
+	assert(self);
+	assert(name);
+	assert(self);
+
+	unsigned i;
+	for (i = 0; i < self->symbols.size; ++i) {
+		codegen_symbol_t *symbol = array_get(&self->symbols, i);
+		if (symbol->name && strcmp(symbol->name, name) == 0)
+			return symbol;
+	}
+
+	return self->prev ? codegen_context_find_symbol(self->prev, name) : 0;
+}
+
 
 static local_t*
 context_find_local (context_t *self, const char *name) {
 	assert(self);
 
 	unsigned i;
-	for (i = 0; i < self->locals.size; ++i) {
-		local_t *local = array_get(&self->locals, i);
-		if (local->decl && strcmp(local->decl->variable.name, name) == 0)
-			return local;
+	for (i = 0; i < self->symbols.size; ++i) {
+		local_t *local = array_get(&self->symbols, i);
+		// if (local->decl && strcmp(local->decl->variable.name, name) == 0)
+		// 	return local;
 		if (local->name && strcmp(local->name, name) == 0)
 			return local;
 	}
@@ -64,12 +67,12 @@ context_find_local (context_t *self, const char *name) {
 
 
 static const type_t *
-resolve_type_name (context_t *context, const type_t *type) {
+resolve_type_name (codegen_context_t *context, const type_t *type) {
 	assert(type);
 	if (type->kind == AST_NAMED_TYPE) {
-		local_t *local = context_find_local(context, type->name);
-		assert(local && "unknown type name");
-		return resolve_type_name(context, local->type);
+		codegen_symbol_t *sym = codegen_context_find_symbol(context, type->name);
+		assert(sym && "unknown type name");
+		return resolve_type_name(context, sym->type);
 	} else {
 		return type;
 	}
@@ -152,8 +155,14 @@ codegen_expr (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			assert(expr->call.target->kind == AST_IDENT_EXPR && "can only call functions by name at the moment");
 
 			local_t *local = context_find_local(context, expr->call.target->ident);
-			assert(local && "identifier unknown");
-			assert(local->type->kind == AST_FUNC_TYPE && "identifier is not a function");
+			if (!local) {
+				fprintf(stderr, "identifier '%s' unknown\n", expr->call.target->ident);
+				exit(1);
+			}
+			if (local->type->kind != AST_FUNC_TYPE) {
+				fprintf(stderr, "identifier '%s' is not a function\n", local->name);
+				exit(1);
+			}
 			type_copy(&expr->type, local->type->func.return_type);
 			LLVMValueRef target = LLVMGetNamedFunction(module, expr->call.target->ident);
 			assert(target);
@@ -391,11 +400,11 @@ codegen_decl (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 		case AST_VARIABLE_DECL: {
 			LLVMValueRef var = LLVMBuildAlloca(builder, codegen_type(context, &decl->variable.type), decl->variable.name);
 			local_t local = {
-				.decl = decl,
+				.name = decl->variable.name,
 				.type = &decl->variable.type,
 				.value = var
 			};
-			array_add(&context->locals, &local);
+			codegen_context_add_symbol(context, &local);
 			if (decl->variable.initial)
 				LLVMBuildStore(builder, codegen_expr(module, builder, context, decl->variable.initial, 0), var);
 		} break;
@@ -418,7 +427,7 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			break;
 		case AST_COMPOUND_STMT: {
 			context_t subcontext;
-			context_init(&subcontext);
+			codegen_context_init(&subcontext);
 			subcontext.prev = context;
 
 			for (i = 0; i < stmt->compound.num_items; ++i) {
@@ -439,13 +448,13 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 
 			if (subcontext.is_terminated)
 				context->is_terminated = 1;
-			context_dispose(&subcontext);
+			codegen_context_dispose(&subcontext);
 			break;
 		}
 
 		case AST_IF_STMT: {
 			context_t subcontext;
-			context_init(&subcontext);
+			codegen_context_init(&subcontext);
 			subcontext.prev = context;
 			LLVMValueRef cond = codegen_expr(module, builder, &subcontext, stmt->selection.condition, 0);
 
@@ -456,34 +465,41 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			LLVMBuildCondBr(builder, cond, true_block, false_block ? false_block : exit_block);
 
 			context_t true_context;
-			context_init(&true_context);
+			codegen_context_init(&true_context);
 			true_context.prev = context;
 			LLVMPositionBuilderAtEnd(builder, true_block);
 			if (stmt->selection.stmt)
 				codegen_stmt(module, builder, &true_context, stmt->selection.stmt);
 			if (!true_context.is_terminated)
 				LLVMBuildBr(builder, exit_block);
-			context_dispose(&true_context);
+			codegen_context_dispose(&true_context);
 
+			int is_terminated = 0;
 			if (false_block) {
 				context_t false_context;
-				context_init(&false_context);
+				codegen_context_init(&false_context);
 				false_context.prev = context;
 				LLVMPositionBuilderAtEnd(builder, false_block);
 				codegen_stmt(module, builder, &false_context, stmt->selection.else_stmt);
 				if (!false_context.is_terminated)
 					LLVMBuildBr(builder, exit_block);
-				context_dispose(&false_context);
+				else if (true_context.is_terminated)
+					is_terminated = 1;
+				codegen_context_dispose(&false_context);
 			}
 
 			LLVMPositionBuilderAtEnd(builder, exit_block);
-			context_dispose(&subcontext);
+			if (is_terminated) {
+				LLVMBuildUnreachable(builder);
+				context->is_terminated = 1;
+			}
+			codegen_context_dispose(&subcontext);
 			break;
 		}
 
 		case AST_FOR_STMT: {
 			context_t subcontext;
-			context_init(&subcontext);
+			codegen_context_init(&subcontext);
 			subcontext.prev = context;
 			codegen_expr(module, builder, &subcontext, stmt->iteration.initial, 0);
 
@@ -505,7 +521,7 @@ codegen_stmt (LLVMModuleRef module, LLVMBuilderRef builder, context_t *context, 
 			LLVMBuildBr(builder, loop_block);
 
 			LLVMPositionBuilderAtEnd(builder, exit_block);
-			context_dispose(&subcontext);
+			codegen_context_dispose(&subcontext);
 			break;
 		}
 
@@ -560,7 +576,7 @@ codegen_unit (LLVMModuleRef module, context_t *context, unit_t *unit, int stage)
 					.name = unit->func.name,
 					.value = func,
 				};
-				array_add(&context->locals, &local);
+				codegen_context_add_symbol(context, &local);
 			} else if (stage == 2) {
 				local_t *local = context_find_local(context, unit->func.name);
 				assert(local && "could not found declaration of function");
@@ -574,7 +590,7 @@ codegen_unit (LLVMModuleRef module, context_t *context, unit_t *unit, int stage)
 				LLVMPositionBuilderAtEnd(builder, block);
 
 				context_t subcontext;
-				context_init(&subcontext);
+				codegen_context_init(&subcontext);
 				subcontext.prev = context;
 
 				for (i = 0; i < unit->func.num_params; ++i) {
@@ -592,11 +608,11 @@ codegen_unit (LLVMModuleRef module, context_t *context, unit_t *unit, int stage)
 						.type = &param->type,
 						.value = var
 					};
-					array_add(&subcontext.locals, &local);
+					codegen_context_add_symbol(&subcontext, &local);
 				}
 
 				codegen_stmt(module, builder, &subcontext, unit->func.body);
-				context_dispose(&subcontext);
+				codegen_context_dispose(&subcontext);
 
 				// LLVMBuildRetVoid(builder);
 				LLVMDisposeBuilder(builder);
@@ -614,11 +630,11 @@ codegen_unit (LLVMModuleRef module, context_t *context, unit_t *unit, int stage)
 		case AST_TYPE_UNIT: {
 			if (stage != 0)
 				break;
-			local_t local = { 0,
-				.type = &unit->type.type,
+			local_t local = {
 				.name = unit->type.name,
+				.type = &unit->type.type,
 			};
-			array_add(&context->locals, &local);
+			codegen_context_add_symbol(context, &local);
 			break;
 		}
 
@@ -631,16 +647,35 @@ codegen_unit (LLVMModuleRef module, context_t *context, unit_t *unit, int stage)
 
 
 void
-codegen (LLVMModuleRef module, const array_t *units) {
+codegen_decls (codegen_t *self, codegen_context_t *context, const array_t *units) {
+	assert(self);
+	assert(context);
+	assert(units);
+	unsigned i;
+	for (i = 0; i < units->size; ++i)
+		codegen_unit(self->module, context, array_get(units,i), 0);
+	for (i = 0; i < units->size; ++i)
+		codegen_unit(self->module, context, array_get(units,i), 1);
+}
+
+
+void
+codegen_defs (codegen_t *self, codegen_context_t *context, const array_t *units) {
+	assert(self);
+	assert(context);
+	assert(units);
+	unsigned i;
+	for (i = 0; i < units->size; ++i)
+		codegen_unit(self->module, context, array_get(units,i), 2);
+}
+
+
+void
+codegen (codegen_t *self, codegen_context_t *context, const array_t *units) {
+	assert(self);
+	assert(context);
 	assert(units);
 
-	context_t context;
-	context_init(&context);
-	unsigned i, s;
-
-	for (s = 0; s < 3; ++s)
-		for (i = 0; i < units->size; ++i)
-			codegen_unit(module, &context, array_get(units, i), s);
-
-	context_dispose(&context);
+	codegen_decls(self, context, units);
+	codegen_defs(self, context, units);
 }

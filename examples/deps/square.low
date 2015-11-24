@@ -1,0 +1,5 @@
+// part of the math library
+
+func square(int32 n) int32 {
+	return n*n;
+}

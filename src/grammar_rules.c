@@ -597,7 +597,7 @@ REDUCER(import_unit) {
 	unit_t *u = malloc(sizeof(unit_t));
 	bzero(u, sizeof(*u));
 	u->kind = AST_IMPORT_UNIT;
-	u->import_name = strndup(in[1].first, in[1].last-in[1].first);
+	u->import_name = strndup(in[1].first+1, in[1].last-in[1].first-2);
 	out->ptr = u;
 }
 
@@ -638,7 +638,7 @@ REDUCER(func_unit_decl2) {
 	unit_t *u = malloc(sizeof(unit_t));
 	bzero(u, sizeof(*u));
 	u->kind = AST_FUNC_UNIT;
-	u->func.name = strndup(in[0].first, in[0].last-in[0].first);
+	u->func.name = strndup(in[1].first, in[1].last-in[1].first);
 	u->func.variadic = (tag == 1 || tag == 3);
 	if (tag == 2 || tag == 3) {
 		array_t *p = in[3].ptr;
@@ -649,7 +649,7 @@ REDUCER(func_unit_decl2) {
 	}
 	unsigned i = 4;
 	if (tag == 1 || tag == 2) i = 5;
-	if (tag == 3) i = 6;
+	if (tag == 3) i = 7;
 	u->func.return_type = *(type_t*)in[i].ptr;
 	free(in[i].ptr);
 	out->ptr = u;
@@ -682,9 +682,9 @@ REDUCER(type_unit) {
 	unit_t *u = malloc(sizeof(unit_t));
 	bzero(u, sizeof(*u));
 	u->kind = AST_TYPE_UNIT;
-	u->type.type = *(type_t*)in[2].ptr;
-	free(in[2].ptr);
-	u->type.name = strndup(in[0].first, in[0].last-in[0].first);
+	u->type.type = *(type_t*)in[3].ptr;
+	free(in[3].ptr);
+	u->type.name = strndup(in[1].first, in[1].last-in[1].first);
 	out->ptr = u;
 }
 
