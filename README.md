@@ -7,9 +7,9 @@ Currently still missing from the language:
 
 - unions
 - enums
+- typed and untyped constants
 - function pointer calling
 - switch
-- break, continue
 - defer
 - multiple return values
 - memory alloc/free

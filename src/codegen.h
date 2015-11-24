@@ -11,6 +11,8 @@ struct codegen {
 	LLVMModuleRef module;
 	LLVMValueRef func;
 	LLVMBuilderRef builder;
+	LLVMBasicBlockRef break_block;
+	LLVMBasicBlockRef continue_block;
 };
 
 struct codegen_context {

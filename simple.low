@@ -33,7 +33,17 @@ func main(int32 argc, int8** argv) int32 {
 	var int32 i;
 	var int32 sum = 0;
 	for (i = 1; i < argc; ++i) {
-		sum = sum + atoi(argv[i]);
+		var int32 v = atoi(argv[i]);
+
+		if (v == 0) {
+			printf("arg %d is 0, aborting summation\n", i);
+			break;
+		} else if (v == 1) {
+			printf("arg %d is 1, ignoring\n", i);
+			continue;
+		}
+
+		sum = sum + v;
 		var arg blah;
 		blah.index = i;
 		blah.value = argv[i];
