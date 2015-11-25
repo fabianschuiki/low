@@ -1,6 +1,11 @@
 /* Copyright (c) 2015 Fabian Schuiki */
 import "stdio.low";
 
+const PI = 3.14159265358979323846264338327950288419716939937510;
+const MATH int32 = 42;
+const ADDED int32 = 40+2;
+const SOMETHING = 1024;
+
 int32 atoi(int8*);
 
 func some_func(int32 alpha) void {
@@ -13,7 +18,7 @@ type retval: struct { int8 a; int8 b; };
 
 func form_a_struct(int8 v) retval {
 	var retval x;
-	x.a = v*#(int8)2;
+	x.a = v*2;
 	x.b = v*v;
 	return x;
 }
@@ -26,6 +31,11 @@ func main(int32 argc, int8** argv) int32 {
 		printf("usage: %s NUM...\n", argv[0]);
 		return 1;
 	}
+
+	printf("math is %d\n", MATH);
+
+	var int16 anything = SOMETHING;
+	printf("anything is %d\n", #(int32)anything);
 
 	puts(argc == 2 ? form_a_string() : "multiple arguments provided");
 
@@ -53,7 +63,7 @@ func main(int32 argc, int8** argv) int32 {
 	printf("%d\n", sum);
 
 	// form_a_struct(#(int8)3).b;
-	printf("square is %d\n", #(int8)form_a_struct(#(int8)3).b);
+	printf("square is %d\n", #(int8)form_a_struct(3).b);
 
 	// var float a;
 	// var int b;

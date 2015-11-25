@@ -77,7 +77,7 @@ parse_file (const char *filename) {
 
 	// printf("compiling %s\n", filename);
 	lexer_t lex;
-	lexer_init(&lex, p, fs.st_size);
+	lexer_init(&lex, p, fs.st_size, filename);
 	lexer_next(&lex);
 	array_t *units = parse(&lex);
 	assert(lex.token == TKN_EOF && "lexer did not consume entire file");

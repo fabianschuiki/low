@@ -1,6 +1,9 @@
 /* Copyright (c) 2015 Fabian Schuiki */
 #pragma once
+#include "grammar.h"
 #include <stdlib.h>
+
+typedef struct lexer lexer_t;
 
 enum {
 	TKN_INVALID = 0,
@@ -100,12 +103,14 @@ enum {
 	MAX_TOKENS
 };
 
-typedef struct {
+struct lexer {
 	const char *base;
 	const char *ptr;
 	const char *end;
 	int token;
-} lexer_t;
+	loc_t loc;
+	const char *line_base;
+};
 
-void lexer_init(lexer_t *self, const char *ptr, size_t len);
+void lexer_init(lexer_t *self, const char *ptr, size_t len, const char *filename);
 void lexer_next(lexer_t *self);

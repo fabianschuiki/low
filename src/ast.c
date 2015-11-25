@@ -198,6 +198,12 @@ decl_dispose (decl_t *self) {
 			free(self->variable.name);
 			free(self->variable.initial);
 			break;
+		case AST_CONST_DECL:
+			type_dispose(self->cons.type);
+			expr_dispose(&self->cons.value);
+			free(self->cons.name);
+			free(self->cons.type);
+			break;
 		default:
 			fprintf(stderr, "%s.%d: decl_dispose for decl kind %d not implemented\n", __FILE__, __LINE__, self->kind);
 			abort();
@@ -278,6 +284,8 @@ type_describe(type_t *self) {
 
 void
 type_copy (type_t *dst, const type_t *src) {
+	assert(dst);
+	assert(src);
 	*dst = *src;
 	unsigned i;
 	switch (src->kind) {

@@ -1,5 +1,6 @@
 /* Copyright (c) 2015 Fabian Schuiki */
 #pragma once
+#include "grammar.h"
 
 typedef struct assignment_expr assignment_expr_t;
 typedef struct binary_expr binary_expr_t;
@@ -9,6 +10,7 @@ typedef struct cast_expr cast_expr_t;
 typedef struct comma_expr comma_expr_t;
 typedef struct compound_stmt compound_stmt_t;
 typedef struct conditional_expr conditional_expr_t;
+typedef struct const_decl const_decl_t;
 typedef struct decl decl_t;
 typedef struct expr expr_t;
 typedef struct func_param func_param_t;
@@ -22,19 +24,20 @@ typedef struct member_access_expr member_access_expr_t;
 typedef struct selection_stmt selection_stmt_t;
 typedef struct sizeof_expr sizeof_expr_t;
 typedef struct stmt stmt_t;
-typedef struct struct_type struct_type_t;
 typedef struct struct_member struct_member_t;
+typedef struct struct_type struct_type_t;
 typedef struct type type_t;
+typedef struct type_unit type_unit_t;
 typedef struct unary_expr unary_expr_t;
 typedef struct unit unit_t;
 typedef struct variable_decl variable_decl_t;
-typedef struct type_unit type_unit_t;
 
 
 
 // --- type -------------------------------------------------------------
 
 enum type_kind {
+	AST_NO_TYPE,
 	AST_VOID_TYPE,
 	AST_INTEGER_TYPE,
 	AST_FLOAT_TYPE,
@@ -232,6 +235,7 @@ struct comma_expr {
 
 struct expr {
 	unsigned kind;
+	loc_t loc;
 	type_t type;
 	union {
 		char *ident;
@@ -305,6 +309,7 @@ struct label_stmt {
 
 struct stmt {
 	unsigned kind;
+	loc_t loc;
 	union {
 		expr_t *expr;
 		compound_stmt_t compound;
@@ -339,6 +344,7 @@ struct block_item {
 
 enum decl_kind {
 	AST_VARIABLE_DECL,
+	AST_CONST_DECL,
 	// AST_TYPE_DECL,
 	// AST_FUNCTION_DECL,
 };
@@ -351,10 +357,19 @@ struct variable_decl {
 };
 
 
+struct const_decl {
+	char *name;
+	type_t *type;
+	expr_t value;
+};
+
+
 struct decl {
 	unsigned kind;
+	loc_t loc;
 	union {
 		variable_decl_t variable;
+		const_decl_t cons;
 	};
 };
 
@@ -394,6 +409,7 @@ struct type_unit {
 
 struct unit {
 	unsigned kind;
+	loc_t loc;
 	union {
 		char *import_name;
 		decl_t *decl;

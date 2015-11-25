@@ -76,6 +76,7 @@ parse (lexer_t *lex) {
 			new_stack->token.id = lex->token;
 			new_stack->token.first = lex->base;
 			new_stack->token.last = lex->ptr;
+			new_stack->token.loc = lex->loc;
 			lexer_next(lex);
 		}
 	}

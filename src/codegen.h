@@ -1,6 +1,7 @@
 /* Copyright (c) 2015 Fabian Schuiki */
 #pragma once
 #include "array.h"
+#include "ast.h"
 #include <llvm-c/Core.h>
 
 typedef struct codegen codegen_t;
@@ -13,6 +14,7 @@ struct codegen {
 	LLVMBuilderRef builder;
 	LLVMBasicBlockRef break_block;
 	LLVMBasicBlockRef continue_block;
+	unit_t *unit;
 };
 
 struct codegen_context {
@@ -23,8 +25,9 @@ struct codegen_context {
 
 struct codegen_symbol {
 	const char *name;
-	const type_t *type;
+	type_t *type;
 	LLVMValueRef value;
+	decl_t *decl;
 };
 
 void codegen_context_init(codegen_context_t *self);

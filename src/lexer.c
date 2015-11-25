@@ -12,13 +12,24 @@ is_whitespace (char c) {
 
 
 static void
+lexer_step(lexer_t *self) {
+	if (self->ptr != self->end && *self->ptr == '\n') {
+		++self->loc.line;
+		self->loc.col = 0;
+		self->line_base = self->ptr+1;
+	}
+	++self->ptr;
+}
+
+
+static void
 consume_oneline_comment (lexer_t *self) {
 	while (self->ptr != self->end) {
 		if (*self->ptr == '\n') {
-			++self->ptr;
+			lexer_step(self);
 			return;
 		} else {
-			++self->ptr;
+			lexer_step(self);
 		}
 	}
 }
@@ -28,13 +39,13 @@ static void
 consume_multiline_comment (lexer_t *self) {
 	while (self->ptr != self->end) {
 		if (*self->ptr == '*') {
-			++self->ptr;
+			lexer_step(self);
 			if (self->ptr != self->end && *self->ptr == '/') {
-				++self->ptr;
+				lexer_step(self);
 				return;
 			}
 		} else {
-			++self->ptr;
+			lexer_step(self);
 		}
 	}
 }
@@ -72,11 +83,13 @@ is_number (int c) {
 
 
 void
-lexer_init (lexer_t *self, const char *ptr, size_t len) {
-	self->base = 0;
+lexer_init (lexer_t *self, const char *ptr, size_t len, const char *filename) {
+	bzero(self, sizeof *self);
 	self->ptr = ptr;
 	self->end = ptr+len;
 	self->token = TKN_SOF;
+	self->loc.filename = filename;
+	self->line_base = ptr;
 }
 
 
@@ -90,10 +103,11 @@ lexer_next (lexer_t *self) {
 
 	while (self->ptr != self->end) {
 		if (is_whitespace(*self->ptr)) {
-			++self->ptr;
+			lexer_step(self);
 			continue;
 		}
 		self->base = self->ptr;
+		self->loc.col = (unsigned)(self->base - self->line_base);
 
 		unsigned rem = (self->end - self->ptr);
 
@@ -171,21 +185,21 @@ lexer_next (lexer_t *self) {
 
 		if (*self->ptr == '\"') {
 			self->token = TKN_STRING_LITERAL;
-			++self->ptr;
+			lexer_step(self);
 			while (self->ptr != self->end) {
 				if (*self->ptr == '"') {
-					++self->ptr;
+					lexer_step(self);
 					return;
 				} else if (*self->ptr == '\\') {
-					++self->ptr;
+					lexer_step(self);
 					if (self->ptr == self->end) {
 						fprintf(stderr, "unexpected end of file in the middle of escape sequence\n");
 						self->token = TKN_INVALID;
 						return;
 					}
-					++self->ptr;
+					lexer_step(self);
 				} else {
-					++self->ptr;
+					lexer_step(self);
 				}
 			}
 			fprintf(stderr, "unexpected end of file in the middle of string literal\n");
@@ -194,17 +208,17 @@ lexer_next (lexer_t *self) {
 		}
 
 		if (is_number_start(*self->ptr)) {
-			++self->ptr;
+			lexer_step(self);
 			while (is_number(*self->ptr))
-				++self->ptr;
+				lexer_step(self);
 			self->token = TKN_NUMBER_LITERAL;
 			return;
 		}
 
 		if (is_ident_start(*self->ptr)) {
-			++self->ptr;
+			lexer_step(self);
 			while (is_ident(*self->ptr))
-				++self->ptr;
+				lexer_step(self);
 			self->token = TKN_IDENT;
 		}
 
@@ -245,7 +259,7 @@ lexer_next (lexer_t *self) {
 		}
 
 		fprintf(stderr, "ignoring garbage character '%c'\n", *self->ptr);
-		++self->ptr;
+		lexer_step(self);
 	}
 
 	self->token = TKN_EOF;
