@@ -220,6 +220,9 @@ type_describe(type_t *self) {
 		case AST_VOID_TYPE:
 			s = strdup("void");
 			break;
+		case AST_BOOLEAN_TYPE:
+			s = strdup("bool");
+			break;
 		case AST_INTEGER_TYPE:
 			asprintf(&s, "int%d", self->width);
 			break;
@@ -311,6 +314,48 @@ type_copy (type_t *dst, const type_t *src) {
 	}
 }
 
+int
+type_equal (const type_t *a, const type_t *b) {
+	if (a->kind != b->kind ||
+		a->pointer != b->pointer)
+		return 0;
+
+	unsigned i;
+	switch (a->kind) {
+		case AST_NO_TYPE:
+		case AST_VOID_TYPE:
+		case AST_BOOLEAN_TYPE:
+			return 1;
+		case AST_INTEGER_TYPE:
+		case AST_FLOAT_TYPE:
+			return a->width == b->width;
+		case AST_NAMED_TYPE:
+			return strcmp(a->name, b->name) == 0;
+		case AST_FUNC_TYPE: {
+			if (a->func.num_args != b->func.num_args ||
+				!type_equal(a->func.return_type, b->func.return_type))
+				return 0;
+			for (i = 0; i < a->func.num_args; ++i)
+				if (!type_equal(a->func.args+i, b->func.args+i))
+					return 0;
+			return 1;
+		}
+		case AST_STRUCT_TYPE: {
+			if (a->strct.num_members != b->strct.num_members ||
+				strcmp(a->strct.name, b->strct.name) != 0)
+				return 0;
+			for (i = 0; i < a->strct.num_members; ++i)
+				if (strcmp(a->strct.members[i].name, b->strct.members[i].name) != 0 ||
+					!type_equal(a->strct.members[i].type, b->strct.members[i].type))
+					return 0;
+			return 1;
+		}
+		default:
+			fprintf(stderr, "%s.%d: type_equal for type kind %d not implemented\n", __FILE__, __LINE__, a->kind);
+			abort();
+	}
+}
+
 void
 type_dispose (type_t *self) {
 	if (self == 0)
@@ -318,6 +363,7 @@ type_dispose (type_t *self) {
 	unsigned i;
 	switch (self->kind) {
 		case AST_VOID_TYPE:
+		case AST_BOOLEAN_TYPE:
 		case AST_INTEGER_TYPE:
 		case AST_FLOAT_TYPE:
 			break;

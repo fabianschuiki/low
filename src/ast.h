@@ -39,6 +39,7 @@ typedef struct variable_decl variable_decl_t;
 enum type_kind {
 	AST_NO_TYPE,
 	AST_VOID_TYPE,
+	AST_BOOLEAN_TYPE,
 	AST_INTEGER_TYPE,
 	AST_FLOAT_TYPE,
 	AST_FUNC_TYPE,
@@ -172,11 +173,11 @@ struct cast_expr {
 
 
 enum binary_op {
+	AST_ADD,
+	AST_SUB,
 	AST_MUL,
 	AST_DIV,
 	AST_MOD,
-	AST_ADD,
-	AST_SUB,
 	AST_LEFT,
 	AST_RIGHT,
 	AST_LT,
@@ -425,5 +426,6 @@ void block_item_dispose(block_item_t *self);
 void decl_dispose(decl_t *self);
 char *type_describe(type_t *self);
 void type_copy(type_t *dst, const type_t *src);
+int type_equal(const type_t *a, const type_t *b);
 void type_dispose(type_t *self);
 void unit_dispose(unit_t *self);

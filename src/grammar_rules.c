@@ -583,7 +583,7 @@ REDUCER(type_name) {
 		} else {
 			t->width = 32;
 		}
-	} else if (len == 5 && strncmp(name, "float", 5) == 0) {
+	} else if (len >= 5 && strncmp(name, "float", 5) == 0) {
 		t->kind = AST_FLOAT_TYPE;
 		if (len > 5) {
 			char suffix[len-5+1];
@@ -593,6 +593,8 @@ REDUCER(type_name) {
 		} else {
 			t->width = 32;
 		}
+	} else if (len == 4 && strncmp(name, "bool", 4) == 0) {
+		t->kind = AST_BOOLEAN_TYPE;
 	} else {
 		t->kind = AST_NAMED_TYPE;
 		t->name = strndup(name,len);

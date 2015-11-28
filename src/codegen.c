@@ -106,17 +106,30 @@ codegen_type (context_t *context, const type_t *type) {
 		return LLVMPointerType(codegen_type(context, &inner), 0);
 	}
 	unsigned i;
-	switch(type->kind) {
+	switch (type->kind) {
 		case AST_VOID_TYPE:
 			return LLVMVoidType();
+		case AST_BOOLEAN_TYPE:
+			return LLVMInt1Type();
 		case AST_INTEGER_TYPE:
 			return LLVMIntType(type->width);
 		case AST_FLOAT_TYPE:
-			return LLVMFloatType();
+			switch (type->width) {
+				case 16: return LLVMHalfType();
+				case 32: return LLVMFloatType();
+				case 64: return LLVMDoubleType();
+				case 128: return LLVMFP128Type();
+				default:
+					derror(0, "floating point type must be 16, 32, 64 or 128 bits wide\n");
+			}
 		case AST_NAMED_TYPE: {
-			codegen_symbol_t *local = context_find_local(context, type->name);
-			assert(local && "unknown type name");
-			return codegen_type(context, local->type);
+			codegen_symbol_t *sym = context_find_local(context, type->name);
+			if (!sym)
+				derror(0, "unknown type name '%s'\n", type->name);
+			if (!sym->type)
+				derror(0, "'%s' is not a type name\n", type->name);
+			// assert(sym && "unknown type name");
+			return codegen_type(context, sym->type);
 		}
 		case AST_STRUCT_TYPE: {
 			LLVMTypeRef members[type->strct.num_members];
@@ -248,19 +261,36 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 				expr->binary_op.lhs->type.kind != AST_NO_TYPE)
 				determine_type(self, context, expr->binary_op.rhs, &expr->binary_op.lhs->type);
 
-			type_copy(&expr->type, &expr->binary_op.lhs->type);
+			if (expr->binary_op.lhs->type.kind == AST_NO_TYPE &&
+				expr->binary_op.rhs->type.kind == AST_NO_TYPE)
+				derror(&expr->loc, "cannot determine type of binary operation, use a cast\n");
+
+			switch (expr->binary_op.op) {
+				case AST_LT:
+				case AST_GT:
+				case AST_LE:
+				case AST_GE:
+				case AST_EQ:
+				case AST_NE:
+				case AST_AND:
+				case AST_OR:
+					bzero(&expr->type, sizeof expr->type);
+					expr->type.kind = AST_BOOLEAN_TYPE;
+					break;
+				default:
+					type_copy(&expr->type, &expr->binary_op.lhs->type);
+					break;
+			}
 		} break;
 
 		case AST_CONDITIONAL_EXPR: {
-			type_t bool_type = { .kind = AST_INTEGER_TYPE, .pointer = 0, .width = 1 };
+			type_t bool_type = { .kind = AST_BOOLEAN_TYPE };
 			determine_type(self, context, expr->conditional.condition, &bool_type);
 
 			determine_type(self, context, expr->conditional.true_expr, type_hint);
 			determine_type(self, context, expr->conditional.false_expr, type_hint);
 
-			if (expr->conditional.true_expr->type.kind != expr->conditional.false_expr->type.kind ||
-				expr->conditional.true_expr->type.width != expr->conditional.false_expr->type.width ||
-				expr->conditional.true_expr->type.pointer != expr->conditional.false_expr->type.pointer)
+			if (!type_equal(&expr->conditional.true_expr->type, &expr->conditional.false_expr->type))
 				derror(&expr->loc, "true and false expression of conditional must be of the same type");
 
 			type_copy(&expr->type, &expr->conditional.true_expr->type);
@@ -269,9 +299,7 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 		case AST_ASSIGNMENT_EXPR: {
 			determine_type(self, context, expr->assignment.target, type_hint);
 			determine_type(self, context, expr->assignment.expr, &expr->assignment.target->type);
-			if (expr->assignment.target->type.kind != expr->assignment.expr->type.kind ||
-				expr->assignment.target->type.width != expr->assignment.expr->type.width ||
-				expr->assignment.target->type.pointer != expr->assignment.expr->type.pointer) {
+			if (!type_equal(&expr->assignment.target->type, &expr->assignment.expr->type)) {
 				char *t1 = type_describe(&expr->assignment.target->type);
 				char *t2 = type_describe(&expr->assignment.expr->type);
 				derror(&expr->loc, "incompatible types in assignment ('%s' and '%s')\n", t1, t2);
@@ -330,7 +358,7 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 			if (expr->type.kind == AST_INTEGER_TYPE) {
 				return LLVMConstIntOfString(codegen_type(context, &expr->type), expr->number_literal, 10);
 			} else if (expr->type.kind == AST_FLOAT_TYPE) {
-				derror(&expr->loc, "float number literals not implemented\n");
+				return LLVMConstRealOfString(codegen_type(context, &expr->type), expr->number_literal);
 			} else {
 				derror(&expr->loc, "number literal can only be an integer or a float\n");
 			}
@@ -365,13 +393,10 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 				fprintf(stderr, "identifier '%s' is not a function\n", sym->name);
 				exit(1);
 			}
-			// type_copy(&expr->type, sym->type->func.return_type);
-			LLVMValueRef target = LLVMGetNamedFunction(self->module, expr->call.target->ident);
-			assert(target);
 			LLVMValueRef args[expr->call.num_args];
 			for (i = 0; i < expr->call.num_args; ++i)
 				args[i] = codegen_expr(self, context, &expr->call.args[i], 0, 0);
-			LLVMValueRef result = LLVMBuildCall(self->builder, target, args, expr->call.num_args, "");
+			LLVMValueRef result = LLVMBuildCall(self->builder, sym->value, args, expr->call.num_args, "");
 
 			if (lvalue) {
 				LLVMValueRef ptr = LLVMBuildAlloca(self->builder, LLVMTypeOf(result), "");
@@ -444,36 +469,38 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 		case AST_CAST_EXPR: {
 			assert(!lvalue && "result of a cast is not a valid lvalue");
 			LLVMValueRef target = codegen_expr(self, context, expr->cast.target, 0, 0);
-			// expr->type = expr->cast.type;
-			LLVMTypeRef type_from = LLVMTypeOf(target);
-			LLVMTypeRef type_to = codegen_type(context, &expr->cast.type);
-			LLVMTypeKind kind_from = LLVMGetTypeKind(type_from);
-			LLVMTypeKind kind_to = LLVMGetTypeKind(type_to);
-			switch (kind_from) {
-				case LLVMIntegerTypeKind: {
-					switch (kind_to) {
-						case LLVMIntegerTypeKind:
-							return LLVMBuildIntCast(self->builder, target, type_to, "");
-						case LLVMPointerTypeKind:
-							return LLVMBuildIntToPtr(self->builder, target, type_to, "");
-						default: break;
-					}
-					break;
+			if (type_equal(&expr->cast.target->type, &expr->cast.type))
+				return target;
+			LLVMTypeRef dst = codegen_type(context, &expr->cast.type);
+
+			type_t *from = &expr->cast.target->type;
+			type_t *to = &expr->cast.type;
+			assert(from && to);
+			char *from_str = type_describe(from);
+			char *to_str = type_describe(to);
+
+			if (from->pointer > 0) {
+				if (to->pointer > 0) {
+					return LLVMBuildPointerCast(self->builder, target, dst, "");
+				} else if (to->kind == AST_INTEGER_TYPE) {
+					return LLVMBuildPtrToInt(self->builder, target, dst, "");
 				}
-				case LLVMPointerTypeKind: {
-					if (kind_to == LLVMPointerTypeKind)
-						return LLVMBuildPointerCast(self->builder, target, type_to, "");
-					break;
+			} else if (from->kind == AST_INTEGER_TYPE) {
+				if (to->pointer > 0) {
+					return LLVMBuildIntToPtr(self->builder, target, dst, "");
+				} else if (to->kind == AST_INTEGER_TYPE) {
+					return LLVMBuildIntCast(self->builder, target, dst, "");
+				} else if (to->kind == AST_BOOLEAN_TYPE) {
+					return LLVMBuildICmp(self->builder, LLVMIntSGT, target, LLVMConstNull(LLVMTypeOf(target)), "");
 				}
-				default: break;
+			} else if (from->kind == AST_BOOLEAN_TYPE && to->pointer == 0) {
+				if (to->kind == AST_INTEGER_TYPE)
+					return LLVMBuildZExt(self->builder, target, dst, "");
 			}
 
-			char *str_from = LLVMPrintTypeToString(type_from);
-			char *str_to = LLVMPrintTypeToString(type_to);
-			fprintf(stderr, "cannot cast from %s to %s\n", str_from, str_to);
-			free(str_from);
-			free(str_to);
-			abort();
+			derror(&expr->loc, "cannot cast from %s to %s\n", from_str, to_str);
+			free(from_str);
+			free(to_str);
 			return 0;
 		}
 
@@ -481,35 +508,102 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 			assert(!lvalue && "result of a binary operation is not a valid lvalue");
 			LLVMValueRef lhs = codegen_expr(self, context, expr->binary_op.lhs, 0, 0);
 			LLVMValueRef rhs = codegen_expr(self, context, expr->binary_op.rhs, 0, 0);
-			if (expr->binary_op.lhs->type.kind != expr->binary_op.rhs->type.kind ||
-				expr->binary_op.lhs->type.width != expr->binary_op.rhs->type.width ||
-				expr->binary_op.lhs->type.pointer != expr->binary_op.rhs->type.pointer)
+			if (!type_equal(&expr->binary_op.lhs->type, &expr->binary_op.rhs->type))
 				derror(&expr->loc, "operands to binary operator must be of the same type");
 			// expr->type = expr->assignment.expr->type;
-			switch (expr->binary_op.op) {
-				case AST_ADD:
-					return LLVMBuildAdd(self->builder, lhs, rhs, "");
-				case AST_SUB:
-					return LLVMBuildSub(self->builder, lhs, rhs, "");
-				case AST_MUL:
-					return LLVMBuildMul(self->builder, lhs, rhs, "");
-				case AST_DIV:
-					return LLVMBuildSDiv(self->builder, lhs, rhs, "");
-				case AST_LT:
-					return LLVMBuildICmp(self->builder, LLVMIntSLT, lhs, rhs, "");
-				case AST_GT:
-					return LLVMBuildICmp(self->builder, LLVMIntSGT, lhs, rhs, "");
-				case AST_LE:
-					return LLVMBuildICmp(self->builder, LLVMIntSLE, lhs, rhs, "");
-				case AST_GE:
-					return LLVMBuildICmp(self->builder, LLVMIntSGE, lhs, rhs, "");
-				case AST_EQ:
-					return LLVMBuildICmp(self->builder, LLVMIntEQ, lhs, rhs, "");
-				case AST_NE:
-					return LLVMBuildICmp(self->builder, LLVMIntNE, lhs, rhs, "");
-				default:
-					fprintf(stderr, "%s.%d: codegen for binary op %d not implemented\n", __FILE__, __LINE__, expr->binary_op.op);
-					abort();
+
+			type_t *t = &expr->binary_op.lhs->type;
+			if (t->kind == AST_BOOLEAN_TYPE) {
+				switch (expr->binary_op.op) {
+					case AST_AND:
+						return LLVMBuildAnd(self->builder, lhs, rhs, "");
+					case AST_OR:
+						return LLVMBuildOr(self->builder, lhs, rhs, "");
+					default:
+						fprintf(stderr, "%s.%d: codegen for binary op %d on boolean types not implemented\n", __FILE__, __LINE__, expr->binary_op.op);
+						abort();
+				}
+			} else if (t->kind == AST_INTEGER_TYPE) {
+				switch (expr->binary_op.op) {
+					case AST_ADD:
+						return LLVMBuildAdd(self->builder, lhs, rhs, "");
+					case AST_SUB:
+						return LLVMBuildSub(self->builder, lhs, rhs, "");
+					case AST_MUL:
+						return LLVMBuildMul(self->builder, lhs, rhs, "");
+					case AST_DIV:
+						return LLVMBuildSDiv(self->builder, lhs, rhs, "");
+					case AST_MOD:
+						return LLVMBuildSRem(self->builder, lhs, rhs, "");
+					case AST_LEFT:
+						return LLVMBuildShl(self->builder, lhs, rhs, "");
+					case AST_RIGHT:
+						return LLVMBuildAShr(self->builder, lhs, rhs, "");
+					case AST_LT:
+						return LLVMBuildICmp(self->builder, LLVMIntSLT, lhs, rhs, "");
+					case AST_GT:
+						return LLVMBuildICmp(self->builder, LLVMIntSGT, lhs, rhs, "");
+					case AST_LE:
+						return LLVMBuildICmp(self->builder, LLVMIntSLE, lhs, rhs, "");
+					case AST_GE:
+						return LLVMBuildICmp(self->builder, LLVMIntSGE, lhs, rhs, "");
+					case AST_EQ:
+						return LLVMBuildICmp(self->builder, LLVMIntEQ, lhs, rhs, "");
+					case AST_NE:
+						return LLVMBuildICmp(self->builder, LLVMIntNE, lhs, rhs, "");
+					case AST_BITWISE_AND:
+						return LLVMBuildAnd(self->builder, lhs, rhs, "");
+					case AST_BITWISE_XOR:
+						return LLVMBuildXor(self->builder, lhs, rhs, "");
+					case AST_BITWISE_OR:
+						return LLVMBuildOr(self->builder, lhs, rhs, "");
+					case AST_AND:
+					case AST_OR:
+						derror(&expr->loc, "binary operator not available for integer types\n");
+					default:
+						fprintf(stderr, "%s.%d: codegen for binary op %d on integer types not implemented\n", __FILE__, __LINE__, expr->binary_op.op);
+						abort();
+				}
+			} else if (t->kind == AST_FLOAT_TYPE) {
+				switch (expr->binary_op.op) {
+					case AST_ADD:
+						return LLVMBuildFAdd(self->builder, lhs, rhs, "");
+					case AST_SUB:
+						return LLVMBuildFSub(self->builder, lhs, rhs, "");
+					case AST_MUL:
+						return LLVMBuildFMul(self->builder, lhs, rhs, "");
+					case AST_DIV:
+						return LLVMBuildFDiv(self->builder, lhs, rhs, "");
+					case AST_MOD:
+						return LLVMBuildFRem(self->builder, lhs, rhs, "");
+					case AST_LEFT:
+					case AST_RIGHT:
+					case AST_LT:
+						return LLVMBuildFCmp(self->builder, LLVMRealOLT, lhs, rhs, "");
+					case AST_GT:
+						return LLVMBuildFCmp(self->builder, LLVMRealOGT, lhs, rhs, "");
+					case AST_LE:
+						return LLVMBuildFCmp(self->builder, LLVMRealOLE, lhs, rhs, "");
+					case AST_GE:
+						return LLVMBuildFCmp(self->builder, LLVMRealOGE, lhs, rhs, "");
+					case AST_EQ:
+						return LLVMBuildFCmp(self->builder, LLVMRealOEQ, lhs, rhs, "");
+					case AST_NE:
+						return LLVMBuildFCmp(self->builder, LLVMRealONE, lhs, rhs, "");
+					case AST_BITWISE_AND:
+					case AST_BITWISE_XOR:
+					case AST_BITWISE_OR:
+					case AST_AND:
+					case AST_OR:
+						derror(&expr->loc, "binary operator not available for floating point types\n");
+					default:
+						fprintf(stderr, "%s.%d: codegen for binary op %d on floating point types not implemented\n", __FILE__, __LINE__, expr->binary_op.op);
+						abort();
+				}
+			} else {
+				char *td = type_describe(t);
+				derror(&expr->loc, "invalid type %s to binary operator\n", td);
+				free(td);
 			}
 		}
 
@@ -620,8 +714,17 @@ codegen_decl (codegen_t *self, codegen_context_t *context, decl_t *decl) {
 			};
 			codegen_context_add_symbol(context, &sym);
 
-			if (decl->variable.initial)
-				LLVMBuildStore(self->builder, codegen_expr_top(self, context, decl->variable.initial, 0, &decl->variable.type), var);
+			if (decl->variable.initial) {
+				LLVMValueRef val = codegen_expr_top(self, context, decl->variable.initial, 0, &decl->variable.type);
+				if (!type_equal(&decl->variable.type, &decl->variable.initial->type)) {
+					char *t1 = type_describe(&decl->variable.initial->type);
+					char *t2 = type_describe(&decl->variable.type);
+					derror(&decl->variable.initial->loc, "initial value of variable '%s' is of type %s, but should be %s\n", decl->variable.name, t1, t2);
+					free(t1);
+					free(t2);
+				}
+				LLVMBuildStore(self->builder, val, var);
+			}
 			break;
 		}
 
@@ -657,7 +760,7 @@ codegen_stmt (codegen_t *self, codegen_context_t *context, stmt_t *stmt) {
 	assert(context);
 	assert(stmt);
 
-	type_t bool_type = { .kind = AST_INTEGER_TYPE, .pointer = 0, .width = 1 };
+	type_t bool_type = { .kind = AST_BOOLEAN_TYPE };
 	unsigned i;
 	switch(stmt->kind) {
 
@@ -674,10 +777,12 @@ codegen_stmt (codegen_t *self, codegen_context_t *context, stmt_t *stmt) {
 				const block_item_t *item = stmt->compound.items+i;
 				switch (item->kind) {
 					case AST_STMT_BLOCK_ITEM:
-						codegen_stmt(self, &subctx, item->stmt);
+						if (item->stmt)
+							codegen_stmt(self, &subctx, item->stmt);
 						break;
 					case AST_DECL_BLOCK_ITEM:
-						codegen_decl(self, &subctx, item->decl);
+						if (item->decl)
+							codegen_decl(self, &subctx, item->decl);
 						break;
 					default:
 						fprintf(stderr, "%s.%d: codegen for block_item kind %d not implemented\n", __FILE__, __LINE__, item->kind);

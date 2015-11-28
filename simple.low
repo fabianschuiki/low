@@ -65,6 +65,56 @@ func main(int32 argc, int8** argv) int32 {
 	// form_a_struct(#(int8)3).b;
 	printf("square is %d\n", #(int8)form_a_struct(3).b);
 
+	var int32 EVEN = 4;
+	var bool somebooltype = #(bool)EVEN;
+
+	{
+		var int32 A = 24;
+		var int32 B = 9;
+		#(bool)A && #(bool)B;
+		printf("%d + %d = %d\n", A, B, A+B);
+		printf("%d - %d = %d\n", A, B, A-B);
+		printf("%d * %d = %d\n", A, B, A*B);
+		printf("%d / %d = %d\n", A, B, A/B);
+		printf("%d %% %d = %d\n", A, B, A%B);
+		printf("%d << %d = %d\n", A, B, A<<B);
+		printf("%d >> %d = %d\n", A, B, A>>B);
+		printf("%d < %d = %d\n", A, B, #(int32)(A<B));
+		printf("%d > %d = %d\n", A, B, #(int32)(A>B));
+		printf("%d <= %d = %d\n", A, B, #(int32)(A<=B));
+		printf("%d >= %d = %d\n", A, B, #(int32)(A>=B));
+		printf("%d == %d = %d\n", A, B, #(int32)(A==B));
+		printf("%d != %d = %d\n", A, B, #(int32)(A!=B));
+		printf("%d & %d = %d\n", A, B, A&B);
+		printf("%d ^ %d = %d\n", A, B, A^B);
+		printf("%d | %d = %d\n", A, B, A|B);
+		// printf("%d && %d = %d\n", A, B, A&&B);
+		// printf("%d || %d = %d\n", A, B, A||B);
+	}
+
+	{
+		var float64 A = 24;
+		var float64 B = 9;
+		printf("%f + %f = %f\n", A, B, A+B);
+		printf("%f - %f = %f\n", A, B, A-B);
+		printf("%f * %f = %f\n", A, B, A*B);
+		printf("%f / %f = %f\n", A, B, A/B);
+		printf("%f %% %f = %f\n", A, B, A%B);
+		// printf("%f << %f = %f\n", A, B, A<<B);
+		// printf("%f >> %f = %f\n", A, B, A>>B);
+		printf("%f < %f = %d\n", A, B, #(int32)(A<B));
+		printf("%f > %f = %d\n", A, B, #(int32)(A>B));
+		printf("%f <= %f = %d\n", A, B, #(int32)(A<=B));
+		printf("%f >= %f = %d\n", A, B, #(int32)(A>=B));
+		printf("%f == %f = %d\n", A, B, #(int32)(A==B));
+		printf("%f != %f = %d\n", A, B, #(int32)(A!=B));
+		// printf("%f & %f = %f\n", A, B, A&B);
+		// printf("%f ^ %f = %f\n", A, B, A^B);
+		// printf("%f | %f = %f\n", A, B, A|B);
+		// printf("%f && %f = %f\n", A, B, A&&B);
+		// printf("%f || %f = %f\n", A, B, A||B);
+	}
+
 	// var float a;
 	// var int b;
 	// var int i = 4*4;
@@ -77,7 +127,7 @@ func main(int32 argc, int8** argv) int32 {
 		printf("arg #%d = %s\n", i, argv[i]);
 	}
 
-	var int8* fp = fopen("hello.txt", "w");
+	var FILE* fp = fopen("hello.txt", "w");
 	fprintf(fp, "got %d arguments\n", argc);
 	fclose(fp);
 
