@@ -5,3 +5,14 @@ _*
 build
 *.ll
 *.bc
+
+# Exclude CMAKE generated files
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+
+# Exclude binary
+parser-generator
+lowc
+

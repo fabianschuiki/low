@@ -1,5 +1,5 @@
-# Copyright (c) 2015 Fabian Schuiki
-cmake_minimum_required(VERSION 3.0)
+# Copyright (c) 2015 Fabian Schuiki, Thomas Richner
+cmake_minimum_required(VERSION 2.8)
 project(low)
 
 if (CMAKE_BUILD_TYPE)
@@ -50,9 +50,9 @@ if (APPLE)
 	message(STATUS "Manually linking against LLVM libraries")
 else()
 	llvm_config(LLVM_LIBDIR --libdir)
-	find_library(LLVM_LIB NAMES LLVM LLVM-3.5 LLVM-3.6 HINTS ${LLVM_LIB_DIR} ${LLVM_HINT_PATHS} ENV LLVM_DIR PATH_SUFFIXES lib)
+	find_library(LLVM_LIB NAMES LLVM LLVM-3.5 LLVM-3.6 HINTS ${LLVM_LIBDIR} ${LLVM_HINT_PATHS} ENV LLVM_DIR PATH_SUFFIXES lib)
 	if (NOT LLVM_LIB)
-		macro(FATAL_ERROR "Unable to find libLLVM")
+		message(FATAL_ERROR "Unable to find libLLVM")
 	endif()
 	set(LLVM_LINK_FLAGS "${LLVM_LIBDIR_FLAGS} ${LLVM_LIB} ${LLVM_SYSTEM_LIBS_FLAGS}")
 	message(STATUS "Linking against shared LLVM library (${LLVM_LIB})")

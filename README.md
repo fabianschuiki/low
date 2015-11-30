@@ -22,3 +22,11 @@ Refer to [1] and [2] for the C grammar and lexical analysis specification. Refer
 [3]: http://llvm.org/docs/LangRef.html
 [4]: http://llvm.org/doxygen/
 [5]: http://blog.golang.org/defer-panic-and-recover
+
+# Setup
+
+## Ubuntu trusty
+Install dependencies:
+```
+sudo apt-get install build-essentials llvm-3.6 llvm-3.6-dev zlib1g-dev libedit-dev cmake
+```
