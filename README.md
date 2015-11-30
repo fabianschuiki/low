@@ -28,5 +28,5 @@ Refer to [1] and [2] for the C grammar and lexical analysis specification. Refer
 ## Ubuntu trusty
 Install dependencies:
 ```
-sudo apt-get install build-essentials llvm-3.6 llvm-3.6-dev zlib1g-dev libedit-dev
+sudo apt-get install build-essentials llvm-3.6 llvm-3.6-dev zlib1g-dev libedit-dev cmake
 ```
