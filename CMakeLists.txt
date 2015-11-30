@@ -1,5 +1,5 @@
 # Copyright (c) 2015 Fabian Schuiki
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 project(low)
 
 if (CMAKE_BUILD_TYPE)
@@ -7,6 +7,7 @@ if (CMAKE_BUILD_TYPE)
 endif()
 
 
+# Find the LLVM configuration tool and libraries.
 set(LLVM_HINT_PATHS
 	/
 	/usr
@@ -21,24 +22,51 @@ if (NOT LLVM_CONFIG_BIN)
 endif()
 
 if (NOT LLVM_CONFIG_BIN)
-	message(FATAL_ERROR "Unable to find LLVM")
+	message(FATAL_ERROR "Unable to find llvm-config")
 endif()
-message(STATUS "Found LLVM (${LLVM_CONFIG_BIN})")
+message(STATUS "Found llvm-config (${LLVM_CONFIG_BIN})")
 
-execute_process(COMMAND ${LLVM_CONFIG_BIN} --cppflags OUTPUT_VARIABLE TEMP)
-string(REGEX REPLACE "[ \t\n\r]+" " " LLVM_COMPILE_FLAGS ${TEMP})
+macro(llvm_config OUTVAR)
+	execute_process(COMMAND ${LLVM_CONFIG_BIN} ${ARGN} OUTPUT_VARIABLE TEMP OUTPUT_STRIP_TRAILING_WHITESPACE)
+	if (NOT TEMP)
+		message(FATAL_ERROR "Execution of llvm-config failed")
+	endif()
+	string(REGEX REPLACE "[ \t\n\r]+" " " ${OUTVAR} ${TEMP})
+endmacro()
 
-execute_process(COMMAND ${LLVM_CONFIG_BIN} --ldflags --libs ${LLVM_LIBS} --system-libs OUTPUT_VARIABLE TEMP)
-string(REGEX REPLACE "[ \t\n\r]+" " " LLVM_LINK_FLAGS ${TEMP})
+llvm_config(LLVM_COMPILE_FLAGS --cppflags)
+llvm_config(LLVM_LIBDIR_FLAGS --ldflags)
+llvm_config(LLVM_SYSTEM_LIBS_FLAGS --system-libs)
 
-if (NOT APPLE)
-	set(LLVM_LINK_FLAGS "${LLVM_LINK_FLAGS} -lLLVM")
+# Linking against LLVM is somewhat tricky, since different platforms use
+# different libraries and setups. On most Linux systems, a shared libLLVM is
+# provided that incorporates all of the modules. Unfortunately, the naming of
+# that library is not particularly uniform (libLLVM-3.6.so on Ubuntu, libLLVM.so
+# on Arch Linux). Mac OS X on the other hand has no such shared library and
+# requires direct linking against the components.
+if (APPLE)
+	llvm_config(LLVM_LIBS_FLAGS --libs ${LLVM_LIBS})
+	set(LLVM_LINK_FLAGS "${LLVM_LIBDIR_FLAGS} ${LLVM_LIBS_FLAGS} ${LLVM_SYSTEM_LIBS_FLAGS}")
+	message(STATUS "Manually linking against LLVM libraries")
+else()
+	llvm_config(LLVM_LIBDIR --libdir)
+	find_library(LLVM_LIB NAMES LLVM LLVM-3.5 LLVM-3.6 HINTS ${LLVM_LIB_DIR} ${LLVM_HINT_PATHS} ENV LLVM_DIR PATH_SUFFIXES lib)
+	if (NOT LLVM_LIB)
+		macro(FATAL_ERROR "Unable to find libLLVM")
+	endif()
+	set(LLVM_LINK_FLAGS "${LLVM_LIBDIR_FLAGS} ${LLVM_LIB} ${LLVM_SYSTEM_LIBS_FLAGS}")
+	message(STATUS "Linking against shared LLVM library (${LLVM_LIB})")
 endif()
 
 
+# Be pretty pedantic about issues in the code. We want a clean build with no
+# warnings.
 add_definitions(-Wall -Werror=implicit-function-declaration)
 include_directories(src)
 
+
+# Build the state generator for the parser automaton and add that as a separate
+# build step the lowc depends on.
 add_executable(parser-generator
 	src/array.c
 	src/grammar.c
@@ -52,6 +80,8 @@ add_custom_command(
 	COMMENT "Generating parser states"
 )
 
+
+# Build the Low compiler.
 add_executable(lowc
 	src/array.c
 	src/ast.c
@@ -69,5 +99,6 @@ set_target_properties(lowc PROPERTIES
 	COMPILE_FLAGS ${LLVM_COMPILE_FLAGS}
 	LINK_FLAGS ${LLVM_LINK_FLAGS}
 )
+
 
 install(TARGETS lowc RUNTIME DESTINATION bin)
