@@ -44,19 +44,21 @@ llvm_config(LLVM_SYSTEM_LIBS_FLAGS --system-libs)
 # that library is not particularly uniform (libLLVM-3.6.so on Ubuntu, libLLVM.so
 # on Arch Linux). Mac OS X on the other hand has no such shared library and
 # requires direct linking against the components.
+set(LLVM_LINK_FLAGS " ") # only used by OSX
 if (APPLE)
 	llvm_config(LLVM_LIBS_FLAGS --libs ${LLVM_LIBS})
 	set(LLVM_LINK_FLAGS "${LLVM_LIBDIR_FLAGS} ${LLVM_LIBS_FLAGS} ${LLVM_SYSTEM_LIBS_FLAGS}")
 	message(STATUS "Manually linking against LLVM libraries")
+	# TODO: add lib here to 'LLVM_LIB'
 else()
 	llvm_config(LLVM_LIBDIR --libdir)
-	find_library(LLVM_LIB NAMES LLVM LLVM-3.5 LLVM-3.6 HINTS ${LLVM_LIBDIR} ${LLVM_HINT_PATHS} ENV LLVM_DIR PATH_SUFFIXES lib)
+	find_library(LLVM_LIB NAMES LLVM LLVM-3.6 LLVM-3.5 HINTS ${LLVM_LIBDIR} ${LLVM_HINT_PATHS} ENV LLVM_DIR PATH_SUFFIXES lib)
 	if (NOT LLVM_LIB)
 		message(FATAL_ERROR "Unable to find libLLVM")
 	endif()
-	set(LLVM_LINK_FLAGS "${LLVM_LIBDIR_FLAGS} ${LLVM_LIB} ${LLVM_SYSTEM_LIBS_FLAGS}")
 	message(STATUS "Linking against shared LLVM library (${LLVM_LIB})")
 endif()
+
 
 
 # Be pretty pedantic about issues in the code. We want a clean build with no
@@ -94,11 +96,15 @@ add_executable(lowc
 	${CMAKE_BINARY_DIR}/parser_states.c
 )
 
+if (NOT APPLE)
+	# Link lowc against LLVM C API
+	target_link_libraries(lowc ${LLVM_LIB})
+endif()
+
 set_target_properties(lowc PROPERTIES
 	LINKER_LANGUAGE "CXX"
 	COMPILE_FLAGS ${LLVM_COMPILE_FLAGS}
 	LINK_FLAGS ${LLVM_LINK_FLAGS}
 )
-
 
 install(TARGETS lowc RUNTIME DESTINATION bin)
