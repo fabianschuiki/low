@@ -30,3 +30,14 @@ Install dependencies:
 ```
 sudo apt-get install build-essentials llvm-3.6 llvm-3.6-dev zlib1g-dev libedit-dev cmake
 ```
+
+## Fedora 23
+Fetch dependencies:
+```
+# Install build tools, Note: this will pull a lot of packages,
+# you may install them one by one, which ones is left as an exercise for the reader
+sudo dnf groupinstall "Development Tools" "Development Libraries"
+
+# Install build system and llvm dependencies
+sudo dnf install cmake llvm llvm-devel
+```
