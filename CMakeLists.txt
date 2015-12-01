@@ -35,8 +35,8 @@ macro(llvm_config OUTVAR)
 endmacro()
 
 llvm_config(LLVM_COMPILE_FLAGS --cppflags)
-llvm_config(LLVM_LIBDIR_FLAGS --ldflags)
-llvm_config(LLVM_SYSTEM_LIBS_FLAGS --system-libs)
+llvm_config(LLVM_LINK_FLAGS --ldflags)
+llvm_config(LLVM_SYSTEM_LIBRARIES --system-libs)
 
 # Linking against LLVM is somewhat tricky, since different platforms use
 # different libraries and setups. On most Linux systems, a shared libLLVM is
@@ -44,12 +44,9 @@ llvm_config(LLVM_SYSTEM_LIBS_FLAGS --system-libs)
 # that library is not particularly uniform (libLLVM-3.6.so on Ubuntu, libLLVM.so
 # on Arch Linux). Mac OS X on the other hand has no such shared library and
 # requires direct linking against the components.
-set(LLVM_LINK_FLAGS " ") # only used by OSX
 if (APPLE)
-	llvm_config(LLVM_LIBS_FLAGS --libs ${LLVM_LIBS})
-	set(LLVM_LINK_FLAGS "${LLVM_LIBDIR_FLAGS} ${LLVM_LIBS_FLAGS} ${LLVM_SYSTEM_LIBS_FLAGS}")
+	llvm_config(LLVM_LIBRARIES --libs ${LLVM_LIBS})
 	message(STATUS "Manually linking against LLVM libraries")
-	# TODO: add lib here to 'LLVM_LIB'
 else()
 	llvm_config(LLVM_LIBDIR --libdir)
 	find_library(LLVM_LIB NAMES LLVM LLVM-3.6 LLVM-3.5 HINTS ${LLVM_LIBDIR} ${LLVM_HINT_PATHS} ENV LLVM_DIR PATH_SUFFIXES lib)
@@ -57,8 +54,8 @@ else()
 		message(FATAL_ERROR "Unable to find libLLVM")
 	endif()
 	message(STATUS "Linking against shared LLVM library (${LLVM_LIB})")
+	set(LLVM_LIBRARIES ${LLVM_LIB})
 endif()
-
 
 
 # Be pretty pedantic about issues in the code. We want a clean build with no
@@ -96,10 +93,7 @@ add_executable(lowc
 	${CMAKE_BINARY_DIR}/parser_states.c
 )
 
-if (NOT APPLE)
-	# Link lowc against LLVM C API
-	target_link_libraries(lowc ${LLVM_LIB})
-endif()
+target_link_libraries(lowc ${LLVM_LIBRARIES} ${LLVM_SYSTEM_LIBRARIES})
 
 set_target_properties(lowc PROPERTIES
 	LINKER_LANGUAGE "CXX"
