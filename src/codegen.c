@@ -239,6 +239,13 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 			}
 		} break;
 
+		case AST_SIZEOF_EXPR: {
+			if (expr->sizeof_op.mode == AST_EXPR_SIZEOF)
+				determine_type(self, context, expr->sizeof_op.expr, 0);
+			if (type_hint)
+				type_copy(&expr->type, type_hint);
+		} break;
+
 		case AST_CAST_EXPR: {
 			determine_type(self, context, expr->cast.target, &expr->cast.type);
 			type_copy(&expr->type, &expr->cast.type);
@@ -462,6 +469,19 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 
 				default:
 					fprintf(stderr, "%s.%d: codegen for unary op %d not implemented\n", __FILE__, __LINE__, expr->unary_op.op);
+					abort();
+			}
+		}
+
+		case AST_SIZEOF_EXPR: {
+			assert(!lvalue && "result of sizeof expression is not a valid lvalue");
+			switch (expr->sizeof_op.mode) {
+				case AST_EXPR_SIZEOF:
+					return LLVMSizeOf(LLVMTypeOf(codegen_expr(self, context, expr->sizeof_op.expr, 0, 0)));
+				case AST_TYPE_SIZEOF:
+					return LLVMSizeOf(codegen_type(context, &expr->sizeof_op.type));
+				default:
+					fprintf(stderr, "%s.%d: codegen for sizeof mode %d not implemented\n", __FILE__, __LINE__, expr->sizeof_op.mode);
 					abort();
 			}
 		}

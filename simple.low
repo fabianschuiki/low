@@ -33,6 +33,9 @@ func main(int32 argc, int8** argv) int32 {
 	}
 
 	printf("math is %d\n", MATH);
+	printf("sizeof(retval) = %d\n", #(int32) sizeof #retval);
+	printf("sizeof(argc) = %d\n", #(int32) sizeof argc);
+	printf("sizeof(0) = %d\n", #(int32) sizeof (#(int8)0));
 
 	var int16 anything = SOMETHING;
 	printf("anything is %d\n", #(int32)anything);
