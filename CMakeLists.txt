@@ -101,4 +101,22 @@ set_target_properties(lowc PROPERTIES
 	LINK_FLAGS ${LLVM_LINK_FLAGS}
 )
 
+# Testing
+enable_testing()
+
+# Succeding tests
+file(GLOB_RECURSE SUCC_TESTS ${CMAKE_CURRENT_SOURCE_DIR}/test/succ/*.low)
+foreach(TEST ${SUCC_TESTS})
+	get_filename_component(TEST_NAME ${TEST} NAME_WE)
+	add_test(${TEST_NAME} ${CMAKE_BINARY_DIR}/lowc ${TEST})
+endforeach(TEST)
+
+# Failing tests
+file(GLOB_RECURSE FAIL_TESTS test/fail/*.low)
+foreach(TEST ${FAIL_TESTS})
+	get_filename_component(TEST_NAME ${TEST} NAME_WE)
+	add_test(${TEST_NAME} ${CMAKE_BINARY_DIR}/lowc ${TEST})
+	set_tests_properties(${TEST_NAME} PROPERTIES WILL_FAIL TRUE)
+endforeach(TEST)
+
 install(TARGETS lowc RUNTIME DESTINATION bin)

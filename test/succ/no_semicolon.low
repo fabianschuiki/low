@@ -1,0 +1,12 @@
+/* Test no-semicolon */
+
+func printf(int8* f,...) void
+
+
+
+func main() int32{
+	var int8 i = 5 + 7
+	var int8 x
+
+	return 0;;
+}
