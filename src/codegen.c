@@ -1024,8 +1024,8 @@ codegen_unit (codegen_t *self, codegen_context_t *context, unit_t *unit, int sta
 				// Verify that the function is well-formed.
 				LLVMBool failed = LLVMVerifyFunction(func, LLVMPrintMessageAction);
 				if (failed) {
-					fprintf(stderr, "Function %s contained errors, aborting\n", unit->func.name);
-					abort();
+					fprintf(stderr, "Function %s contained errors, exiting\n", unit->func.name);
+					exit(1);
 				}
 			}
 			break;
