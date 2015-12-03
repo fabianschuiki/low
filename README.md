@@ -1,15 +1,13 @@
 # Low
 No fuss, just systems programming.
 
-You need a recent version of the LLVM libraries and support programs in order to build the Low compiler. Use `lowc simple.low` to compile the program from Low to LLVM IR, then use `lli simple.ll` to run the program using the LLVM interpreter.
-
 Currently still missing from the language:
 
 - unions
 - enums
 - function pointer calling
 - cool literals
-- [integer literals](https://github.com/golang/go/issues/12711#issuecomment-142338246)
+- [integer literals][7]
 - switch
 - defer
 - methods, interfaces, type switch
@@ -18,6 +16,7 @@ Currently still missing from the language:
 - threadlocal global variables
 
 Refer to [1] and [2] for the C grammar and lexical analysis specification. Refer to [3] for the LLVM IR specification, and [4] and [5] for the LLVM C API documentation. Refer to [6] for details on how `defer`, `panic`, and `recover` interact in the Go language.
+
 To get an overview of the LLVM C/C++ API `readelf -Ws /usr/lib/libLLVM.so` can be used in case the online version is not helpful.
 
 [1]: http://www.quut.com/c/ANSI-C-grammar-y-2011.html
@@ -26,22 +25,44 @@ To get an overview of the LLVM C/C++ API `readelf -Ws /usr/lib/libLLVM.so` can b
 [4]: http://llvm.org/doxygen/
 [5]: http://llvm.org/docs/doxygen/html/group__LLVMCCoreInstructionBuilder.html
 [6]: http://blog.golang.org/defer-panic-and-recover
+[7]: https://github.com/golang/go/issues/12711#issuecomment-142338246
 
-# Setup
 
-## Ubuntu trusty
-Install dependencies:
-```
-sudo apt-get install build-essentials llvm-3.6 llvm-3.6-dev zlib1g-dev libedit-dev cmake
-```
 
-## Fedora 23
-Fetch dependencies:
-```
-# Install build tools, Note: this will pull a lot of packages,
-# you may install them one by one, which ones is left as an exercise for the reader
-sudo dnf groupinstall "Development Tools" "Development Libraries"
+# Building
 
-# Install build system and llvm dependencies
-sudo dnf install cmake llvm llvm-devel
-```
+You might have to install LLVM and its dependencies first. Read on for a guide on that. Once you're setup, build the project as follows:
+
+	# for hackers and contributors
+	mkdir build
+	cd build
+	cmake -DCMAKE_BUILD_TYPE=debug ..
+	make
+
+	# for package maintainers
+	mkdir build
+	cd build
+	cmake -DCMAKE_BUILD_TYPE=release ..
+	make
+	make install
+
+Currently, the Low compiler only produces LLVM IR rather than native machine code. To build and run a program written in Low, do the following:
+
+	lowc foo.low
+	lli foo.ll
+
+Refer to `examples/deps` for an example on how build Low files into a library and use a Makefile and the LLVM linker to package things into a final executable.
+
+
+### Ubuntu 14.04 LTS (Trusty Tahr)
+
+	sudo apt-get install build-essentials llvm-3.6 llvm-3.6-dev zlib1g-dev libedit-dev cmake
+
+### Fedora 23
+
+	# Install build tools, Note: this will pull a lot of packages,
+	# you may install them one by one, which ones is left as an exercise for the reader
+	sudo dnf groupinstall "Development Tools" "Development Libraries"
+
+	# Install build system and llvm dependencies
+	sudo dnf install cmake llvm llvm-devel

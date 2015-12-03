@@ -655,6 +655,15 @@ REDUCER(struct_member) {
 	out->ptr = m;
 }
 
+REDUCER(type_array) {
+	type_t *t = malloc(sizeof(type_t));
+	bzero(t, sizeof(*t));
+	t->kind = AST_ARRAY_TYPE;
+	t->array.type = in[0].ptr;
+	t->array.length = atoi(in[2].first);
+	out->ptr = t;
+}
+
 
 // --- unit --------------------------------------------------------------------
 

@@ -227,6 +227,7 @@ RULE(type) \
 	VAR TKN(IDENT) REDUCE(type_name) \
 	VAR SUB(type) TKN(MUL_OP) REDUCE(type_pointer) \
 	VAR TKN(STRUCT) TKN(LBRACE) SUB(struct_member_list) TKN(RBRACE) REDUCE(type_struct) \
+	VAR SUB(type) TKN(LBRACK) TKN(NUMBER_LITERAL) TKN(RBRACK) REDUCE(type_array) \
 RULE_END \
 \
 RULE(struct_member_list) \

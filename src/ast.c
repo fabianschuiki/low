@@ -271,6 +271,12 @@ type_describe(type_t *self) {
 		case AST_STRUCT_TYPE:
 			s = strdup("struct{...}");
 			break;
+		case AST_ARRAY_TYPE: {
+			char *t = type_describe(self->array.type);
+			asprintf(&s, "%s[%d]", t, self->array.length);
+			free(t);
+			break;
+		}
 		default:
 			fprintf(stderr, "%s.%d: type_describe for type kind %d not implemented\n", __FILE__, __LINE__, self->kind);
 			abort();
@@ -312,6 +318,9 @@ type_copy (type_t *dst, const type_t *src) {
 				type_copy(dst->strct.members[i].type, src->strct.members[i].type);
 				dst->strct.members[i].name = strdup(src->strct.members[i].name);
 			}
+		case AST_ARRAY_TYPE:
+			type_copy(dst->array.type, src->array.type);
+			break;
 		default:
 			break;
 	}
@@ -353,6 +362,8 @@ type_equal (const type_t *a, const type_t *b) {
 					return 0;
 			return 1;
 		}
+		case AST_ARRAY_TYPE:
+			return a->array.length == b->array.length || type_equal(a->array.type, b->array.type);
 		default:
 			fprintf(stderr, "%s.%d: type_equal for type kind %d not implemented\n", __FILE__, __LINE__, a->kind);
 			abort();
@@ -387,6 +398,10 @@ type_dispose (type_t *self) {
 				free(self->strct.members[i].name);
 			}
 			free(self->strct.members);
+			break;
+		case AST_ARRAY_TYPE:
+			type_dispose(self->array.type);
+			free(self->array.type);
 			break;
 		default:
 			fprintf(stderr, "%s.%d: type_dispose for type kind %d not implemented\n", __FILE__, __LINE__, self->kind);

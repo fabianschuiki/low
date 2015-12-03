@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
 
 
 typedef codegen_context_t context_t;
@@ -79,24 +78,6 @@ resolve_type_name (codegen_context_t *context, type_t *type) {
 }
 
 
-static void
-dformat(loc_t *loc, const char *prefix, const char *fmt, va_list ap) {
-	if (loc && loc->filename)
-		printf("%s:%d:%d: ", loc->filename, loc->line+1, loc->col+1);
-	printf("%s", prefix);
-	vprintf(fmt, ap);
-}
-
-static void
-derror(loc_t *loc, const char *fmt, ...) {
-	va_list ap;
-	va_start(ap, fmt);
-	dformat(loc, "\033[31;1merror:\033[0m ", fmt, ap);
-	va_end(ap);
-	exit(1);
-}
-
-
 static LLVMTypeRef
 codegen_type (context_t *context, const type_t *type) {
 	assert(type);
@@ -136,6 +117,10 @@ codegen_type (context_t *context, const type_t *type) {
 			for (i = 0; i < type->strct.num_members; ++i)
 				members[i] = codegen_type(context, type->strct.members[i].type);
 			return LLVMStructType(members, type->strct.num_members, 0);
+		}
+		case AST_ARRAY_TYPE: {
+			LLVMTypeRef element = codegen_type(context, type->array.type);
+			return LLVMArrayType(element, type->array.length);
 		}
 		default:
 			fprintf(stderr, "%s.%d: codegen for type kind %d not implemented\n", __FILE__, __LINE__, type->kind);
@@ -183,10 +168,15 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 			type_t int_type = { .kind = AST_INTEGER_TYPE, .pointer = 0, .width = 64 };
 			determine_type(self, context, expr->index_access.target, 0);
 			determine_type(self, context, expr->index_access.index, &int_type);
-			type_copy(&expr->type, &expr->index_access.target->type);
-			if (expr->type.pointer == 0)
+			type_t *target = &expr->index_access.target->type;
+			if (target->pointer > 0) {
+				type_copy(&expr->type, target);
+				--expr->type.pointer;
+			} else if (target->kind == AST_ARRAY_TYPE) {
+				type_copy(&expr->type, target->array.type);
+			} else {
 				derror(&expr->loc, "cannot index into non-pointer\n");
-			--expr->type.pointer;
+			}
 		} break;
 
 		case AST_CALL_EXPR: {
@@ -355,7 +345,7 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 
 			if (sym->value) {
 				LLVMValueRef ptr = sym->value;
-				return lvalue ? ptr : LLVMBuildLoad(self->builder, ptr, "");
+				return lvalue || expr->type.kind == AST_ARRAY_TYPE ? ptr : LLVMBuildLoad(self->builder, ptr, "");
 			} else {
 				assert(sym->decl && sym->decl->kind == AST_CONST_DECL && "expected identifier to be a const");
 				assert(!lvalue && "const is not a valid lvalue");
@@ -385,12 +375,16 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 		case AST_INDEX_ACCESS_EXPR: {
 			LLVMValueRef target = codegen_expr(self, context, expr->index_access.target, 0, 0);
 			LLVMValueRef index = codegen_expr(self, context, expr->index_access.index, 0, 0);
-			// if (expr->type.pointer == 0)
-			// 	derror(&expr->loc, "cannot index into non-pointer\n");
-			// --expr->type.pointer;
 			if (expr->index_access.index->type.kind != AST_INTEGER_TYPE)
 				derror(&expr->index_access.index->loc, "index needs to be an integer\n");
-			LLVMValueRef ptr = LLVMBuildInBoundsGEP(self->builder, target, &index, 1, "");
+			LLVMValueRef ptr;
+			if (expr->index_access.target->type.pointer > 0) {
+				ptr = LLVMBuildInBoundsGEP(self->builder, target, &index, 1, "");
+			} else if (expr->index_access.target->type.kind == AST_ARRAY_TYPE) {
+				ptr = LLVMBuildInBoundsGEP(self->builder, target, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), index}, 2, "");
+			} else {
+				derror(&expr->loc, "cannot index into non-pointer or non-array");
+			}
 			return lvalue ? ptr : LLVMBuildLoad(self->builder, ptr, "");
 		}
 
@@ -527,6 +521,9 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 			} else if (from->kind == AST_BOOLEAN_TYPE && to->pointer == 0) {
 				if (to->kind == AST_INTEGER_TYPE)
 					return LLVMBuildZExt(self->builder, target, dst, "");
+			} else if (from->kind == AST_ARRAY_TYPE && to->pointer > 0) {
+				if (to->kind == from->array.type->kind)
+					return LLVMBuildInBoundsGEP(self->builder, target, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), LLVMConstNull(LLVMInt32Type())}, 2, "");
 			}
 
 			derror(&expr->loc, "cannot cast from %s to %s\n", from_str, to_str);
@@ -1027,6 +1024,12 @@ codegen_unit (codegen_t *self, codegen_context_t *context, unit_t *unit, int sta
 				}
 
 				codegen_stmt(&cg, &subctx, unit->func.body);
+				if (!subctx.is_terminated) {
+					if (unit->func.return_type.kind == AST_VOID_TYPE)
+						LLVMBuildRetVoid(builder);
+					else
+						derror(&unit->loc, "missing return statement at the end of '%s'\n", unit->func.name);
+				}
 				codegen_context_dispose(&subctx);
 
 				// LLVMBuildRetVoid(builder);

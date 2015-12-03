@@ -1,0 +1,17 @@
+/* Copyright (c) 2015 Fabian Schuiki */
+import "stdio.low"
+
+func main () int32 {
+	var int32[4] v
+	var int32* x = #(int32*)v;
+	v[0] = 1
+	v[1] = 2
+	v[2] = 3
+	v[3] = 4
+	printf("heeeyayyayayayaya, what's going on?\n")
+	var int32 i
+	for (i = 0; i < 4; ++i) {
+		printf("  v[%d] = %d, x[%d] = %d\n", i, v[i], i, x[i]);
+	}
+	return 0;
+}

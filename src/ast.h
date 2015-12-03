@@ -2,6 +2,7 @@
 #pragma once
 #include "grammar.h"
 
+typedef struct array_type array_type_t;
 typedef struct assignment_expr assignment_expr_t;
 typedef struct binary_expr binary_expr_t;
 typedef struct block_item block_item_t;
@@ -46,6 +47,7 @@ enum type_kind {
 	AST_FUNC_TYPE,
 	AST_NAMED_TYPE,
 	AST_STRUCT_TYPE,
+	AST_ARRAY_TYPE,
 };
 
 
@@ -68,14 +70,21 @@ struct struct_member {
 };
 
 
+struct array_type {
+	type_t *type;
+	unsigned length;
+};
+
+
 struct type {
 	unsigned kind;
 	unsigned pointer;
 	union {
+		char *name;
 		unsigned width;
 		func_type_t func;
 		struct_type_t strct;
-		char *name;
+		array_type_t array;
 	};
 };
 

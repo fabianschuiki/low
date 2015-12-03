@@ -3,6 +3,26 @@
 #include "lexer.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
+
+
+static void
+dformat(loc_t *loc, const char *prefix, const char *fmt, va_list ap) {
+	if (loc && loc->filename)
+		printf("%s:%d:%d: ", loc->filename, loc->line+1, loc->col+1);
+	printf("%s", prefix);
+	vprintf(fmt, ap);
+}
+
+void
+derror(loc_t *loc, const char *fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	dformat(loc, "\033[31;1merror:\033[0m ", fmt, ap);
+	va_end(ap);
+	exit(1);
+}
+
 
 // Include the rules that are defined in a separate file.
 #include "grammar_rules.h"
