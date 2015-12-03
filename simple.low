@@ -1,156 +1,156 @@
 /* Copyright (c) 2015 Fabian Schuiki */
-import "stdio.low";
 
-const PI = 3.14159265358979323846264338327950288419716939937510;
-const MATH int32 = 42;
-const ADDED int32 = 40+2;
-const SOMETHING = 1024;
+import "stdio.low"
 
-int32 atoi(int8*);
+const PI = 3.14159265358979323846264338327950288419716939937510
+const MATH int32 = 42
+const ADDED int32 = 40+2
+const SOMETHING = 1024
+
+int32 atoi(int8*)
 
 func some_func(int32 alpha) void {
-	var int32 i = 128;
-	i *= 256;
-	return;
+	var int32 i = 128
+	i *= 256
+	return
 }
 
-type retval: struct { int8 a; int8 b; };
+type retval: struct { int8 a; int8 b; }
 
 func form_a_struct(int8 v) retval {
-	var retval x;
-	x.a = v*2;
-	x.b = v*v;
-	return x;
+	var retval x
+	x.a = v*2
+	x.b = v*v
+	return x
 }
 
 func main(int32 argc, int8** argv) int32 {
 
 	// Verify that we have enough arguments.
 	if (argc <= 1) {
-		// fprintf(stderr, "usage: %s NUM...\n", argv[0]);
-		printf("usage: %s NUM...\n", argv[0]);
-		return 1;
+		printf("usage: %s NUM...\n", argv[0])
+		return 1
 	}
 
-	printf("math is %d\n", MATH);
-	printf("sizeof(retval) = %d\n", #(int32) sizeof #retval);
-	printf("sizeof(argc) = %d\n", #(int32) sizeof argc);
-	printf("sizeof(0) = %d\n", #(int32) sizeof (#(int8)0));
+	printf("math is %d\n", MATH)
+	printf("sizeof(retval) = %d\n", #(int32) sizeof #retval)
+	printf("sizeof(argc) = %d\n", #(int32) sizeof argc)
+	printf("sizeof(0) = %d\n", #(int32) sizeof (#(int8)0))
 
-	var int16 anything = SOMETHING;
-	printf("anything is %d\n", #(int32)anything);
+	var int16 anything = SOMETHING
+	printf("anything is %d\n", #(int32)anything)
 
-	puts(argc == 2 ? form_a_string() : "multiple arguments provided");
+	puts(argc == 2 ? form_a_string() : "multiple arguments provided")
 
 	// Sum up the arguments.
-	var int32 i;
-	var int32 sum = 0;
+	var int32 i
+	var int32 sum = 0
 	for (i = 1; i < argc; ++i) {
-		var int32 v = atoi(argv[i]);
+		var int32 v = atoi(argv[i])
 
 		if (v == 0) {
-			printf("arg %d is 0, aborting summation\n", i);
-			break;
+			printf("arg %d is 0, aborting summation\n", i)
+			break
 		} else if (v == 1) {
-			printf("arg %d is 1, ignoring\n", i);
-			continue;
+			printf("arg %d is 1, ignoring\n", i)
+			continue
 		}
 
-		sum = sum + v;
-		var arg blah;
-		blah.index = i;
-		blah.value = argv[i];
+		sum = sum + v
+		var arg blah
+		blah.index = i
+		blah.value = argv[i]
 
-		printf("populated struct with %d, %s\n", blah.index, blah.value);
+		printf("populated struct with %d, %s\n", blah.index, blah.value)
 	}
-	printf("%d\n", sum);
+	printf("%d\n", sum)
 
-	// form_a_struct(#(int8)3).b;
-	printf("square is %d\n", #(int8)form_a_struct(3).b);
+	// form_a_struct(#(int8)3).b
+	printf("square is %d\n", #(int8)form_a_struct(3).b)
 
-	var int32 EVEN = 4;
-	var bool somebooltype = #(bool)EVEN;
+	var int32 EVEN = 4
+	var bool somebooltype = #(bool)EVEN
 
 	{
-		var int32 A = 24;
-		var int32 B = 9;
-		#(bool)A && #(bool)B;
-		printf("%d + %d = %d\n", A, B, A+B);
-		printf("%d - %d = %d\n", A, B, A-B);
-		printf("%d * %d = %d\n", A, B, A*B);
-		printf("%d / %d = %d\n", A, B, A/B);
-		printf("%d %% %d = %d\n", A, B, A%B);
-		printf("%d << %d = %d\n", A, B, A<<B);
-		printf("%d >> %d = %d\n", A, B, A>>B);
-		printf("%d < %d = %d\n", A, B, #(int32)(A<B));
-		printf("%d > %d = %d\n", A, B, #(int32)(A>B));
-		printf("%d <= %d = %d\n", A, B, #(int32)(A<=B));
-		printf("%d >= %d = %d\n", A, B, #(int32)(A>=B));
-		printf("%d == %d = %d\n", A, B, #(int32)(A==B));
-		printf("%d != %d = %d\n", A, B, #(int32)(A!=B));
-		printf("%d & %d = %d\n", A, B, A&B);
-		printf("%d ^ %d = %d\n", A, B, A^B);
-		printf("%d | %d = %d\n", A, B, A|B);
-		// printf("%d && %d = %d\n", A, B, A&&B);
-		// printf("%d || %d = %d\n", A, B, A||B);
+		var int32 A = 24
+		var int32 B = 9
+		#(bool)A && #(bool)B
+		printf("%d + %d = %d\n", A, B, A+B)
+		printf("%d - %d = %d\n", A, B, A-B)
+		printf("%d * %d = %d\n", A, B, A*B)
+		printf("%d / %d = %d\n", A, B, A/B)
+		printf("%d %% %d = %d\n", A, B, A%B)
+		printf("%d << %d = %d\n", A, B, A<<B)
+		printf("%d >> %d = %d\n", A, B, A>>B)
+		printf("%d < %d = %d\n", A, B, #(int32)(A<B))
+		printf("%d > %d = %d\n", A, B, #(int32)(A>B))
+		printf("%d <= %d = %d\n", A, B, #(int32)(A<=B))
+		printf("%d >= %d = %d\n", A, B, #(int32)(A>=B))
+		printf("%d == %d = %d\n", A, B, #(int32)(A==B))
+		printf("%d != %d = %d\n", A, B, #(int32)(A!=B))
+		printf("%d & %d = %d\n", A, B, A&B)
+		printf("%d ^ %d = %d\n", A, B, A^B)
+		printf("%d | %d = %d\n", A, B, A|B)
+		// printf("%d && %d = %d\n", A, B, A&&B)
+		// printf("%d || %d = %d\n", A, B, A||B)
 	}
 
 	{
-		var float64 A = 24;
-		var float64 B = 9;
-		printf("%f + %f = %f\n", A, B, A+B);
-		printf("%f - %f = %f\n", A, B, A-B);
-		printf("%f * %f = %f\n", A, B, A*B);
-		printf("%f / %f = %f\n", A, B, A/B);
-		printf("%f %% %f = %f\n", A, B, A%B);
-		// printf("%f << %f = %f\n", A, B, A<<B);
-		// printf("%f >> %f = %f\n", A, B, A>>B);
-		printf("%f < %f = %d\n", A, B, #(int32)(A<B));
-		printf("%f > %f = %d\n", A, B, #(int32)(A>B));
-		printf("%f <= %f = %d\n", A, B, #(int32)(A<=B));
-		printf("%f >= %f = %d\n", A, B, #(int32)(A>=B));
-		printf("%f == %f = %d\n", A, B, #(int32)(A==B));
-		printf("%f != %f = %d\n", A, B, #(int32)(A!=B));
-		// printf("%f & %f = %f\n", A, B, A&B);
-		// printf("%f ^ %f = %f\n", A, B, A^B);
-		// printf("%f | %f = %f\n", A, B, A|B);
-		// printf("%f && %f = %f\n", A, B, A&&B);
-		// printf("%f || %f = %f\n", A, B, A||B);
+		var float64 A = 24
+		var float64 B = 9
+		printf("%f + %f = %f\n", A, B, A+B)
+		printf("%f - %f = %f\n", A, B, A-B)
+		printf("%f * %f = %f\n", A, B, A*B)
+		printf("%f / %f = %f\n", A, B, A/B)
+		printf("%f %% %f = %f\n", A, B, A%B)
+		// printf("%f << %f = %f\n", A, B, A<<B)
+		// printf("%f >> %f = %f\n", A, B, A>>B)
+		printf("%f < %f = %d\n", A, B, #(int32)(A<B))
+		printf("%f > %f = %d\n", A, B, #(int32)(A>B))
+		printf("%f <= %f = %d\n", A, B, #(int32)(A<=B))
+		printf("%f >= %f = %d\n", A, B, #(int32)(A>=B))
+		printf("%f == %f = %d\n", A, B, #(int32)(A==B))
+		printf("%f != %f = %d\n", A, B, #(int32)(A!=B))
+		// printf("%f & %f = %f\n", A, B, A&B)
+		// printf("%f ^ %f = %f\n", A, B, A^B)
+		// printf("%f | %f = %f\n", A, B, A|B)
+		// printf("%f && %f = %f\n", A, B, A&&B)
+		// printf("%f || %f = %f\n", A, B, A||B)
 	}
 
-	// var float a;
-	// var int b;
-	// var int i = 4*4;
-	printf("argc = \"%d\"\n", argc);
+	// var float a
+	// var int b
+	// var int i = 4*4
+	printf("argc = \"%d\"\n", argc)
 
 	// Dump the arguments we have received.
-	var int32 i;
-	var int32 n;
+	var int32 i
+	var int32 n
 	for (i = 0, n = 0; i < argc; ++i, ++n) {
-		printf("arg #%d = %s\n", i, argv[i]);
+		printf("arg #%d = %s\n", i, argv[i])
 	}
 
-	var FILE* fp = fopen("hello.txt", "w");
-	fprintf(fp, "got %d arguments\n", argc);
-	fclose(fp);
+	var FILE* fp = fopen("hello.txt", "w")
+	fprintf(fp, "got %d arguments\n", argc)
+	fclose(fp)
 
-	var int8* str = "hello world";
-	var int16* other = #(int16*)str;
-	// some_func();
-	puts(str);
-	puts("What's going on?");
-	puts(form_a_string());
-	printf("Print a string %s, and its pointer %p\n", str, str);
-	// return 42 + i;
-	return #(int32)str[5];
+	var int8* str = "hello world"
+	var int16* other = #(int16*)str
+	// some_func()
+	puts(str)
+	puts("What's going on?")
+	puts(form_a_string())
+	printf("Print a string %s, and its pointer %p\n", str, str)
+	// return 42 + i
+	return #(int32)str[5]
 }
 
 func form_a_string() int8* {
-	var int8* str = "formed a string";
-	return str;
+	var int8* str = "formed a string"
+	return str
 }
 
 type arg: struct {
 	int32 index;
 	int8* value;
-};
+}

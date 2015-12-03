@@ -33,6 +33,10 @@ parse (lexer_t *lex) {
 		for (i = 0; i < state->num_actions; ++i)
 			if (state->actions[i].token == lex->token)
 				break;
+
+		if(i>= state->num_actions){
+			fprintf(stderr,"%s:%i:%i: syntax error \n", lex->loc.filename,lex->loc.line,lex->loc.col);
+		}
 		assert(i < state->num_actions && "syntax error");
 
 		const parser_action_t *action = &state->actions[i];

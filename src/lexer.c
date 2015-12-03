@@ -92,6 +92,26 @@ lexer_init (lexer_t *self, const char *ptr, size_t len, const char *filename) {
 	self->line_base = ptr;
 }
 
+/*
+	Requires semicolon:
+	break continue fallthrough return ++ -- ) } <identifiers>
+*/
+
+static const unsigned terminators[] = {
+	TKN_BREAK,
+	TKN_CONTINUE,
+	TKN_DEC_OP,
+	TKN_IDENT,
+	TKN_INC_OP,
+	TKN_NUMBER_LITERAL,
+	TKN_RBRACE,
+	TKN_RETURN,
+	TKN_RPAREN,
+	TKN_STRING_LITERAL,
+	TKN_VOID,
+	TKN_RBRACK,
+	0
+};
 
 void
 lexer_next (lexer_t *self) {
@@ -103,6 +123,19 @@ lexer_next (lexer_t *self) {
 
 	while (self->ptr != self->end) {
 		if (is_whitespace(*self->ptr)) {
+			/* no semicolon logic */
+			if(*self->ptr=='\n'){
+				int i;
+				for(i=0;terminators[i]!=0;i++){
+					if(self->token==terminators[i]){
+						self->token=TKN_SEMICOLON;
+						self->base = self->ptr;
+						self->loc.col = (unsigned)(self->base - self->line_base);
+						lexer_step(self);
+						return;
+					}
+				}
+			}
 			lexer_step(self);
 			continue;
 		}
