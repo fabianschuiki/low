@@ -15,7 +15,10 @@ func some_func(int32 alpha) void {
 	return
 }
 
-type retval: struct { int8 a; int8 b; }
+type retval: struct {
+	int8 a
+	int8 b
+}
 
 func form_a_struct(int8 v) retval {
 	var retval x
@@ -151,6 +154,6 @@ func form_a_string() int8* {
 }
 
 type arg: struct {
-	int32 index;
-	int8* value;
+	int32 index
+	int8* value
 }
