@@ -8,6 +8,8 @@ Currently still missing from the language:
 - unions
 - enums
 - function pointer calling
+- cool literals
+- [integer literals](https://github.com/golang/go/issues/12711#issuecomment-142338246)
 - switch
 - defer
 - methods, interfaces, type switch
