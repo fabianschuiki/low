@@ -68,7 +68,7 @@ context_find_local (context_t *self, const char *name) {
 static type_t *
 resolve_type_name (codegen_context_t *context, type_t *type) {
 	assert(type);
-	if (type->kind == AST_NAMED_TYPE) {
+	if (type->pointer == 0 && type->kind == AST_NAMED_TYPE) {
 		codegen_symbol_t *sym = codegen_context_find_symbol(context, type->name);
 		assert(sym && "unknown type name");
 		return resolve_type_name(context, sym->type);
@@ -194,6 +194,12 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 		case AST_MEMBER_ACCESS_EXPR: {
 			determine_type(self, context, expr->member_access.target, 0);
 			type_t *st = resolve_type_name(context, &expr->member_access.target->type);
+			type_t tmp;
+			if (st->pointer > 0) {
+				tmp = *st;
+				--tmp.pointer;
+				st = resolve_type_name(context, &tmp);
+			}
 			if (st->kind != AST_STRUCT_TYPE)
 				derror(&expr->loc, "cannot access member of non-struct\n");
 			for (i = 0; i < st->strct.num_members; ++i)
@@ -212,10 +218,14 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 		case AST_UNARY_EXPR: {
 			switch (expr->unary_op.op) {
 				case AST_DEREF: {
-					type_t t;
-					type_copy(&t, type_hint);
-					++t.pointer;
-					determine_type(self, context, expr->unary_op.target, &t);
+					if (type_hint) {
+						type_t new_hint;
+						type_copy(&new_hint, type_hint);
+						++new_hint.pointer;
+						determine_type(self, context, expr->unary_op.target, &new_hint);
+					} else {
+						determine_type(self, context, expr->unary_op.target, 0);
+					}
 					type_copy(&expr->type, &expr->unary_op.target->type);
 					expr->type = expr->unary_op.target->type;
 					if (expr->type.pointer == 0)
@@ -415,18 +425,34 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 		}
 
 		case AST_MEMBER_ACCESS_EXPR: {
-			LLVMValueRef target = codegen_expr(self, context, expr->member_access.target, 1, 0);
-			if (!target)
-				derror(&expr->loc, "cannot member-access target\n");
-			const type_t *st = resolve_type_name(context, &expr->member_access.target->type);
+			type_t *st = resolve_type_name(context, &expr->member_access.target->type);
+			type_t *stderef = st;
+			type_t tmp;
+			if (stderef->pointer > 0) {
+				tmp = *stderef;
+				--tmp.pointer;
+				stderef = resolve_type_name(context, &tmp);
+			}
+
+			// char *sts = type_describe(stderef);
+			// printf("accessing member %s of %s\n", expr->member_access.name, sts);
+			// free(sts);
 			if (st->pointer > 1)
 				derror(&expr->loc, "cannot access member across multiple indirection\n");
-			LLVMValueRef struct_ptr = st->pointer == 1 ? LLVMBuildLoad(self->builder, target, "") : target;
-			assert(st->kind == AST_STRUCT_TYPE && "cannot access member of non-struct");
-			for (i = 0; i < st->strct.num_members; ++i)
-				if (strcmp(expr->member_access.name, st->strct.members[i].name) == 0)
+			LLVMValueRef target = codegen_expr(self, context, expr->member_access.target, st->pointer == 0, 0);
+			if (!target)
+				derror(&expr->loc, "cannot member-access target\n");
+			// LLVMValueRef struct_ptr = st->pointer == 1 ? LLVMBuildLoad(self->builder, target, "") : target;
+			LLVMValueRef struct_ptr = target;
+			assert(stderef->kind == AST_STRUCT_TYPE && "cannot access member of non-struct");
+			for (i = 0; i < stderef->strct.num_members; ++i)
+				if (strcmp(expr->member_access.name, stderef->strct.members[i].name) == 0)
 					break;
-			assert(i < st->strct.num_members && "struct has no such member");
+			assert(i < stderef->strct.num_members && "struct has no such member");
+
+			// char *target_ts = LLVMPrintTypeToString(LLVMTypeOf(target));
+			// printf("  in LLVM accessing %s of %s\n", expr->member_access.name, target_ts);
+			// LLVMDisposeMessage(target_ts);
 			// type_copy(&expr->type, st->strct.members[i].type);
 			LLVMValueRef ptr = LLVMBuildStructGEP(self->builder, struct_ptr, i, "");
 			return lvalue ? ptr : LLVMBuildLoad(self->builder, ptr, "");

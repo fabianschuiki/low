@@ -42,6 +42,11 @@ func main(int32 argc, int8** argv) int32 {
 
 	var retval* x = new(retval)
 	var int8* num = new(int8)
+	*num = 42;
+	x.a = 32;
+	x.b = 10;
+	printf("x = %p, x.a = %d, x.b = %d\n", x, #(int32)(*x).a, #(int32)(*x).b);
+	printf("num = %p, *num = '%d'\n", num, #(int32)*num);
 	/* should probably free them... */
 
 	var int16 anything = SOMETHING
