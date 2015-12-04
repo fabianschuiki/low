@@ -1,0 +1,22 @@
+/* test free
+ * Copyright (c) 2015 Thomas Richner
+ */
+
+func printf(int8* f,...) void
+
+type yo: struct {
+	int32 x
+	int32 y
+}
+
+func main() int32{
+	var int32* i = new(int32)
+	var yo* x = new(yo)
+
+	*i = x.x + x.y
+
+	free(i)
+	free(x)
+
+	return 0
+}

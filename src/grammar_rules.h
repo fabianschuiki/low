@@ -35,7 +35,12 @@ RULE(unary_expr) \
 	VAR TKN(SIZEOF) SUB(unary_expr) REDUCE_TAG(unary_expr_sizeof, 0) \
 	/*TODO: add parenthesis */ \
 	VAR TKN(SIZEOF) TKN(HASH) SUB(type) REDUCE_TAG(unary_expr_sizeof, 1) \
-	VAR TKN(NEW) TKN(LPAREN) SUB(type) TKN(RPAREN) REDUCE(unary_expr_new) \
+	VAR SUB(builtin_func) REDUCE_DEFAULT \
+RULE_END \
+\
+RULE(builtin_func) \
+	VAR TKN(NEW) TKN(LPAREN) SUB(type) TKN(RPAREN) REDUCE(builtin_func_new) \
+	VAR TKN(FREE) TKN(LPAREN) SUB(expr) TKN(RPAREN) REDUCE(builtin_func_free) \
 RULE_END \
 \
 RULE(unary_op) \
