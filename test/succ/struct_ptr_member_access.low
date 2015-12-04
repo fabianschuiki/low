@@ -10,12 +10,7 @@ type yo: struct {
 }
 
 func main() int32{
-	var yo blargh
-	blargh.x = 5
-
 	var yo* blub = new(yo)
-	//&blargh
-
 	blub.y = 17
 
 	return 0
