@@ -14,7 +14,8 @@ typedef struct conditional_expr conditional_expr_t;
 typedef struct const_decl const_decl_t;
 typedef struct decl decl_t;
 typedef struct expr expr_t;
-typedef struct new_expr new_expr_t;
+typedef struct new_builtin new_builtin_t;
+typedef struct free_builtin free_builtin_t;
 typedef struct func_param func_param_t;
 typedef struct func_type func_type_t;
 typedef struct func_unit func_unit_t;
@@ -108,7 +109,8 @@ enum expr_kind {
 	AST_CONDITIONAL_EXPR,
 	AST_ASSIGNMENT_EXPR,
 	AST_COMMA_EXPR,
-	AST_NEW_EXPR,
+	AST_NEW_BUILTIN,
+	AST_FREE_BUILTIN,
 };
 
 
@@ -176,8 +178,12 @@ struct sizeof_expr {
 	};
 };
 
-struct new_expr {
+struct new_builtin {
 	type_t type;
+};
+
+struct free_builtin {
+	expr_t *expr;
 };
 
 struct cast_expr {
@@ -256,7 +262,8 @@ struct expr {
 		char *ident;
 		char *string_literal;
 		char *number_literal;
-		new_expr_t newe;
+		new_builtin_t newe;
+		free_builtin_t free;
 		index_access_expr_t index_access;
 		call_expr_t call;
 		member_access_expr_t member_access;

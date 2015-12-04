@@ -275,6 +275,7 @@ lexer_next (lexer_t *self) {
 			CHECK_KEYWORD("import",   TKN_IMPORT);
 			CHECK_KEYWORD("inline",   TKN_INLINE);
 			CHECK_KEYWORD("new",      TKN_NEW);
+			CHECK_KEYWORD("free",     TKN_FREE);
 			CHECK_KEYWORD("return",   TKN_RETURN);
 			CHECK_KEYWORD("sizeof",   TKN_SIZEOF);
 			CHECK_KEYWORD("static",   TKN_STATIC);

@@ -246,10 +246,20 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 				type_copy(&expr->type, type_hint);
 		} break;
 
-		case AST_NEW_EXPR: {
+		case AST_NEW_BUILTIN: {
 			type_copy(&expr->type, &expr->newe.type);
 			type_t *t = &expr->type;
 			t->pointer++;
+		} break;
+
+		case AST_FREE_BUILTIN: {
+			printf("Type ptr: %d\n", expr->free.expr->type.pointer);
+			printf("Name ptr: %s\n", expr->free.expr->type.strct.name);
+			printf("Name ptr: %s\n", expr->free.expr->type.name);
+			if (expr->free.expr->type.pointer == 0){
+				derror(&expr->loc, "cannot free non-pointer\n");
+			}
+			type_copy(&expr->type, &expr->free.expr->type);
 		} break;
 
 		case AST_CAST_EXPR: {
@@ -512,11 +522,16 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 			}
 		}
 
-		case AST_NEW_EXPR: {
+		case AST_NEW_BUILTIN: {
 			LLVMTypeRef type = codegen_type(context, &expr->newe.type);
 			LLVMValueRef ptr = LLVMBuildMalloc(self->builder,type,"");
 			LLVMBuildStore(self->builder,LLVMConstNull(type),ptr);
 			return ptr;
+		}
+
+		case AST_FREE_BUILTIN: {
+			LLVMValueRef ptr = codegen_expr(self, context, expr->free.expr, 0, 0);
+			return LLVMBuildFree(self->builder,ptr);
 		}
 
 		case AST_CAST_EXPR: {
