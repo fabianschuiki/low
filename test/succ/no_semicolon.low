@@ -1,4 +1,6 @@
-/* Test no-semicolon */
+/* test no-semicolon
+ * Copyright (c) 2015 Thomas Richner
+ */
 
 func printf(int8* f,...) void
 

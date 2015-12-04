@@ -1,4 +1,4 @@
-/* test new
+/* test struct ptr member access
  * Copyright (c) 2015 Thomas Richner
  */
 
@@ -11,7 +11,12 @@ type yo: struct {
 
 func main() int32{
 	var int8 i = new(int8)
-	var yo* x = new(yo)
+	var yo blargh
+	blargh.x = 5
+
+	var yo* blub = &blargh
+
+	blargh.y = 17
 
 	return 0
 }

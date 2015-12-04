@@ -1,5 +1,8 @@
-/* Copyright (c) 2015 Fabian Schuiki */
-import "stdio.low"
+/* test array access and assignment
+ * Copyright (c) 2015 Fabian Schuiki, Thomas Richner
+ */
+
+func printf(int8* f,...) void
 
 func main () int32 {
 	var int32[4] v
