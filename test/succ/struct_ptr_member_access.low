@@ -10,13 +10,13 @@ type yo: struct {
 }
 
 func main() int32{
-	var int8 i = new(int8)
 	var yo blargh
 	blargh.x = 5
 
-	var yo* blub = &blargh
+	var yo* blub = new(yo)
+	//&blargh
 
-	blargh.y = 17
+	blub.y = 17
 
 	return 0
 }
