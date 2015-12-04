@@ -40,6 +40,10 @@ func main(int32 argc, int8** argv) int32 {
 	printf("sizeof(argc) = %d\n", #(int32) sizeof argc)
 	printf("sizeof(0) = %d\n", #(int32) sizeof (#(int8)0))
 
+	var retval* x = new(retval)
+	var int8* num = new(int8)
+	/* should probably free them... */
+
 	var int16 anything = SOMETHING
 	printf("anything is %d\n", #(int32)anything)
 

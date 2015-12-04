@@ -246,6 +246,12 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 				type_copy(&expr->type, type_hint);
 		} break;
 
+		case AST_NEW_EXPR: {
+			type_copy(&expr->type, &expr->newe.type);
+			type_t *t = &expr->type;
+			t->pointer++;
+		} break;
+
 		case AST_CAST_EXPR: {
 			determine_type(self, context, expr->cast.target, &expr->cast.type);
 			type_copy(&expr->type, &expr->cast.type);
@@ -484,6 +490,11 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 					fprintf(stderr, "%s.%d: codegen for sizeof mode %d not implemented\n", __FILE__, __LINE__, expr->sizeof_op.mode);
 					abort();
 			}
+		}
+
+		case AST_NEW_EXPR: {
+			LLVMTypeRef type = codegen_type(context, &expr->newe.type);
+			return LLVMBuildMalloc(self->builder,type,"");
 		}
 
 		case AST_CAST_EXPR: {

@@ -56,6 +56,9 @@ expr_dispose (expr_t *self) {
 			if (self->sizeof_op.mode == AST_TYPE_SIZEOF)
 				type_dispose(&self->sizeof_op.type);
 			break;
+		case AST_NEW_EXPR:
+			type_dispose(&self->newe.type);
+			break;
 		case AST_CAST_EXPR:
 			expr_dispose(self->cast.target);
 			type_dispose(&self->cast.type);

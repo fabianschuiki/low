@@ -199,6 +199,21 @@ REDUCER(unary_expr_sizeof) {
 	out->ptr = e;
 }
 
+REDUCER(new_expr) {
+	expr_t *e = malloc(sizeof(expr_t));
+	bzero(e, sizeof(*e));
+	e->kind = AST_NEW_EXPR;
+	e->loc = in[0].loc;
+
+	// unit_t (contains type)
+	e->newe.type = *(type_t*)in[2].ptr;		/* type to alloc */
+	free(in[2].ptr);
+	// e->type = *(in[2].ptr);				/* return pointer of new_expr.type */
+	// e->type.pointer++;
+
+	// free(in[2].ptr)
+	out->ptr = e;
+}
 
 // --- cast_expr ---------------------------------------------------------------
 
