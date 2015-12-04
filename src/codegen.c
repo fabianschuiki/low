@@ -253,13 +253,12 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 		} break;
 
 		case AST_FREE_BUILTIN: {
-			printf("Type ptr: %d\n", expr->free.expr->type.pointer);
-			printf("Name ptr: %s\n", expr->free.expr->type.strct.name);
-			printf("Name ptr: %s\n", expr->free.expr->type.name);
+			determine_type(self, context, expr->free.expr, 0);
+			expr->type.kind = AST_VOID_TYPE;
+
 			if (expr->free.expr->type.pointer == 0){
 				derror(&expr->loc, "cannot free non-pointer\n");
 			}
-			type_copy(&expr->type, &expr->free.expr->type);
 		} break;
 
 		case AST_CAST_EXPR: {
