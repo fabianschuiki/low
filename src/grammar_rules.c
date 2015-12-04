@@ -199,7 +199,7 @@ REDUCER(unary_expr_sizeof) {
 	out->ptr = e;
 }
 
-REDUCER(new_expr) {
+REDUCER(unary_expr_new) {
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));
 	e->kind = AST_NEW_EXPR;
