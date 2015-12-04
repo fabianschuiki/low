@@ -513,7 +513,6 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 		}
 
 		case AST_NEW_EXPR: {
-			assert(&expr->newe.type && "type not specified");
 			LLVMTypeRef type = codegen_type(context, &expr->newe.type);
 			LLVMValueRef ptr = LLVMBuildMalloc(self->builder,type,"");
 			LLVMBuildStore(self->builder,LLVMConstNull(type),ptr);

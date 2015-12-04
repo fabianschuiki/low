@@ -10,7 +10,7 @@ type yo: struct {
 }
 
 func main() int32{
-	var int8 i = new(int8)
+	var int8* i = new(int8)
 	var yo* x = new(yo)
 
 	return 0
