@@ -1,0 +1,18 @@
+// Copyright (c) 2015 Fabian Schuiki
+// Verifies that function pointers can be obtained, called, and passed.
+
+func multiply(int32 a, int32 b) int32 {
+	return a*b
+}
+
+func indirect(int32 x, int32 y, int32 z, func(int32,int32)int32 fn) int32 {
+	var int32 i = fn(x,y)
+	return fn(i,z)
+}
+
+func main() int32 {
+	var func(int32,int32)int32 fn = multiply
+	var int32 math1 = fn(21,2)
+	var int32 math2 = indirect(3, 7, 2, fn)
+	return #(int32)(math1 != 42 || math2 != 42)
+}

@@ -1,0 +1,6 @@
+// Copyright (c) 2015 Fabian Schuiki
+// Verifies that the argument of return receives a proper type hint.
+
+func main() int32 {
+	return 42
+}

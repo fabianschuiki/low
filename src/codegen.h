@@ -23,7 +23,13 @@ struct codegen_context {
 	unsigned is_terminated;
 };
 
+enum codegen_symbol_kind {
+	INVALID_SYMBOL = 0,
+	FUNC_SYMBOL,
+};
+
 struct codegen_symbol {
+	unsigned kind;
 	const char *name;
 	type_t *type;
 	LLVMValueRef value;

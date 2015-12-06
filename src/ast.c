@@ -237,36 +237,29 @@ type_describe(type_t *self) {
 			asprintf(&s, "float%d", self->width);
 			break;
 		case AST_FUNC_TYPE: {
-			char *ret = type_describe(self->func.return_type);
-			char *arg[self->func.num_args];
-			unsigned len = strlen(ret);
-			len += 2; // " ("
+			char *sn;
+			s = strdup("func(");
+
 			unsigned i;
 			for (i = 0; i < self->func.num_args; ++i) {
-				arg[i] = type_describe(self->func.args+i);
-				if (i > 0)
-					len += 2; // ", "
-				len += strlen(arg[i]);
+				char *arg = type_describe(self->func.args+i);
+				asprintf(&sn, i > 0 ? "%s, %s" : "%s%s", s, arg);
+				free(s);
+				s = sn;
+				free(arg);
 			}
-			len += 1; // ")"
-			if (self->pointer > 0)
-				s += 2; // "()" around func pointers
-			s = malloc((len+1) * sizeof(char));
-			s[0] = 0;
-			if (self->pointer > 0)
-				strcat(s, "(");
-			strcat(s, ret);
+
+			char *ret = type_describe(self->func.return_type);
+			asprintf(&sn, "%s) %s", s, ret);
+			free(s);
+			s = sn;
 			free(ret);
-			strcat(s, " (");
-			for (i = 0; i < self->func.num_args; ++i) {
-				if (i > 0)
-					strcat(s, ", ");
-				strcat(s, arg[i]);
-				free(arg[i]);
+
+			if (self->pointer > 0) {
+				asprintf(&sn, "(%s)", s);
+				free(s);
+				s = sn;
 			}
-			strcat(s, ")");
-			if (self->pointer > 0)
-				strcat(s, ")");
 			break;
 		}
 		case AST_NAMED_TYPE:

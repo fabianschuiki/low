@@ -6,7 +6,8 @@ type foo: struct {
 	int64 y
 }
 
-func main() void {
-	var int8 a = sizeof #foo;
-	a == sizeof #foo;
+func main() int32 {
+	var int8 a = sizeof #foo
+	a == sizeof #foo
+	return #(int32)(a != 16)
 }

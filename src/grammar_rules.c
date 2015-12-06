@@ -668,6 +668,37 @@ REDUCER(type_array) {
 	out->ptr = t;
 }
 
+REDUCER(type_func) {
+	type_t *t = malloc(sizeof(type_t));
+	bzero(t, sizeof(*t));
+	t->kind = AST_FUNC_TYPE;
+	t->pointer = 1;
+	if (tag == 0) {
+		t->func.return_type = in[3].ptr;
+	} else {
+		array_t *p = in[2].ptr;
+		array_shrink(p);
+		t->func.num_args = p->size;
+		t->func.args = p->items;
+		free(p);
+		t->func.return_type = in[4].ptr;
+	}
+	out->ptr = t;
+}
+
+REDUCER(func_type_args) {
+	if (tag == 0) {
+		array_t *a = malloc(sizeof(array_t));
+		array_init(a, sizeof(type_t));
+		array_add(a, in[0].ptr);
+		free(in[0].ptr);
+		out->ptr = a;
+	} else {
+		array_add(in[0].ptr, in[2].ptr);
+		free(in[2].ptr);
+	}
+}
+
 
 // --- unit --------------------------------------------------------------------
 

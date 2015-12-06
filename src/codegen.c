@@ -103,6 +103,12 @@ codegen_type (context_t *context, const type_t *type) {
 				default:
 					derror(0, "floating point type must be 16, 32, 64 or 128 bits wide\n");
 			}
+		case AST_FUNC_TYPE: {
+			LLVMTypeRef args[type->func.num_args];
+			for (i = 0; i < type->func.num_args; ++i)
+				args[i] = codegen_type(context, &type->func.args[i]);
+			return LLVMFunctionType(codegen_type(context, type->func.return_type), args, type->func.num_args, 0);
+		}
 		case AST_NAMED_TYPE: {
 			codegen_symbol_t *sym = context_find_local(context, type->name);
 			if (!sym)
@@ -143,7 +149,10 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 			codegen_symbol_t *sym = codegen_context_find_symbol(context, expr->ident);
 			assert(sym && "identifier unknown");
 
-			if (sym->value) {
+			if (sym->kind == FUNC_SYMBOL) {
+				type_copy(&expr->type, sym->type);
+				++expr->type.pointer;
+			} else if (sym->value) {
 				type_copy(&expr->type, sym->type);
 			} else {
 				if (!sym->decl || sym->decl->kind != AST_CONST_DECL)
@@ -362,7 +371,9 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 			codegen_symbol_t *sym = codegen_context_find_symbol(context, expr->ident);
 			assert(sym && "identifier unknown");
 
-			if (sym->value) {
+			if (sym->kind == FUNC_SYMBOL) {
+				return sym->value;
+			} else if (sym->value) {
 				LLVMValueRef ptr = sym->value;
 				return lvalue || expr->type.kind == AST_ARRAY_TYPE ? ptr : LLVMBuildLoad(self->builder, ptr, "");
 			} else {
@@ -419,10 +430,15 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 				fprintf(stderr, "identifier '%s' is not a function\n", sym->name);
 				exit(1);
 			}
+
+			LLVMValueRef funcptr = sym->value;
+			if (sym->kind != FUNC_SYMBOL)
+				funcptr = LLVMBuildLoad(self->builder, sym->value, "funcptr");
+
 			LLVMValueRef args[expr->call.num_args];
 			for (i = 0; i < expr->call.num_args; ++i)
 				args[i] = codegen_expr(self, context, &expr->call.args[i], 0, 0);
-			LLVMValueRef result = LLVMBuildCall(self->builder, sym->value, args, expr->call.num_args, "");
+			LLVMValueRef result = LLVMBuildCall(self->builder, funcptr, args, expr->call.num_args, "");
 
 			if (lvalue) {
 				LLVMValueRef ptr = LLVMBuildAlloca(self->builder, LLVMTypeOf(result), "");
@@ -510,15 +526,21 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 
 		case AST_SIZEOF_EXPR: {
 			assert(!lvalue && "result of sizeof expression is not a valid lvalue");
+			if (expr->type.kind == AST_NO_TYPE)
+				derror(&expr->loc, "return type of sizeof() cannot be inferred from context, use a cast\n");
+			LLVMValueRef v;
 			switch (expr->sizeof_op.mode) {
 				case AST_EXPR_SIZEOF:
-					return LLVMSizeOf(LLVMTypeOf(codegen_expr(self, context, expr->sizeof_op.expr, 0, 0)));
+					v = LLVMSizeOf(LLVMTypeOf(codegen_expr(self, context, expr->sizeof_op.expr, 0, 0)));
+					break;
 				case AST_TYPE_SIZEOF:
-					return LLVMSizeOf(codegen_type(context, &expr->sizeof_op.type));
+					v = LLVMSizeOf(codegen_type(context, &expr->sizeof_op.type));
+					break;
 				default:
 					fprintf(stderr, "%s.%d: codegen for sizeof mode %d not implemented\n", __FILE__, __LINE__, expr->sizeof_op.mode);
 					abort();
 			}
+			return LLVMBuildIntCast(self->builder, v, codegen_type(context, &expr->type), "");
 		}
 
 		case AST_NEW_BUILTIN: {
@@ -1021,6 +1043,7 @@ codegen_unit (codegen_t *self, codegen_context_t *context, unit_t *unit, int sta
 				}
 
 				codegen_symbol_t sym = {
+					.kind = FUNC_SYMBOL,
 					.type = &unit->func.type,
 					.name = unit->func.name,
 					.value = func,

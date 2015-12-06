@@ -233,6 +233,8 @@ RULE(type) \
 	VAR SUB(type) TKN(MUL_OP) REDUCE(type_pointer) \
 	VAR TKN(STRUCT) TKN(LBRACE) SUB(struct_member_list) TKN(RBRACE) REDUCE(type_struct) \
 	VAR SUB(type) TKN(LBRACK) TKN(NUMBER_LITERAL) TKN(RBRACK) REDUCE(type_array) \
+	VAR TKN(FUNC) TKN(LPAREN) TKN(RPAREN) SUB(type) REDUCE_TAG(type_func,0) \
+	VAR TKN(FUNC) TKN(LPAREN) SUB(func_type_args) TKN(RPAREN) SUB(type) REDUCE_TAG(type_func,1) \
 RULE_END \
 \
 RULE(struct_member_list) \
@@ -242,6 +244,11 @@ RULE_END \
 \
 RULE(struct_member) \
 	VAR SUB(type) TKN(IDENT) TKN(SEMICOLON) REDUCE(struct_member) \
+RULE_END \
+\
+RULE(func_type_args) \
+	VAR SUB(type) REDUCE_TAG(func_type_args, 0) \
+	VAR SUB(func_type_args) TKN(COMMA) SUB(type) REDUCE_TAG(func_type_args, 1) \
 RULE_END \
 \
 \

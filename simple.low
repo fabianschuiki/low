@@ -35,10 +35,14 @@ func main(int32 argc, int8** argv) int32 {
 		return 1
 	}
 
+	var func() int8* f = form_a_string
+
 	printf("math is %d\n", MATH)
 	printf("sizeof(retval) = %d\n", #(int32) sizeof #retval)
 	printf("sizeof(argc) = %d\n", #(int32) sizeof argc)
 	printf("sizeof(0) = %d\n", #(int32) sizeof (#(int8)0))
+	printf("address of form_a_string is %p\n", f);
+	printf("result of calling f is '%s'\n", f());
 
 	var retval* x = new(retval)
 	var int8* num = new(int8)
