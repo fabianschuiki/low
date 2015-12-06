@@ -2,17 +2,15 @@
 _*
 *~
 !.git*
+!.travis*
 build
 *.ll
 *.bc
 
-# Exclude CMAKE generated files
+# in-source builds
 CMakeCache.txt
 CMakeFiles/
 Makefile
 cmake_install.cmake
-
-# Exclude binary
 parser-generator
 lowc
-

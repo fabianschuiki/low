@@ -1,0 +1,21 @@
+language: c
+
+compiler:
+  - clang
+  - gcc
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+      - llvm-toolchain-precise-3.6
+    packages:
+      - llvm-3.6
+      - llvm-3.6-dev
+      - zlib1g-dev
+      - libedit-dev
+
+env:
+  - LLVM_DIR=/usr/lib/llvm-3.6
+
+script: ./.travis.sh

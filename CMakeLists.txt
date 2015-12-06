@@ -7,6 +7,7 @@ if (CMAKE_BUILD_TYPE)
 endif()
 
 
+
 # Find the LLVM configuration tool and libraries.
 set(LLVM_HINT_PATHS
 	/
@@ -58,10 +59,12 @@ else()
 endif()
 
 
+
 # Be pretty pedantic about issues in the code. We want a clean build with no
 # warnings.
 add_definitions(-Wall -Werror=implicit-function-declaration)
 include_directories(src)
+
 
 
 # Build the state generator for the parser automaton and add that as a separate
@@ -78,6 +81,7 @@ add_custom_command(
 	COMMAND ${CMAKE_BINARY_DIR}/parser-generator > ${CMAKE_BINARY_DIR}/parser_states.c
 	COMMENT "Generating parser states"
 )
+
 
 
 # Build the Low compiler.
@@ -100,6 +104,8 @@ set_target_properties(lowc PROPERTIES
 	COMPILE_FLAGS ${LLVM_COMPILE_FLAGS}
 	LINK_FLAGS ${LLVM_LINK_FLAGS}
 )
+
+
 
 # Testing
 enable_testing()
@@ -128,4 +134,7 @@ foreach(TEST ${EXEC_TESTS})
 	add_test(${TEST_NAME}-exec lli ${TESTOUT})
 endforeach()
 
+
+
+# Installation
 install(TARGETS lowc RUNTIME DESTINATION bin)
