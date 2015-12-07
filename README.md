@@ -9,13 +9,11 @@ Currently still missing from the language:
 
 - unions
 - enums
-- function pointer calling
 - cool literals
 - switch
 - defer
 - methods, interfaces, type switch
 - multiple return values
-- memory alloc/free
 - threadlocal global variables
 
 Refer to [1] and [2] for the C grammar and lexical analysis specification. Refer to [3] for the LLVM IR specification, and [4] and [5] for the LLVM C API documentation. Refer to [6] for details on how `defer`, `panic`, and `recover` interact in the Go language.
