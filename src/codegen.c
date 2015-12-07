@@ -226,6 +226,19 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 
 		case AST_UNARY_EXPR: {
 			switch (expr->unary_op.op) {
+				case AST_ADDRESS: {
+					type_t *inner_hint = 0;
+					type_t hint;
+					if (type_hint && type_hint->pointer > 0) {
+						type_copy(&hint, type_hint);
+						--hint.pointer;
+						inner_hint = &hint;
+					}
+					determine_type(self, context, expr->unary_op.target, inner_hint);
+					type_copy(&expr->type, &expr->unary_op.target->type);
+					++expr->type.pointer;
+				} break;
+
 				case AST_DEREF: {
 					if (type_hint) {
 						type_t new_hint;
@@ -240,6 +253,20 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 					if (expr->type.pointer == 0)
 						derror(&expr->loc, "cannot dereference non-pointer\n");
 					--expr->type.pointer;
+				} break;
+
+				case AST_POSITIVE:
+				case AST_NEGATIVE:
+				case AST_BITWISE_NOT: {
+					determine_type(self, context, expr->unary_op.target, type_hint);
+					type_copy(&expr->type, &expr->unary_op.target->type);
+				} break;
+
+				case AST_NOT: {
+					type_t bool_type = { .kind = AST_BOOLEAN_TYPE };
+					determine_type(self, context, expr->unary_op.target, &bool_type);
+					bzero(&expr->type, sizeof expr->type);
+					expr->type.kind = AST_BOOLEAN_TYPE;
 				} break;
 
 				default:
@@ -257,15 +284,14 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 
 		case AST_NEW_BUILTIN: {
 			type_copy(&expr->type, &expr->newe.type);
-			type_t *t = &expr->type;
-			t->pointer++;
+			++expr->type.pointer;
 		} break;
 
 		case AST_FREE_BUILTIN: {
 			determine_type(self, context, expr->free.expr, 0);
 			expr->type.kind = AST_VOID_TYPE;
 
-			if (expr->free.expr->type.pointer == 0){
+			if (expr->free.expr->type.pointer == 0) {
 				derror(&expr->loc, "cannot free non-pointer\n");
 			}
 		} break;
@@ -392,8 +418,17 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 				return LLVMConstIntOfString(codegen_type(context, &expr->type), expr->number_literal.literal, expr->number_literal.radix);
 			} else if (expr->type.kind == AST_FLOAT_TYPE) {
 				return LLVMConstRealOfString(codegen_type(context, &expr->type), expr->number_literal.literal);
+			} else if (expr->type.kind == AST_BOOLEAN_TYPE) {
+				char *p = expr->number_literal.literal;
+				while (*p == '0' && *(p+1) != 0) ++p;
+				if (strcmp(p, "0") == 0)
+					return LLVMConstNull(LLVMInt1Type());
+				else if (strcmp(p, "1") == 0)
+					return LLVMConstAllOnes(LLVMInt1Type());
+				else
+					derror(&expr->loc, "'%s' is not a valid boolean number, can only be 0 or 1\n", expr->number_literal.literal);
 			} else {
-				derror(&expr->loc, "number literal can only be an integer or a float\n");
+				derror(&expr->loc, "number literal can only be an integer, a boolean, or a float\n");
 			}
 		}
 
@@ -510,13 +545,54 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 		}
 
 		case AST_UNARY_EXPR: {
-			LLVMValueRef target = codegen_expr(self, context, expr->unary_op.target, 0, 0);
+			type_t *type = &expr->unary_op.target->type;
 			switch (expr->unary_op.op) {
+				LLVMValueRef target;
+
+				case AST_ADDRESS:
+					return codegen_expr(self, context, expr->unary_op.target, 1, 0);
+
 				case AST_DEREF:
-					// expr->type = expr->unary_op.target->type;
-					// assert(expr->type.pointer > 0 && "cannot dereference non-pointer");
-					// --expr->type.pointer;
+					target = codegen_expr(self, context, expr->unary_op.target, 0, 0);
 					return lvalue ? target : LLVMBuildLoad(self->builder, target, "");
+
+				case AST_POSITIVE:
+					return codegen_expr(self, context, expr->unary_op.target, 0, 0);
+
+				case AST_NEGATIVE:
+					target = codegen_expr(self, context, expr->unary_op.target, 0, 0);
+					if (type->kind == AST_INTEGER_TYPE) {
+						return LLVMBuildNeg(self->builder, target, "");
+					} else if (type->kind == AST_FLOAT_TYPE) {
+						return LLVMBuildFNeg(self->builder, target, "");
+					} else {
+						char *td = type_describe(type);
+						derror(&expr->loc, "expression of type %s cannot be negated\n", td);
+						free(td);
+					}
+					break;
+
+				case AST_BITWISE_NOT:
+					if (type->kind == AST_INTEGER_TYPE) {
+						target = codegen_expr(self, context, expr->unary_op.target, 0, 0);
+						return LLVMBuildNot(self->builder, target, "");
+					} else {
+						char *td = type_describe(type);
+						derror(&expr->loc, "unary operator not available for type %s\n", td);
+						free(td);
+					}
+					break;
+
+				case AST_NOT:
+					if (type->kind == AST_BOOLEAN_TYPE) {
+						target = codegen_expr(self, context, expr->unary_op.target, 0, 0);
+						return LLVMBuildNot(self->builder, target, "");
+					} else {
+						char *td = type_describe(type);
+						derror(&expr->loc, "unary operator not available for type %s\n", td);
+						free(td);
+					}
+					break;
 
 				default:
 					fprintf(stderr, "%s.%d: codegen for unary op %d not implemented\n", __FILE__, __LINE__, expr->unary_op.op);
@@ -607,6 +683,10 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 			type_t *t = &expr->binary_op.lhs->type;
 			if (t->kind == AST_BOOLEAN_TYPE) {
 				switch (expr->binary_op.op) {
+					case AST_EQ:
+						return LLVMBuildICmp(self->builder, LLVMIntEQ, lhs, rhs, "");
+					case AST_NE:
+						return LLVMBuildICmp(self->builder, LLVMIntNE, lhs, rhs, "");
 					case AST_AND:
 						return LLVMBuildAnd(self->builder, lhs, rhs, "");
 					case AST_OR:

@@ -1,0 +1,16 @@
+// Copyright (c) 2015 Fabian Schuiki
+// Verifies that all unary operators compile.
+
+func main() int32 {
+	var int32 foo = 42
+	var int32* bar = &foo
+	var int32 a = *bar
+	var int32 pa = +a
+	var int32 na = -a
+	var int8 b = 0xF0
+	var int8 nb = ~b
+	var bool c = 1
+	var bool nc = !c
+
+	return #(int32)(a != 42 || pa != 42 || na != -42 || nb != 0x0F || nc != 0)
+}
