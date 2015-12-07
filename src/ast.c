@@ -20,7 +20,7 @@ expr_dispose (expr_t *self) {
 			free(self->string_literal);
 			break;
 		case AST_NUMBER_LITERAL_EXPR:
-			free(self->number_literal);
+			free(self->number_literal.literal);
 			break;
 		case AST_INDEX_ACCESS_EXPR:
 			expr_dispose(self->index_access.target);

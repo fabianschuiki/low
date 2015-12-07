@@ -69,18 +69,20 @@ match_keyword (const char *kw, const char *ptr, const char *end) {
 	return *kw == 0 && ptr == end;
 }
 
+static int
+is_number_dec (int c) {
+	return (c >= '0' && c <= '9');
+}
 
 static int
 is_number_start (int c) {
-	return (c >= '0' && c <= '9') || (c == '.');
+	return is_number_dec(c) || (c == '.');
 }
-
 
 static int
 is_number (int c) {
 	return is_number_start(c) || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
-
 
 void
 lexer_init (lexer_t *self, const char *ptr, size_t len, const char *filename) {
@@ -242,7 +244,8 @@ lexer_next (lexer_t *self) {
 
 		if (is_number_start(*self->ptr)) {
 			lexer_step(self);
-			while (is_number(*self->ptr))
+
+			while (is_number(*self->ptr) || (*self->ptr == '\''))
 				lexer_step(self);
 			self->token = TKN_NUMBER_LITERAL;
 			return;
