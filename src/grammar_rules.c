@@ -128,7 +128,7 @@ REDUCER(primary_expr_number) {
 	e->kind = AST_NUMBER_LITERAL_EXPR;
 	e->loc = in->loc;
 	e->number_literal.radix = pfx.radix;
-	
+
 	const char* first = in->first + pfx.prefix;
 	e->number_literal.literal = extract_literal(first, in->last-first);
 	out->ptr = e;
@@ -733,8 +733,8 @@ REDUCER(type_array) {
 	type_t *t = malloc(sizeof(type_t));
 	bzero(t, sizeof(*t));
 	t->kind = AST_ARRAY_TYPE;
-	t->array.type = in[0].ptr;
-	t->array.length = atoi(in[2].first);
+	t->array.type = in[3].ptr;
+	t->array.length = atoi(in[1].first);
 	out->ptr = t;
 }
 
