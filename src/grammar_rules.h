@@ -190,7 +190,7 @@ RULE(jump_stmt) \
 RULE_END \
 \
 RULE(labeled_stmt) \
-	VAR TKN(IDENT) TKN(COLON) SUB(stmt) REDUCE(labeled_stmt_name) \
+	/*VAR TKN(IDENT) TKN(COLON) SUB(stmt) REDUCE(labeled_stmt_name)*/ \
 	VAR TKN(CASE) SUB(expr) TKN(COLON) SUB(stmt) REDUCE(labeled_stmt_case) \
 	VAR TKN(DEFAULT) TKN(COLON) SUB(stmt) REDUCE(labeled_stmt_default) \
 RULE_END \
@@ -212,6 +212,9 @@ RULE(variable_decl) \
 	VAR TKN(VAR) SUB(type) TKN(IDENT) TKN(SEMICOLON) REDUCE_TAG(variable_decl, 0) \
 	VAR TKN(VAR) SUB(type) TKN(IDENT) TKN(ASSIGN) SUB(assignment_expr) TKN(SEMICOLON) REDUCE_TAG(variable_decl, 1) \
 	VAR TKN(VAR) TKN(IDENT) TKN(ASSIGN) SUB(assignment_expr) TKN(SEMICOLON) REDUCE_TAG(variable_decl, 2) \
+	VAR TKN(IDENT) TKN(COLON) SUB(type) TKN(SEMICOLON) REDUCE_TAG(variable_decl2, 0) \
+	VAR TKN(IDENT) TKN(COLON) SUB(type) TKN(ASSIGN) SUB(assignment_expr) TKN(SEMICOLON) REDUCE_TAG(variable_decl2, 1) \
+	VAR TKN(IDENT) TKN(DEF_ASSIGN) SUB(assignment_expr) TKN(SEMICOLON) REDUCE_TAG(variable_decl2, 2) \
 RULE_END \
 \
 RULE(const_decl) \

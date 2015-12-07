@@ -12,4 +12,10 @@ func main() void {
 	var a = A
 	var b = B
 	var c = multiply(a,b)
+
+	C : int8
+	C = 3
+	D : int16 = 4
+	c := C
+	d := D
 }

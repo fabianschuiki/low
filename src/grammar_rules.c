@@ -632,6 +632,26 @@ REDUCER(variable_decl) {
 	out->ptr = d;
 }
 
+REDUCER(variable_decl2) {
+	decl_t *d = malloc(sizeof(decl_t));
+	bzero(d, sizeof(*d));
+	d->kind = AST_VARIABLE_DECL;
+	unsigned p = 0;
+	d->loc = in[p].loc;
+	d->variable.name = strndup(in[p].first, in[p].last-in[p].first);
+	++p;
+	if (tag == 0 || tag == 1) {
+		++p;
+		d->variable.type = *(type_t*)in[p].ptr;
+		free(in[p].ptr);
+		++p;
+	}
+	++p;
+	if (tag == 1 || tag == 2)
+		d->variable.initial = in[p].ptr;
+	out->ptr = d;
+}
+
 REDUCER(const_decl) {
 	decl_t *d = malloc(sizeof(decl_t));
 	bzero(d, sizeof(*d));

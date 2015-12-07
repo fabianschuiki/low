@@ -166,6 +166,7 @@ lexer_next (lexer_t *self) {
 				continue;
 			}
 			#define CHECK_TOKEN(str,tkn) if (strncmp(str, self->ptr, 2) == 0) { self->ptr += 2; self->token = tkn; return; }
+			CHECK_TOKEN(":=", TKN_DEF_ASSIGN)
 			CHECK_TOKEN("+=", TKN_ADD_ASSIGN)
 			CHECK_TOKEN("-=", TKN_SUB_ASSIGN)
 			CHECK_TOKEN("*=", TKN_MUL_ASSIGN)

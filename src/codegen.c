@@ -922,10 +922,6 @@ codegen_decl (codegen_t *self, codegen_context_t *context, decl_t *decl) {
 					derror(&decl->loc, "type of variable '%s' could not be inferred from its initial value\n", decl->variable.name);
 				type_copy(&decl->variable.type, &decl->variable.initial->type);
 
-				char *td = type_describe(&decl->variable.type);
-				printf("deduced variable %s type to be %s\n", decl->variable.name, td);
-				free(td);
-
 				LLVMValueRef var = LLVMBuildAlloca(self->builder, codegen_type(context, &decl->variable.type), decl->variable.name);
 				LLVMBuildStore(self->builder, val, var);
 
