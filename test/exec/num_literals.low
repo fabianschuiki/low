@@ -1,0 +1,51 @@
+// Copyright (c) 2015 Thomas Richner
+// Verifies that number literals with arbitrary radix work.
+// +execute
+
+func printf(int8* f,...) void
+
+func exit(int32) void
+
+func assert(int32 c) void{
+	if(c!=0){
+		printf("Assert failed, exiting.\n")
+		exit(1)
+	}
+}
+
+func main () int32 {
+	
+	var int32 i = 55
+	printf("simple %d\n",i)
+
+	i = 10x999
+	printf("10x %d\n",i)
+	assert(i-999)
+
+	i = 10x9'99
+	printf("10x %d\n",i)
+	assert(i-999)
+
+	i = 0x123
+	printf("0x %d\n",i)
+	assert(i-291)
+	
+	i = 16xABCD
+	printf("16x %d\n",i)
+	assert(i-43981)
+
+	i = 16xA'B'C'D
+	printf("16x %d\n",i)
+	assert(i-43981)
+
+	i = 2x00100100111010
+	printf("2x %d\n",i)
+	assert(i-2362)
+
+	i = 2x00'1001'0011'1010
+	printf("2x %d\n",i)
+	assert(i-2362)
+
+	printf("We are most certainly amused.\n")
+	return 0;
+}

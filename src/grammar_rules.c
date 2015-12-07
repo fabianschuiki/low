@@ -104,6 +104,22 @@ determine_radix(const char *ptr, const char *end){
 	return pfx;
 }
 
+static char*
+extract_literal(const char* str,unsigned int n){
+	char* literal = calloc(n,sizeof(char));
+	assert(literal);
+
+	int j=0;
+	for(;n>0;n--){
+		if(*str!='\''){
+			literal[j] = *str;
+			j++;
+		}
+		str++;
+	}
+	return literal;
+}
+
 REDUCER(primary_expr_number) {
 	radix_prefix_t pfx = determine_radix(in->first,in->last);
 
@@ -112,8 +128,9 @@ REDUCER(primary_expr_number) {
 	e->kind = AST_NUMBER_LITERAL_EXPR;
 	e->loc = in->loc;
 	e->number_literal.radix = pfx.radix;
+	
 	const char* first = in->first + pfx.prefix;
-	e->number_literal.literal = strndup(first, in->last-first);
+	e->number_literal.literal = extract_literal(first, in->last-first);
 	out->ptr = e;
 }
 
