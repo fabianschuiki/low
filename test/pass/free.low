@@ -1,6 +1,6 @@
-/* test free
- * Copyright (c) 2015 Thomas Richner
- */
+// Copyright (c) 2015 Thomas Richner
+// Verify the free() builtin function.
+// +compile
 
 func printf(int8* f,...) void
 

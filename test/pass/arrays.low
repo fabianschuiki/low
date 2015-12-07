@@ -1,6 +1,6 @@
-/* test array access and assignment
- * Copyright (c) 2015 Fabian Schuiki, Thomas Richner
- */
+// Copyright (c) 2015 Fabian Schuiki, Thomas Richner
+// Verify array access and assignment.
+// +compile
 
 func printf(int8* f,...) void
 

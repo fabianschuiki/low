@@ -1,6 +1,6 @@
-/* test struct ptr member access
- * Copyright (c) 2015 Thomas Richner
- */
+// Copyright (c) 2015 Thomas Richner
+// Verify struct pointer member access.
+// +compile
 
 func printf(int8* f,...) void
 

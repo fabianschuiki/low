@@ -108,31 +108,12 @@ set_target_properties(lowc PROPERTIES
 
 
 # Testing
-enable_testing()
-
-# Gather tests that should fail to compile.
-file(GLOB_RECURSE FAIL_TESTS test/fail/*.low)
-foreach(TEST ${FAIL_TESTS})
-	get_filename_component(TEST_NAME ${TEST} NAME_WE)
-	add_test(${TEST_NAME} ${CMAKE_CURRENT_BINARY_DIR}/lowc ${TEST})
-	set_tests_properties(${TEST_NAME} PROPERTIES WILL_FAIL TRUE)
-endforeach()
-
-# Gather tests that should compile.
-file(GLOB_RECURSE PASS_TESTS ${CMAKE_CURRENT_SOURCE_DIR}/test/pass/*.low)
-foreach(TEST ${PASS_TESTS})
-	get_filename_component(TEST_NAME ${TEST} NAME_WE)
-	add_test(${TEST_NAME} ${CMAKE_CURRENT_BINARY_DIR}/lowc ${TEST})
-endforeach()
-
-# Gather tests that should compile and execute.
-file(GLOB_RECURSE EXEC_TESTS ${CMAKE_CURRENT_SOURCE_DIR}/test/exec/*.low)
-foreach(TEST ${EXEC_TESTS})
-	get_filename_component(TEST_NAME ${TEST} NAME_WE)
-	string(REGEX REPLACE ".low$" ".ll" TESTOUT ${TEST})
-	add_test(${TEST_NAME}-lowc ${CMAKE_CURRENT_BINARY_DIR}/lowc ${TEST})
-	add_test(${TEST_NAME}-exec lli ${TESTOUT})
-endforeach()
+cmake_policy(SET CMP0037 OLD)
+add_custom_target(test
+	LOWC=${CMAKE_CURRENT_BINARY_DIR}/lowc ${CMAKE_CURRENT_SOURCE_DIR}/test/run_tests.sh
+	DEPENDS lowc
+	COMMENT "Running tests"
+)
 
 
 

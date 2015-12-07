@@ -1,7 +1,0 @@
-/* test void return value
- * Copyright (c) 2015 Fabian Schuiki
- */
-
-func main() void{
-	var int8 i = 5 + 7
-}

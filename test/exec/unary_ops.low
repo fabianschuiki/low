@@ -1,5 +1,6 @@
 // Copyright (c) 2015 Fabian Schuiki
 // Verifies that all unary operators compile.
+// +execute
 
 func main() int32 {
 	var int32 foo = 42
