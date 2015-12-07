@@ -1,0 +1,15 @@
+// Copyright (c) 2015 Fabian Schuiki
+// Verifies that variables can deduce their type from the initial value.
+// +compile
+
+func multiply(int8 x, int16 y) int24 {
+	return #(int24)x * #(int24)y
+}
+
+func main() void {
+	var int8 A = 1
+	var int16 B = 2
+	var a = A
+	var b = B
+	var c = multiply(a,b)
+}

@@ -618,13 +618,17 @@ REDUCER(variable_decl) {
 	decl_t *d = malloc(sizeof(decl_t));
 	bzero(d, sizeof(*d));
 	d->kind = AST_VARIABLE_DECL;
-	d->loc = in[2].loc;
-	d->variable.type = *(type_t*)in[1].ptr;
-	free(in[1].ptr);
-	d->variable.name = strndup(in[2].first, in[2].last-in[2].first);
-	if (tag == 1)
-		d->variable.initial = in[4].ptr;
-	out->loc = in[2].loc;
+	unsigned p = 1;
+	if (tag == 0 || tag == 1) {
+		d->variable.type = *(type_t*)in[p].ptr;
+		free(in[p].ptr);
+		++p;
+	}
+	d->loc = in[p].loc;
+	d->variable.name = strndup(in[p].first, in[p].last-in[p].first);
+	p += 2;
+	if (tag == 1 || tag == 2)
+		d->variable.initial = in[p].ptr;
 	out->ptr = d;
 }
 

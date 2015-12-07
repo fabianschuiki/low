@@ -894,26 +894,48 @@ codegen_decl (codegen_t *self, codegen_context_t *context, decl_t *decl) {
 
 	switch(decl->kind) {
 		case AST_VARIABLE_DECL: {
-			LLVMValueRef var = LLVMBuildAlloca(self->builder, codegen_type(context, &decl->variable.type), decl->variable.name);
+			if (decl->variable.type.kind != AST_NO_TYPE) {
+				LLVMValueRef var = LLVMBuildAlloca(self->builder, codegen_type(context, &decl->variable.type), decl->variable.name);
 
-			codegen_symbol_t sym = {
-				.name = decl->variable.name,
-				.type = &decl->variable.type,
-				.decl = decl,
-				.value = var,
-			};
-			codegen_context_add_symbol(context, &sym);
+				codegen_symbol_t sym = {
+					.name = decl->variable.name,
+					.type = &decl->variable.type,
+					.decl = decl,
+					.value = var,
+				};
+				codegen_context_add_symbol(context, &sym);
 
-			if (decl->variable.initial) {
-				LLVMValueRef val = codegen_expr_top(self, context, decl->variable.initial, 0, &decl->variable.type);
-				if (!type_equal(&decl->variable.type, &decl->variable.initial->type)) {
-					char *t1 = type_describe(&decl->variable.initial->type);
-					char *t2 = type_describe(&decl->variable.type);
-					derror(&decl->variable.initial->loc, "initial value of variable '%s' is of type %s, but should be %s\n", decl->variable.name, t1, t2);
-					free(t1);
-					free(t2);
+				if (decl->variable.initial) {
+					LLVMValueRef val = codegen_expr_top(self, context, decl->variable.initial, 0, &decl->variable.type);
+					if (!type_equal(&decl->variable.type, &decl->variable.initial->type)) {
+						char *t1 = type_describe(&decl->variable.initial->type);
+						char *t2 = type_describe(&decl->variable.type);
+						derror(&decl->variable.initial->loc, "initial value of variable '%s' is of type %s, but should be %s\n", decl->variable.name, t1, t2);
+						free(t1);
+						free(t2);
+					}
+					LLVMBuildStore(self->builder, val, var);
 				}
+			} else {
+				LLVMValueRef val = codegen_expr_top(self, context, decl->variable.initial, 0, 0);
+				if (decl->variable.initial->type.kind == AST_NO_TYPE)
+					derror(&decl->loc, "type of variable '%s' could not be inferred from its initial value\n", decl->variable.name);
+				type_copy(&decl->variable.type, &decl->variable.initial->type);
+
+				char *td = type_describe(&decl->variable.type);
+				printf("deduced variable %s type to be %s\n", decl->variable.name, td);
+				free(td);
+
+				LLVMValueRef var = LLVMBuildAlloca(self->builder, codegen_type(context, &decl->variable.type), decl->variable.name);
 				LLVMBuildStore(self->builder, val, var);
+
+				codegen_symbol_t sym = {
+					.name = decl->variable.name,
+					.type = &decl->variable.type,
+					.decl = decl,
+					.value = var,
+				};
+				codegen_context_add_symbol(context, &sym);
 			}
 			break;
 		}

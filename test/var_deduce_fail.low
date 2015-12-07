@@ -1,0 +1,10 @@
+// Copyright (c) 2015 Fabian Schuiki
+// Verifies that variables cannot deduce their type from the initial
+// value if that value needs to infer its type from the surrounding
+// context.
+// -compile
+
+func main() void {
+	var A = 1
+	var B = 2
+}

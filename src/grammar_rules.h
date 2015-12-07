@@ -211,6 +211,7 @@ RULE_END \
 RULE(variable_decl) \
 	VAR TKN(VAR) SUB(type) TKN(IDENT) TKN(SEMICOLON) REDUCE_TAG(variable_decl, 0) \
 	VAR TKN(VAR) SUB(type) TKN(IDENT) TKN(ASSIGN) SUB(assignment_expr) TKN(SEMICOLON) REDUCE_TAG(variable_decl, 1) \
+	VAR TKN(VAR) TKN(IDENT) TKN(ASSIGN) SUB(assignment_expr) TKN(SEMICOLON) REDUCE_TAG(variable_decl, 2) \
 RULE_END \
 \
 RULE(const_decl) \
