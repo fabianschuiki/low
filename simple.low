@@ -53,6 +53,25 @@ func main(int32 argc, int8** argv) int32 {
 	printf("num = %p, *num = '%d'\n", num, #(int32)*num);
 	/* should probably free them... */
 
+
+	printf("And now for something completely different, literals.\n")
+
+	var int32 i = 55
+	printf("simple %d\n",i)
+
+	i = 10x999
+	printf("10x %d\n",i)
+
+	i = 0x123
+	printf("0x %d\n",i)
+
+	i = 16xABCD
+	printf("16x %d\n",i)
+
+	i = 2x00100100111010
+	printf("2x %d\n",i)
+
+
 	var int16 anything = SOMETHING
 	printf("anything is %d\n", #(int32)anything)
 

@@ -389,9 +389,9 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 			if (expr->type.kind == AST_NO_TYPE)
 				derror(&expr->loc, "type of literal '%s' cannot be inferred from context, use a cast\n", expr->number_literal);
 			if (expr->type.kind == AST_INTEGER_TYPE) {
-				return LLVMConstIntOfString(codegen_type(context, &expr->type), expr->number_literal, 10);
+				return LLVMConstIntOfString(codegen_type(context, &expr->type), expr->number_literal.literal, expr->number_literal.radix);
 			} else if (expr->type.kind == AST_FLOAT_TYPE) {
-				return LLVMConstRealOfString(codegen_type(context, &expr->type), expr->number_literal);
+				return LLVMConstRealOfString(codegen_type(context, &expr->type), expr->number_literal.literal);
 			} else {
 				derror(&expr->loc, "number literal can only be an integer or a float\n");
 			}

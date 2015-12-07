@@ -55,12 +55,65 @@ REDUCER(primary_expr_string) {
 	out->ptr = e;
 }
 
+
+static int
+is_number_dec (int c) {
+	return (c >= '0' && c <= '9');
+}
+
+typedef struct radix_prefix {
+	int radix;
+	int prefix;
+} radix_prefix_t;
+
+static radix_prefix_t
+determine_radix(const char *ptr, const char *end){
+	const char* start = ptr;
+
+	radix_prefix_t pfx = {
+		.radix = 10,
+		.prefix = 0
+	};
+
+	if(!is_number_dec(*ptr)){
+		return pfx;
+	}
+	ptr++;
+
+	if(ptr==end){
+		return pfx;
+	}
+
+	if(is_number_dec(*ptr)){
+		ptr++;
+		if(ptr==end){
+			return pfx;
+		}
+	}
+
+	if(*ptr=='x'){
+		char* aradix = strndup(start,ptr-start);
+		pfx.prefix = ptr-start + 1;
+		int radix = atoi(aradix);
+		if(radix==0){ // 0x case
+			radix = 16;
+		}
+		pfx.radix = radix;
+		return pfx;
+	}
+	return pfx;
+}
+
 REDUCER(primary_expr_number) {
+	radix_prefix_t pfx = determine_radix(in->first,in->last);
+
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));
 	e->kind = AST_NUMBER_LITERAL_EXPR;
 	e->loc = in->loc;
-	e->number_literal = strndup(in->first, in->last-in->first);
+	e->number_literal.radix = pfx.radix;
+	const char* first = in->first + pfx.prefix;
+	e->number_literal.literal = strndup(first, in->last-first);
 	out->ptr = e;
 }
 

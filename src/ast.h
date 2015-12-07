@@ -34,7 +34,7 @@ typedef struct type_unit type_unit_t;
 typedef struct unary_expr unary_expr_t;
 typedef struct unit unit_t;
 typedef struct variable_decl variable_decl_t;
-
+typedef struct number_literal number_literal_t;
 
 
 // --- type -------------------------------------------------------------
@@ -253,6 +253,10 @@ struct comma_expr {
 	expr_t *exprs;
 };
 
+struct number_literal {
+	char* literal;
+	int radix;
+};
 
 struct expr {
 	unsigned kind;
@@ -261,7 +265,7 @@ struct expr {
 	union {
 		char *ident;
 		char *string_literal;
-		char *number_literal;
+		number_literal_t number_literal;
 		new_builtin_t newe;
 		free_builtin_t free;
 		index_access_expr_t index_access;
