@@ -124,6 +124,15 @@ codegen_type (context_t *context, const type_t *type) {
 				members[i] = codegen_type(context, type->strct.members[i].type);
 			return LLVMStructType(members, type->strct.num_members, 0);
 		}
+		case AST_SLICE_TYPE: {
+			// underlying struct of a slice
+			LLVMTypeRef members[3];
+			members[0] = LLVMPointerType(codegen_type(context, type->slice.type),0); // pointer to array
+			members[1] = LLVMIntType(32); // length @HARDCODED
+			members[2] = LLVMIntType(32); // capacity @HARDCODED
+			bool PACKED = false; // @HARDCODED
+			return LLVMStructType(members, 3, PACKED);
+		}
 		case AST_ARRAY_TYPE: {
 			LLVMTypeRef element = codegen_type(context, type->array.type);
 			return LLVMArrayType(element, type->array.length);
@@ -183,6 +192,8 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 				--expr->type.pointer;
 			} else if (target->kind == AST_ARRAY_TYPE) {
 				type_copy(&expr->type, target->array.type);
+			} else if (target->kind == AST_SLICE_TYPE) {
+				type_copy(&expr->type, target->slice.type);
 			} else {
 				derror(&expr->loc, "cannot index into non-pointer\n");
 			}
@@ -382,6 +393,24 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 	}
 }
 
+static void
+build_assert(codegen_t *self,codegen_context_t *context, LLVMValueRef cond){
+
+				LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(self->builder));
+				LLVMBasicBlockRef true_block = LLVMAppendBasicBlock(func, "iftrue");
+				LLVMBasicBlockRef exit_block = LLVMAppendBasicBlock(func, "ifexit");
+
+				cond = LLVMBuildNot(self->builder,cond,"");
+				LLVMBuildCondBr(self->builder, cond, true_block, exit_block);
+
+				LLVMPositionBuilderAtEnd(self->builder, true_block);
+				LLVMBuildCall(self->builder,LLVMGetNamedFunction(self->module,"llvm.trap"),0,0,"");
+				
+				//LLVMBuildBr(self->builder, exit_block);
+
+				LLVMPositionBuilderAtEnd(self->builder, exit_block);
+}
+
 
 static LLVMValueRef
 codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lvalue, type_t *type_hint) {
@@ -440,13 +469,45 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 		case AST_INDEX_ACCESS_EXPR: {
 			LLVMValueRef target = codegen_expr(self, context, expr->index_access.target, 0, 0);
 			LLVMValueRef index = codegen_expr(self, context, expr->index_access.index, 0, 0);
-			if (expr->index_access.index->type.kind != AST_INTEGER_TYPE)
+			if (expr->index_access.index->type.kind != AST_INTEGER_TYPE){
 				derror(&expr->index_access.index->loc, "index needs to be an integer\n");
+			}
+
 			LLVMValueRef ptr;
 			if (expr->index_access.target->type.pointer > 0) {
 				ptr = LLVMBuildInBoundsGEP(self->builder, target, &index, 1, "");
 			} else if (expr->index_access.target->type.kind == AST_ARRAY_TYPE) {
 				ptr = LLVMBuildInBoundsGEP(self->builder, target, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), index}, 2, "");
+			} else if (expr->index_access.target->type.kind == AST_SLICE_TYPE) {
+				
+				dinfo(&expr->loc, "Slice access not fully implemented!\n");
+
+				char *sts = type_describe(&expr->index_access.target->type);
+				dinfo(&expr->loc,"accessing index %d of %s\n",expr->index_access.index, sts);
+				free(sts);
+
+				LLVMValueRef lenptr = LLVMBuildStructGEP(self->builder, target, 1, "");
+				LLVMValueRef len = LLVMBuildLoad(self->builder,lenptr,"");
+
+				LLVMValueRef arrptrptr = LLVMBuildStructGEP(self->builder, target, 2, "");
+				LLVMValueRef arrptr = LLVMBuildLoad(self->builder,arrptrptr,"");
+
+				ptr = LLVMBuildInBoundsGEP(self->builder, arrptr, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), len}, 2, "");
+
+
+				//LLVMValueRef oob = LLVMBuildICmp(self->builder, LLVMIntULT, index, len, "");
+
+				// check idx vs capacity
+				//build_assert(self,context,oob);
+
+				//LLVMValueRef ptr = 
+
+
+				//TODO
+
+				//return lvalue ? ptr : LLVMBuildLoad(self->builder, ptr, "");
+
+				//ptr = LLVMBuildInBoundsGEP(self->builder, target, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), index}, 2, "");
 			} else {
 				derror(&expr->loc, "cannot index into non-pointer or non-array");
 			}

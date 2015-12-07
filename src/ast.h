@@ -2,6 +2,10 @@
 #pragma once
 #include "grammar.h"
 
+#define true 1
+#define false 0
+typedef unsigned char bool;
+
 typedef struct array_type array_type_t;
 typedef struct assignment_expr assignment_expr_t;
 typedef struct binary_expr binary_expr_t;
@@ -29,6 +33,7 @@ typedef struct sizeof_expr sizeof_expr_t;
 typedef struct stmt stmt_t;
 typedef struct struct_member struct_member_t;
 typedef struct struct_type struct_type_t;
+typedef struct slice_type slice_type_t;
 typedef struct type type_t;
 typedef struct type_unit type_unit_t;
 typedef struct unary_expr unary_expr_t;
@@ -49,6 +54,7 @@ enum type_kind {
 	AST_NAMED_TYPE,
 	AST_STRUCT_TYPE,
 	AST_ARRAY_TYPE,
+	AST_SLICE_TYPE,
 };
 
 
@@ -76,6 +82,10 @@ struct array_type {
 	unsigned length;
 };
 
+struct slice_type {
+	type_t *type;
+};
+
 
 struct type {
 	unsigned kind;
@@ -86,6 +96,7 @@ struct type {
 		func_type_t func;
 		struct_type_t strct;
 		array_type_t array;
+		slice_type_t slice;
 	};
 };
 

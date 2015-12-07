@@ -15,6 +15,14 @@ dformat(loc_t *loc, const char *prefix, const char *fmt, va_list ap) {
 }
 
 void
+dinfo(loc_t *loc, const char *fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	dformat(loc, "\033[32;1minfo:\033[0m ", fmt, ap);
+	va_end(ap);
+}
+
+void
 derror(loc_t *loc, const char *fmt, ...) {
 	va_list ap;
 	va_start(ap, fmt);

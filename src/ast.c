@@ -270,7 +270,13 @@ type_describe(type_t *self) {
 			break;
 		case AST_ARRAY_TYPE: {
 			char *t = type_describe(self->array.type);
-			asprintf(&s, "%s[%d]", t, self->array.length);
+			asprintf(&s, "[%d]%s", t, self->array.length);
+			free(t);
+			break;
+		}
+		case AST_SLICE_TYPE: {
+			char *t = type_describe(self->slice.type);
+			asprintf(&s, "[]%s", t);
 			free(t);
 			break;
 		}
@@ -399,6 +405,10 @@ type_dispose (type_t *self) {
 		case AST_ARRAY_TYPE:
 			type_dispose(self->array.type);
 			free(self->array.type);
+			break;
+		case AST_SLICE_TYPE:
+			type_dispose(self->slice.type);
+			free(self->slice.type);
 			break;
 		default:
 			fprintf(stderr, "%s.%d: type_dispose for type kind %d not implemented\n", __FILE__, __LINE__, self->kind);
