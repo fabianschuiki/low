@@ -10,8 +10,8 @@ func main() int32 {
 	var int32 na = -a
 	var int8 b = 0xF0
 	var int8 nb = ~b
-	var bool c = 1
+	var bool c = true
 	var bool nc = !c
 
-	return #(int32)(a != 42 || pa != 42 || na != -42 || nb != 0x0F || nc != 0)
+	return #(int32)(a != 42 || pa != 42 || na != -42 || nb != 0x0F || nc != false)
 }

@@ -146,8 +146,14 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 	switch (expr->kind) {
 
 		case AST_IDENT_EXPR: {
+			if (strcmp(expr->ident, "true") == 0 || strcmp(expr->ident, "false") == 0) {
+				expr->type.kind = AST_BOOLEAN_TYPE;
+				break;
+			}
+
 			codegen_symbol_t *sym = codegen_context_find_symbol(context, expr->ident);
-			assert(sym && "identifier unknown");
+			if (!sym)
+				derror(&expr->loc, "identifier '%s' unknown\n", expr->ident);
 
 			if (sym->kind == FUNC_SYMBOL) {
 				type_copy(&expr->type, sym->type);
@@ -394,6 +400,18 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 	switch (expr->kind) {
 
 		case AST_IDENT_EXPR: {
+			if (strcmp(expr->ident, "true") == 0) {
+				if (lvalue)
+					derror(&expr->loc, "true is not a valid lvalue\n");
+				return LLVMConstNull(LLVMInt1Type());
+			}
+
+			if (strcmp(expr->ident, "false") == 0) {
+				if (lvalue)
+					derror(&expr->loc, "false is not a valid lvalue\n");
+				return LLVMConstAllOnes(LLVMInt1Type());
+			}
+
 			codegen_symbol_t *sym = codegen_context_find_symbol(context, expr->ident);
 			assert(sym && "identifier unknown");
 
