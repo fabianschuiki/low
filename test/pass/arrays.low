@@ -5,7 +5,7 @@
 func printf(int8* f,...) void
 
 func main () int32 {
-	var int32[4] v
+	var [4]int32 v
 	var int32* x = #(int32*)v;
 	v[0] = 1
 	v[1] = 2
