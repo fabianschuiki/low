@@ -11,7 +11,6 @@ Currently still missing from the language:
 - enums
 - function pointer calling
 - cool literals
-- [integer literals][7]
 - switch
 - defer
 - methods, interfaces, type switch
