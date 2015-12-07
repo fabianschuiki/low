@@ -302,6 +302,17 @@ REDUCER(cast_expr) {
 	out->ptr = e;
 }
 
+REDUCER(cast_expr2) {
+	expr_t *e = malloc(sizeof(expr_t));
+	bzero(e, sizeof(*e));
+	e->kind = AST_CAST_EXPR;
+	e->loc = in[0].loc;
+	e->cast.target = in[3].ptr;
+	e->cast.type = *(type_t*)in[1].ptr;
+	free(in[1].ptr);
+	out->ptr = e;
+}
+
 
 // --- multiplicative_expr -----------------------------------------------------
 

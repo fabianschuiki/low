@@ -55,6 +55,7 @@ RULE_END \
 RULE(cast_expr) \
 	VAR SUB(unary_expr) REDUCE_DEFAULT \
 	VAR TKN(HASH) TKN(LPAREN) SUB(type) TKN(RPAREN) SUB(cast_expr) REDUCE(cast_expr) \
+	VAR TKN(HASH) SUB(type) TKN(LPAREN) SUB(expr) TKN(RPAREN) REDUCE(cast_expr2) \
 RULE_END \
 \
 RULE(multiplicative_expr) \
