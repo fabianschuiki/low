@@ -108,8 +108,7 @@ set_target_properties(lowc PROPERTIES
 
 
 # Testing
-#cmake_policy(SET CMP0037 OLD)
-add_custom_target(test
+add_custom_target(tests
 	LOWC=${CMAKE_CURRENT_BINARY_DIR}/lowc ${CMAKE_CURRENT_SOURCE_DIR}/test/run_tests.sh
 	DEPENDS lowc
 	COMMENT "Running tests"
