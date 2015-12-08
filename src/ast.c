@@ -270,7 +270,7 @@ type_describe(type_t *self) {
 			break;
 		case AST_ARRAY_TYPE: {
 			char *t = type_describe(self->array.type);
-			asprintf(&s, "[%d]%s", t, self->array.length);
+			asprintf(&s, "[%d]%s", self->array.length,t);
 			free(t);
 			break;
 		}

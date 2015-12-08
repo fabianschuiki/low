@@ -127,11 +127,10 @@ codegen_type (context_t *context, const type_t *type) {
 		case AST_SLICE_TYPE: {
 			// underlying struct of a slice
 			LLVMTypeRef members[3];
-			members[0] = LLVMPointerType(codegen_type(context, type->slice.type),0); // pointer to array
-			members[1] = LLVMIntType(32); // length @HARDCODED
-			members[2] = LLVMIntType(32); // capacity @HARDCODED
-			bool PACKED = false; // @HARDCODED
-			return LLVMStructType(members, 3, PACKED);
+			members[0] = LLVMPointerType(LLVMArrayType(codegen_type(context, type->slice.type),0),0); // pointer to array
+			members[1] = LLVMIntType(64); // length @HARDCODED
+			members[2] = LLVMIntType(64); // capacity @HARDCODED
+			return LLVMStructType(members, 3, 0); // NOT PACKED
 		}
 		case AST_ARRAY_TYPE: {
 			LLVMTypeRef element = codegen_type(context, type->array.type);
@@ -430,7 +429,7 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 				return sym->value;
 			} else if (sym->value) {
 				LLVMValueRef ptr = sym->value;
-				return lvalue || expr->type.kind == AST_ARRAY_TYPE ? ptr : LLVMBuildLoad(self->builder, ptr, "");
+				return lvalue || expr->type.kind == AST_ARRAY_TYPE || expr->type.kind == AST_SLICE_TYPE ? ptr : LLVMBuildLoad(self->builder, ptr, "");
 			} else {
 				assert(sym->decl && sym->decl->kind == AST_CONST_DECL && "expected identifier to be a const");
 				assert(!lvalue && "const is not a valid lvalue");
@@ -473,6 +472,10 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 				derror(&expr->index_access.index->loc, "index needs to be an integer\n");
 			}
 
+			dinfo(&expr->loc, "Target:\n");
+			LLVMDumpValue(target);
+			LLVMDumpType(LLVMTypeOf(target));
+
 			LLVMValueRef ptr;
 			if (expr->index_access.target->type.pointer > 0) {
 				ptr = LLVMBuildInBoundsGEP(self->builder, target, &index, 1, "");
@@ -481,19 +484,32 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 			} else if (expr->index_access.target->type.kind == AST_SLICE_TYPE) {
 				
 				dinfo(&expr->loc, "Slice access not fully implemented!\n");
-
+				
 				char *sts = type_describe(&expr->index_access.target->type);
 				dinfo(&expr->loc,"accessing index %d of %s\n",expr->index_access.index, sts);
 				free(sts);
 
+				
+
+				dinfo(&expr->loc, "Index:\n");
+				LLVMDumpValue(index);
+				LLVMDumpType(LLVMTypeOf(index));
+
 				LLVMValueRef lenptr = LLVMBuildStructGEP(self->builder, target, 1, "");
 				LLVMValueRef len = LLVMBuildLoad(self->builder,lenptr,"");
 
-				LLVMValueRef arrptrptr = LLVMBuildStructGEP(self->builder, target, 2, "");
+				LLVMValueRef arrptrptr = LLVMBuildStructGEP(self->builder, target, 0, "");
 				LLVMValueRef arrptr = LLVMBuildLoad(self->builder,arrptrptr,"");
+				
+				dinfo(&expr->loc, "Len:\n");
+				LLVMDumpValue(len);
+				LLVMDumpType(LLVMTypeOf(len));
+
+				dinfo(&expr->loc, "Arrptr:\n");
+				LLVMDumpValue(arrptr);
+				LLVMDumpType(LLVMTypeOf(arrptr));
 
 				ptr = LLVMBuildInBoundsGEP(self->builder, arrptr, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), len}, 2, "");
-
 
 				//LLVMValueRef oob = LLVMBuildICmp(self->builder, LLVMIntULT, index, len, "");
 
