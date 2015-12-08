@@ -394,20 +394,30 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 
 static void
 build_assert(codegen_t *self,codegen_context_t *context, LLVMValueRef cond){
+	LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(self->builder));
+	LLVMBasicBlockRef true_block = LLVMAppendBasicBlock(func, "iftrue");
+	LLVMBasicBlockRef exit_block = LLVMAppendBasicBlock(func, "ifexit");
 
-				LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(self->builder));
-				LLVMBasicBlockRef true_block = LLVMAppendBasicBlock(func, "iftrue");
-				LLVMBasicBlockRef exit_block = LLVMAppendBasicBlock(func, "ifexit");
+	cond = LLVMBuildNot(self->builder,cond,"");
+	LLVMBuildCondBr(self->builder, cond, true_block, exit_block);
 
-				cond = LLVMBuildNot(self->builder,cond,"");
-				LLVMBuildCondBr(self->builder, cond, true_block, exit_block);
+	LLVMPositionBuilderAtEnd(self->builder, true_block);
 
-				LLVMPositionBuilderAtEnd(self->builder, true_block);
-				LLVMBuildCall(self->builder,LLVMGetNamedFunction(self->module,"llvm.trap"),0,0,"");
-				
-				//LLVMBuildBr(self->builder, exit_block);
+	// LLVMValueRef fn = LLVMGetNamedFunction(self->module,"int_trap");
+	// if(!fn){
+	// 	printf("Function not found!\n");
+	// }
+	// printf("trap\n");
+	// LLVMDumpValue(fn);
+	// LLVMDumpType(LLVMTypeOf(fn));
 
-				LLVMPositionBuilderAtEnd(self->builder, exit_block);
+	LLVMValueRef fn = LLVMGetNamedFunction(self->module,"int_trap"); // NEED EXIT HERE!
+
+	LLVMBuildCall(self->builder,fn,0,0,"");
+	
+	//LLVMBuildBr(self->builder, exit_block);
+
+	LLVMPositionBuilderAtEnd(self->builder, exit_block);
 }
 
 
@@ -472,58 +482,33 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 				derror(&expr->index_access.index->loc, "index needs to be an integer\n");
 			}
 
-			dinfo(&expr->loc, "Target:\n");
-			LLVMDumpValue(target);
-			LLVMDumpType(LLVMTypeOf(target));
-
 			LLVMValueRef ptr;
 			if (expr->index_access.target->type.pointer > 0) {
 				ptr = LLVMBuildInBoundsGEP(self->builder, target, &index, 1, "");
 			} else if (expr->index_access.target->type.kind == AST_ARRAY_TYPE) {
 				ptr = LLVMBuildInBoundsGEP(self->builder, target, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), index}, 2, "");
 			} else if (expr->index_access.target->type.kind == AST_SLICE_TYPE) {
-				
-				dinfo(&expr->loc, "Slice access not fully implemented!\n");
-				
-				char *sts = type_describe(&expr->index_access.target->type);
-				dinfo(&expr->loc,"accessing index %d of %s\n",expr->index_access.index, sts);
-				free(sts);
-
-				
-
-				dinfo(&expr->loc, "Index:\n");
-				LLVMDumpValue(index);
-				LLVMDumpType(LLVMTypeOf(index));
 
 				LLVMValueRef lenptr = LLVMBuildStructGEP(self->builder, target, 1, "");
 				LLVMValueRef len = LLVMBuildLoad(self->builder,lenptr,"");
 
+				// check idx vs length
+				LLVMValueRef oob = LLVMBuildICmp(self->builder, LLVMIntULT, index, len, "");
+				build_assert(self,context,oob);
+
 				LLVMValueRef arrptrptr = LLVMBuildStructGEP(self->builder, target, 0, "");
 				LLVMValueRef arrptr = LLVMBuildLoad(self->builder,arrptrptr,"");
 				
-				dinfo(&expr->loc, "Len:\n");
-				LLVMDumpValue(len);
-				LLVMDumpType(LLVMTypeOf(len));
+				// dinfo(&expr->loc, "Len:\n");
+				// LLVMDumpValue(len);
+				// LLVMDumpType(LLVMTypeOf(len));
 
-				dinfo(&expr->loc, "Arrptr:\n");
-				LLVMDumpValue(arrptr);
-				LLVMDumpType(LLVMTypeOf(arrptr));
+				// dinfo(&expr->loc, "Arrptr:\n");
+				// LLVMDumpValue(arrptr);
+				// LLVMDumpType(LLVMTypeOf(arrptr));
 
-				ptr = LLVMBuildInBoundsGEP(self->builder, arrptr, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), len}, 2, "");
+				ptr = LLVMBuildInBoundsGEP(self->builder, arrptr, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), index}, 2, "");
 
-				//LLVMValueRef oob = LLVMBuildICmp(self->builder, LLVMIntULT, index, len, "");
-
-				// check idx vs capacity
-				//build_assert(self,context,oob);
-
-				//LLVMValueRef ptr = 
-
-
-				//TODO
-
-				//return lvalue ? ptr : LLVMBuildLoad(self->builder, ptr, "");
-
-				//ptr = LLVMBuildInBoundsGEP(self->builder, target, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), index}, 2, "");
 			} else {
 				derror(&expr->loc, "cannot index into non-pointer or non-array");
 			}
