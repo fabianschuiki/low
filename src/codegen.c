@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../llvm-patches/llvm_intrinsics.h"
 
 
 typedef codegen_context_t context_t;
@@ -128,9 +129,9 @@ codegen_type (context_t *context, const type_t *type) {
 			// underlying struct of a slice
 			LLVMTypeRef members[3];
 			members[0] = LLVMPointerType(LLVMArrayType(codegen_type(context, type->slice.type),0),0); // pointer to array
-			members[1] = LLVMIntType(64); // length @HARDCODED
-			members[2] = LLVMIntType(64); // capacity @HARDCODED
-			return LLVMStructType(members, 3, 0); // NOT PACKED
+			members[1] = LLVMIntType(64); 			// length @HARDCODED
+			members[2] = LLVMIntType(64); 			// capacity @HARDCODED
+			return LLVMStructType(members, 3, 0); 	// NOT PACKED
 		}
 		case AST_ARRAY_TYPE: {
 			LLVMTypeRef element = codegen_type(context, type->array.type);
@@ -403,19 +404,17 @@ build_assert(codegen_t *self,codegen_context_t *context, LLVMValueRef cond){
 
 	LLVMPositionBuilderAtEnd(self->builder, true_block);
 
-	// LLVMValueRef fn = LLVMGetNamedFunction(self->module,"int_trap");
-	// if(!fn){
-	// 	printf("Function not found!\n");
-	// }
-	// printf("trap\n");
-	// LLVMDumpValue(fn);
-	// LLVMDumpType(LLVMTypeOf(fn));
+	LLVMValueRef fn = LLVMGetIntrinsicByID(self->module,LLVMIntrinsicIDTrap,0,0);
 
-	LLVMValueRef fn = LLVMGetNamedFunction(self->module,"int_trap"); // NEED EXIT HERE!
+	assert(fn && "Intrinsic function not found!");
+
+	printf("trap\n");
+	LLVMDumpValue(fn);
+	LLVMDumpType(LLVMTypeOf(fn));
 
 	LLVMBuildCall(self->builder,fn,0,0,"");
 	
-	//LLVMBuildBr(self->builder, exit_block);
+	LLVMBuildBr(self->builder, exit_block);
 
 	LLVMPositionBuilderAtEnd(self->builder, exit_block);
 }
@@ -498,14 +497,9 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 
 				LLVMValueRef arrptrptr = LLVMBuildStructGEP(self->builder, target, 0, "");
 				LLVMValueRef arrptr = LLVMBuildLoad(self->builder,arrptrptr,"");
-				
-				// dinfo(&expr->loc, "Len:\n");
-				// LLVMDumpValue(len);
-				// LLVMDumpType(LLVMTypeOf(len));
 
-				// dinfo(&expr->loc, "Arrptr:\n");
-				// LLVMDumpValue(arrptr);
-				// LLVMDumpType(LLVMTypeOf(arrptr));
+				LLVMValueRef oob = LLVMBuildICmp(self->builder, LLVMIntNE, LLVMConstNull(LLVMInt32Type()), arrptr, "");
+				build_assert(self,context,oob);
 
 				ptr = LLVMBuildInBoundsGEP(self->builder, arrptr, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), index}, 2, "");
 
