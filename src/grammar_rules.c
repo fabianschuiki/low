@@ -787,7 +787,6 @@ REDUCER(type_array) {
 REDUCER(type_slice) {
 	type_t *t = malloc(sizeof(type_t));
 	bzero(t, sizeof(*t));
-	printf("Yay! Somebody declared a slice!\n");
 	t->kind = AST_SLICE_TYPE;
 	t->slice.type = in[2].ptr;
 	out->ptr = t;

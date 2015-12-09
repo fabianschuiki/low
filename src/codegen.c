@@ -8,9 +8,7 @@
 #include <string.h>
 #include "../llvm-patches/llvm_intrinsics.h"
 
-
 typedef codegen_context_t context_t;
-
 
 void
 codegen_context_init (codegen_context_t *self) {
@@ -317,6 +315,8 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 			if (expr->make.type.kind != AST_SLICE_TYPE) {
 				derror(&expr->loc, "cannot make non-slice\n");
 			}
+			type_t int_type = {.kind=AST_INTEGER_TYPE,.width=64};
+			determine_type(self,context,expr->make.expr, &int_type);
 			type_copy(&expr->type, &expr->make.type);
 		} break;
 
@@ -421,12 +421,8 @@ build_assert(codegen_t *self,codegen_context_t *context, LLVMValueRef cond){
 
 	assert(fn && "Intrinsic function not found!");
 
-	printf("lenptr\n");
-	LLVMDumpValue(fn);
-	LLVMDumpType(LLVMTypeOf(fn));
-
 	LLVMBuildCall(self->builder,fn,0,0,"");
-	
+
 	LLVMBuildBr(self->builder, exit_block);
 
 	LLVMPositionBuilderAtEnd(self->builder, exit_block);
@@ -450,6 +446,45 @@ dump_type(char* name,LLVMTypeRef t){
 	printf("--    --\n"); fflush(stdout);
 }
 
+/*
+ * generates IR to allocate zero initialised array on heap, return pointer to new array
+ * similar to `calloc(type,size)`
+ */
+static LLVMValueRef
+codegen_array_new(codegen_t* self, codegen_context_t *context,LLVMTypeRef type,LLVMValueRef size){
+	//---- malloc on heap
+	LLVMValueRef arrptr = LLVMBuildArrayMalloc(self->builder,type,size,"");
+
+	//---- zero initialise
+	LLVMValueRef cntrptr = LLVMBuildAlloca(self->builder,LLVMTypeOf(size),"cntrptr");
+	LLVMBuildStore(self->builder,size,cntrptr);
+
+	LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(self->builder));
+	LLVMBasicBlockRef loop_block = LLVMAppendBasicBlock(func, "loopcond");
+	LLVMBasicBlockRef body_block = LLVMAppendBasicBlock(func, "loopbody");
+	LLVMBasicBlockRef exit_block = LLVMAppendBasicBlock(func, "loopexit");
+	LLVMBuildBr(self->builder, loop_block);
+
+	// Check the loop condition.
+	LLVMPositionBuilderAtEnd(self->builder, loop_block);
+	LLVMValueRef cntr = LLVMBuildLoad(self->builder,cntrptr,"cntr");
+	LLVMValueRef cond = LLVMBuildICmp(self->builder,LLVMIntSLE,LLVMConstNull(LLVMTypeOf(cntr)),cntr,"cond");
+	LLVMBuildCondBr(self->builder, cond, body_block, exit_block);
+
+	// Execute the loop body.
+	LLVMPositionBuilderAtEnd(self->builder, body_block);
+	//LLVMValueRef iptr  = LLVMBuildInBoundsGEP(self->builder, arrptr, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), cntrptr}, 2, "");
+	LLVMValueRef iptr  = LLVMBuildInBoundsGEP(self->builder, arrptr, (LLVMValueRef[]){cntr}, 1, "");
+	LLVMBuildStore(self->builder,LLVMConstNull(type),iptr);
+	cntr = LLVMBuildSub(self->builder,cntr,LLVMConstInt(LLVMTypeOf(cntr),1,0),"");
+	LLVMBuildStore(self->builder,cntr,cntrptr);
+	LLVMBuildBr(self->builder, loop_block);
+
+	LLVMPositionBuilderAtEnd(self->builder, exit_block);
+
+	return arrptr;
+}
+
 static LLVMValueRef
 codegen_slice_new(codegen_t *self, codegen_context_t *context, LLVMValueRef ptr, type_t *type, expr_t *cap){
 	assert(self);
@@ -459,38 +494,24 @@ codegen_slice_new(codegen_t *self, codegen_context_t *context, LLVMValueRef ptr,
 
 	//---- init length to zero
 	LLVMValueRef lenptr = LLVMBuildStructGEP(self->builder, ptr, 1, "");
-	dump_val("lenptr",lenptr);
 	LLVMBuildStore(self->builder,LLVMConstNull(LLVMInt64Type()),lenptr);
 
 	//---- init cap to given value
 	LLVMValueRef caparg = codegen_expr(self, context, cap, 0, 0);
-	dump_val("caparg",caparg);
 	LLVMValueRef capptr = LLVMBuildStructGEP(self->builder, ptr, 2, "");
-	dump_val("capptr",capptr);
 	LLVMTypeRef dst = LLVMGetElementType(LLVMTypeOf(capptr));
 	caparg = LLVMBuildIntCast(self->builder, caparg, dst,"");
 
 	LLVMBuildStore(self->builder,caparg,capptr);
 
-	//---- alloca array
+	//---- alloc array on heap
+	LLVMTypeRef t = codegen_type(context, type); // array element type
+	LLVMValueRef arrptr = codegen_array_new(self,context,t,caparg);
 
-	LLVMTypeRef t = codegen_type(context, type);
-
-	LLVMValueRef arrptr = LLVMBuildArrayMalloc(self->builder,t,caparg,"");
-
-	dump_val("arrptr",arrptr);
-
+	//---- attach new array to slice
 	LLVMValueRef arrptrptr = LLVMBuildStructGEP(self->builder, ptr, 0, "");
-	dump_val("arrptrptr",arrptrptr);
-
 	LLVMTypeRef tarrptr = LLVMGetElementType(LLVMTypeOf(arrptrptr));
-
-	dump_type("tarrptr",tarrptr);
-
 	arrptr = LLVMBuildPointerCast(self->builder,arrptr,tarrptr,"");
-
-	dump_val("casted arrptr",arrptr);
-	
 	LLVMBuildStore(self->builder,arrptr,arrptrptr);
 
 	return ptr;
@@ -577,16 +598,16 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 				ptr = LLVMBuildInBoundsGEP(self->builder, target, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), index}, 2, "");
 			} else if (expr->index_access.target->type.kind == AST_SLICE_TYPE) {
 
-				LLVMValueRef lenptr = LLVMBuildStructGEP(self->builder, target, 1, "");
-				LLVMValueRef len = LLVMBuildLoad(self->builder,lenptr,"");
+				LLVMValueRef capptr = LLVMBuildStructGEP(self->builder, target, 2, "");
+				LLVMValueRef cap = LLVMBuildLoad(self->builder,capptr,"");
 
 
-				LLVMTypeRef dst = LLVMTypeOf(len);
+				LLVMTypeRef dst = LLVMTypeOf(cap);
 
 				index = LLVMBuildIntCast(self->builder, index, dst,"");
 
 				// check idx vs length
-				LLVMValueRef oob = LLVMBuildICmp(self->builder, LLVMIntULT, index, len, "");
+				LLVMValueRef oob = LLVMBuildICmp(self->builder, LLVMIntULT, index, cap, "");
 				build_assert(self,context,oob);
 
 				LLVMValueRef arrptrptr = LLVMBuildStructGEP(self->builder, target, 0, "");
@@ -782,12 +803,12 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 		}
 
 		case AST_MAKE_BUILTIN: {
-			assert(expr->make.type==AST_SLICE_TYPE && "MAKE only for slices defined");
+			assert(expr->make.type.kind==AST_SLICE_TYPE && "MAKE only for slices defined");
 
 			LLVMTypeRef type = codegen_type(context, &expr->make.type);
-			LLVMValueRef ptr = LLVMBuildMalloc(self->builder,type,"");
+			LLVMValueRef ptr = LLVMBuildAlloca(self->builder,type,"");
 
-			return codegen_slice_new(self,context,ptr,expr->make.type.slice.type,expr->make.expr);
+			return LLVMBuildLoad(self->builder,codegen_slice_new(self,context,ptr,expr->make.type.slice.type,expr->make.expr),"");
 		}
 
 		case AST_CAST_EXPR: {
