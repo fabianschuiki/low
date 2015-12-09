@@ -14,6 +14,8 @@ addons:
       - llvm-3.6-dev
       - zlib1g-dev
       - libedit-dev
+      - g++-4.8
+      - clang++-3.6
 
 env:
   - LLVM_DIR=/usr/lib/llvm-3.6
