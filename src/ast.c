@@ -63,6 +63,10 @@ expr_dispose (expr_t *self) {
 		case AST_NEW_BUILTIN:
 			type_dispose(&self->newe.type);
 			break;
+		case AST_MAKE_BUILTIN:
+			type_dispose(&self->make.type);
+			expr_dispose(self->make.expr);
+			break;
 		case AST_CAST_EXPR:
 			expr_dispose(self->cast.target);
 			type_dispose(&self->cast.type);
