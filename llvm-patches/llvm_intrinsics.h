@@ -1,14 +1,13 @@
-
-
+/* Copyright (c) 2015 Thomas Richner, Fabian Schuiki */
 #include <llvm-c/Core.h>
 
 #ifdef __cplusplus
 extern "C" {
-#endif	
+#endif
 
 typedef unsigned int LLVMIntrinsicID;
 extern const LLVMIntrinsicID LLVMIntrinsicIDTrap;
-LLVMValueRef LLVMGetIntrinsicByID(LLVMModuleRef mod,LLVMIntrinsicID id, LLVMTypeRef* tys,int nty);
+LLVMValueRef LLVMGetIntrinsicByID(LLVMModuleRef mod, LLVMIntrinsicID id, LLVMTypeRef* tys, int nty);
 
 #ifdef __cplusplus
 }

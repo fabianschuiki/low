@@ -1,12 +1,12 @@
 /* Copyright (c) 2015 Fabian Schuiki */
 #include "ast.h"
 #include "codegen.h"
+#include "llvm_intrinsics.h"
 #include <llvm-c/Analysis.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../llvm-patches/llvm_intrinsics.h"
 
 typedef codegen_context_t context_t;
 
