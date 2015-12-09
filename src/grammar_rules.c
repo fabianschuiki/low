@@ -289,6 +289,17 @@ REDUCER(builtin_func_free) {
 	out->ptr = e;
 }
 
+REDUCER(builtin_func_make) {
+	expr_t *e = malloc(sizeof(expr_t));
+	bzero(e, sizeof(*e));
+	e->kind = AST_MAKE_BUILTIN;
+	e->loc = in[0].loc;
+	e->make.type = *(type_t*)in[2].ptr;
+	e->make.expr = in[4].ptr;
+	out->ptr = e;
+}
+
+
 // --- cast_expr ---------------------------------------------------------------
 
 REDUCER(cast_expr) {
@@ -770,6 +781,14 @@ REDUCER(type_array) {
 	t->kind = AST_ARRAY_TYPE;
 	t->array.type = in[3].ptr;
 	t->array.length = atoi(in[1].first);
+	out->ptr = t;
+}
+
+REDUCER(type_slice) {
+	type_t *t = malloc(sizeof(type_t));
+	bzero(t, sizeof(*t));
+	t->kind = AST_SLICE_TYPE;
+	t->slice.type = in[2].ptr;
 	out->ptr = t;
 }
 

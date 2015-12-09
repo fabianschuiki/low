@@ -65,7 +65,18 @@ endif()
 add_definitions(-Wall -Werror=implicit-function-declaration)
 include_directories(src)
 
+# Fixup llvm
+add_library(llvm-patches STATIC
+	llvm-patches/llvm_intrinsics.cpp
+)
 
+target_link_libraries(llvm-patches ${LLVM_LIBRARIES} ${LLVM_SYSTEM_LIBRARIES})
+
+set_target_properties(llvm-patches PROPERTIES
+	LINKER_LANGUAGE "CXX"
+	COMPILE_FLAGS "${LLVM_COMPILE_FLAGS} -std=c++11"
+	LINK_FLAGS ${LLVM_LINK_FLAGS}
+)
 
 # Build the state generator for the parser automaton and add that as a separate
 # build step the lowc depends on.
@@ -97,7 +108,7 @@ add_executable(lowc
 	${CMAKE_BINARY_DIR}/parser_states.c
 )
 
-target_link_libraries(lowc ${LLVM_LIBRARIES} ${LLVM_SYSTEM_LIBRARIES})
+target_link_libraries(lowc ${LLVM_LIBRARIES} ${LLVM_SYSTEM_LIBRARIES} llvm-patches)
 
 set_target_properties(lowc PROPERTIES
 	LINKER_LANGUAGE "CXX"

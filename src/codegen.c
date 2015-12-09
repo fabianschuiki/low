@@ -6,10 +6,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include "../llvm-patches/llvm_intrinsics.h"
 
 typedef codegen_context_t context_t;
-
 
 void
 codegen_context_init (codegen_context_t *self) {
@@ -124,6 +123,14 @@ codegen_type (context_t *context, const type_t *type) {
 				members[i] = codegen_type(context, type->strct.members[i].type);
 			return LLVMStructType(members, type->strct.num_members, 0);
 		}
+		case AST_SLICE_TYPE: {
+			// underlying struct of a slice
+			LLVMTypeRef members[3];
+			members[0] = LLVMPointerType(LLVMArrayType(codegen_type(context, type->slice.type),0),0); // pointer to array
+			members[1] = LLVMIntType(64); 			// length @HARDCODED
+			members[2] = LLVMIntType(64); 			// capacity @HARDCODED
+			return LLVMStructType(members, 3, 0); 	// NOT PACKED
+		}
 		case AST_ARRAY_TYPE: {
 			LLVMTypeRef element = codegen_type(context, type->array.type);
 			return LLVMArrayType(element, type->array.length);
@@ -189,6 +196,8 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 				--expr->type.pointer;
 			} else if (target->kind == AST_ARRAY_TYPE) {
 				type_copy(&expr->type, target->array.type);
+			} else if (target->kind == AST_SLICE_TYPE) {
+				type_copy(&expr->type, target->slice.type);
 			} else {
 				derror(&expr->loc, "cannot index into non-pointer\n");
 			}
@@ -302,6 +311,15 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 			}
 		} break;
 
+		case AST_MAKE_BUILTIN: {
+			if (expr->make.type.kind != AST_SLICE_TYPE) {
+				derror(&expr->loc, "cannot make non-slice\n");
+			}
+			type_t int_type = {.kind=AST_INTEGER_TYPE,.width=64};
+			determine_type(self,context,expr->make.expr, &int_type);
+			type_copy(&expr->type, &expr->make.type);
+		} break;
+
 		case AST_CAST_EXPR: {
 			determine_type(self, context, expr->cast.target, &expr->cast.type);
 			type_copy(&expr->type, &expr->cast.type);
@@ -388,6 +406,117 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 	}
 }
 
+static void
+build_assert(codegen_t *self,codegen_context_t *context, LLVMValueRef cond){
+	LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(self->builder));
+	LLVMBasicBlockRef true_block = LLVMAppendBasicBlock(func, "iftrue");
+	LLVMBasicBlockRef exit_block = LLVMAppendBasicBlock(func, "ifexit");
+
+	cond = LLVMBuildNot(self->builder,cond,"");
+	LLVMBuildCondBr(self->builder, cond, true_block, exit_block);
+
+	LLVMPositionBuilderAtEnd(self->builder, true_block);
+
+	LLVMValueRef fn = LLVMGetIntrinsicByID(self->module,LLVMIntrinsicIDTrap,0,0);
+
+	assert(fn && "Intrinsic function not found!");
+
+	LLVMBuildCall(self->builder,fn,0,0,"");
+
+	LLVMBuildBr(self->builder, exit_block);
+
+	LLVMPositionBuilderAtEnd(self->builder, exit_block);
+}
+
+static LLVMValueRef
+codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lvalue, type_t *type_hint);
+
+static void
+dump_val(char* name,LLVMValueRef val){
+	printf("-- %s --:\n",name);
+	printf("Value: \t"); fflush(stdout); LLVMDumpValue(val);
+	printf("Type: \t"); fflush(stdout); LLVMDumpType(LLVMTypeOf(val));
+	printf("--    --\n"); fflush(stdout);
+}
+
+static void
+dump_type(char* name,LLVMTypeRef t){
+	printf("-- %s --:\n",name);
+	printf("Type: \t"); fflush(stdout); LLVMDumpType(t);
+	printf("--    --\n"); fflush(stdout);
+}
+
+/*
+ * generates IR to allocate zero initialised array on heap, return pointer to new array
+ * similar to `calloc(type,size)`
+ */
+static LLVMValueRef
+codegen_array_new(codegen_t* self, codegen_context_t *context,LLVMTypeRef type,LLVMValueRef size){
+	//---- malloc on heap
+	LLVMValueRef arrptr = LLVMBuildArrayMalloc(self->builder,type,size,"");
+
+	//---- zero initialise
+	LLVMValueRef cntrptr = LLVMBuildAlloca(self->builder,LLVMTypeOf(size),"cntrptr");
+	LLVMBuildStore(self->builder,size,cntrptr);
+
+	LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(self->builder));
+	LLVMBasicBlockRef loop_block = LLVMAppendBasicBlock(func, "loopcond");
+	LLVMBasicBlockRef body_block = LLVMAppendBasicBlock(func, "loopbody");
+	LLVMBasicBlockRef exit_block = LLVMAppendBasicBlock(func, "loopexit");
+	LLVMBuildBr(self->builder, loop_block);
+
+	// Check the loop condition.
+	LLVMPositionBuilderAtEnd(self->builder, loop_block);
+	LLVMValueRef cntr = LLVMBuildLoad(self->builder,cntrptr,"cntr");
+	LLVMValueRef cond = LLVMBuildICmp(self->builder,LLVMIntSLE,LLVMConstNull(LLVMTypeOf(cntr)),cntr,"cond");
+	LLVMBuildCondBr(self->builder, cond, body_block, exit_block);
+
+	// Execute the loop body.
+	LLVMPositionBuilderAtEnd(self->builder, body_block);
+	//LLVMValueRef iptr  = LLVMBuildInBoundsGEP(self->builder, arrptr, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), cntrptr}, 2, "");
+	LLVMValueRef iptr  = LLVMBuildInBoundsGEP(self->builder, arrptr, (LLVMValueRef[]){cntr}, 1, "");
+	LLVMBuildStore(self->builder,LLVMConstNull(type),iptr);
+	cntr = LLVMBuildSub(self->builder,cntr,LLVMConstInt(LLVMTypeOf(cntr),1,0),"");
+	LLVMBuildStore(self->builder,cntr,cntrptr);
+	LLVMBuildBr(self->builder, loop_block);
+
+	LLVMPositionBuilderAtEnd(self->builder, exit_block);
+
+	return arrptr;
+}
+
+static LLVMValueRef
+codegen_slice_new(codegen_t *self, codegen_context_t *context, LLVMValueRef ptr, type_t *type, expr_t *cap){
+	assert(self);
+	assert(context);
+	assert(type);
+	assert(cap);
+
+	//---- init length to zero
+	LLVMValueRef lenptr = LLVMBuildStructGEP(self->builder, ptr, 1, "");
+	LLVMBuildStore(self->builder,LLVMConstNull(LLVMInt64Type()),lenptr);
+
+	//---- init cap to given value
+	LLVMValueRef caparg = codegen_expr(self, context, cap, 0, 0);
+	LLVMValueRef capptr = LLVMBuildStructGEP(self->builder, ptr, 2, "");
+	LLVMTypeRef dst = LLVMGetElementType(LLVMTypeOf(capptr));
+	caparg = LLVMBuildIntCast(self->builder, caparg, dst,"");
+
+	LLVMBuildStore(self->builder,caparg,capptr);
+
+	//---- alloc array on heap
+	LLVMTypeRef t = codegen_type(context, type); // array element type
+	LLVMValueRef arrptr = codegen_array_new(self,context,t,caparg);
+
+	//---- attach new array to slice
+	LLVMValueRef arrptrptr = LLVMBuildStructGEP(self->builder, ptr, 0, "");
+	LLVMTypeRef tarrptr = LLVMGetElementType(LLVMTypeOf(arrptrptr));
+	arrptr = LLVMBuildPointerCast(self->builder,arrptr,tarrptr,"");
+	LLVMBuildStore(self->builder,arrptr,arrptrptr);
+
+	return ptr;
+}
+
 
 static LLVMValueRef
 codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lvalue, type_t *type_hint) {
@@ -419,7 +548,7 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 				return sym->value;
 			} else if (sym->value) {
 				LLVMValueRef ptr = sym->value;
-				return lvalue || expr->type.kind == AST_ARRAY_TYPE ? ptr : LLVMBuildLoad(self->builder, ptr, "");
+				return lvalue || expr->type.kind == AST_ARRAY_TYPE || expr->type.kind == AST_SLICE_TYPE ? ptr : LLVMBuildLoad(self->builder, ptr, "");
 			} else {
 				assert(sym->decl && sym->decl->kind == AST_CONST_DECL && "expected identifier to be a const");
 				assert(!lvalue && "const is not a valid lvalue");
@@ -458,13 +587,37 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 		case AST_INDEX_ACCESS_EXPR: {
 			LLVMValueRef target = codegen_expr(self, context, expr->index_access.target, 0, 0);
 			LLVMValueRef index = codegen_expr(self, context, expr->index_access.index, 0, 0);
-			if (expr->index_access.index->type.kind != AST_INTEGER_TYPE)
+			if (expr->index_access.index->type.kind != AST_INTEGER_TYPE){
 				derror(&expr->index_access.index->loc, "index needs to be an integer\n");
+			}
+
 			LLVMValueRef ptr;
 			if (expr->index_access.target->type.pointer > 0) {
 				ptr = LLVMBuildInBoundsGEP(self->builder, target, &index, 1, "");
 			} else if (expr->index_access.target->type.kind == AST_ARRAY_TYPE) {
 				ptr = LLVMBuildInBoundsGEP(self->builder, target, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), index}, 2, "");
+			} else if (expr->index_access.target->type.kind == AST_SLICE_TYPE) {
+
+				LLVMValueRef capptr = LLVMBuildStructGEP(self->builder, target, 2, "");
+				LLVMValueRef cap = LLVMBuildLoad(self->builder,capptr,"");
+
+
+				LLVMTypeRef dst = LLVMTypeOf(cap);
+
+				index = LLVMBuildIntCast(self->builder, index, dst,"");
+
+				// check idx vs length
+				LLVMValueRef oob = LLVMBuildICmp(self->builder, LLVMIntULT, index, cap, "");
+				build_assert(self,context,oob);
+
+				LLVMValueRef arrptrptr = LLVMBuildStructGEP(self->builder, target, 0, "");
+				LLVMValueRef arrptr = LLVMBuildLoad(self->builder,arrptrptr,"");
+
+				// LLVMValueRef nnull = LLVMBuildICmp(self->builder, LLVMIntNE, LLVMConstPointerNull(LLVMInt32Type()), arrptrptr, "");
+				// build_assert(self,context,nnull);
+
+				ptr = LLVMBuildInBoundsGEP(self->builder, arrptr, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), index}, 2, "");
+
 			} else {
 				derror(&expr->loc, "cannot index into non-pointer or non-array");
 			}
@@ -647,6 +800,15 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 		case AST_FREE_BUILTIN: {
 			LLVMValueRef ptr = codegen_expr(self, context, expr->free.expr, 0, 0);
 			return LLVMBuildFree(self->builder,ptr);
+		}
+
+		case AST_MAKE_BUILTIN: {
+			assert(expr->make.type.kind==AST_SLICE_TYPE && "MAKE only for slices defined");
+
+			LLVMTypeRef type = codegen_type(context, &expr->make.type);
+			LLVMValueRef ptr = LLVMBuildAlloca(self->builder,type,"");
+
+			return LLVMBuildLoad(self->builder,codegen_slice_new(self,context,ptr,expr->make.type.slice.type,expr->make.expr),"");
 		}
 
 		case AST_CAST_EXPR: {

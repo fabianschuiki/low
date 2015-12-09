@@ -63,6 +63,10 @@ expr_dispose (expr_t *self) {
 		case AST_NEW_BUILTIN:
 			type_dispose(&self->newe.type);
 			break;
+		case AST_MAKE_BUILTIN:
+			type_dispose(&self->make.type);
+			expr_dispose(self->make.expr);
+			break;
 		case AST_CAST_EXPR:
 			expr_dispose(self->cast.target);
 			type_dispose(&self->cast.type);
@@ -270,7 +274,13 @@ type_describe(type_t *self) {
 			break;
 		case AST_ARRAY_TYPE: {
 			char *t = type_describe(self->array.type);
-			asprintf(&s, "%s[%d]", t, self->array.length);
+			asprintf(&s, "[%d]%s", self->array.length,t);
+			free(t);
+			break;
+		}
+		case AST_SLICE_TYPE: {
+			char *t = type_describe(self->slice.type);
+			asprintf(&s, "[]%s", t);
 			free(t);
 			break;
 		}
@@ -359,6 +369,9 @@ type_equal (const type_t *a, const type_t *b) {
 					return 0;
 			return 1;
 		}
+		case AST_SLICE_TYPE: {
+			return type_equal(a->slice.type,b->slice.type);
+		}
 		case AST_ARRAY_TYPE:
 			return a->array.length == b->array.length || type_equal(a->array.type, b->array.type);
 		default:
@@ -399,6 +412,10 @@ type_dispose (type_t *self) {
 		case AST_ARRAY_TYPE:
 			type_dispose(self->array.type);
 			free(self->array.type);
+			break;
+		case AST_SLICE_TYPE:
+			type_dispose(self->slice.type);
+			free(self->slice.type);
 			break;
 		default:
 			fprintf(stderr, "%s.%d: type_dispose for type kind %d not implemented\n", __FILE__, __LINE__, self->kind);

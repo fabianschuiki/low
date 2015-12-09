@@ -38,4 +38,5 @@ struct token {
 
 extern const rule_t grammar_root;
 
+void dinfo(loc_t *loc, const char *fmt, ...);
 void derror(loc_t *loc, const char *fmt, ...);
