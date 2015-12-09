@@ -1,0 +1,12 @@
+// Copyright (c) 2015 Fabian Schuiki
+// Verifies that casts are working.
+// +compile
+
+func main() void {
+	x : int32 = 1
+	y := #(int8)x
+	z := #int16(x)
+
+	str := "hello world\n"
+	data : int64* = #int64*(str)
+}
