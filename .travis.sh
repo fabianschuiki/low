@@ -1,6 +1,8 @@
 #!/bin/bash
 set -ev
 
+echo "$CXX"
+
 # g++4.8
 if [ "$CXX" = "g++" ]; then export CXX="g++-4.8"; fi
 # clang 3.6
