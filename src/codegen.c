@@ -307,6 +307,13 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 			}
 		} break;
 
+		case AST_MAKE_BUILTIN: {
+			if (expr->make.type.kind != AST_SLICE_TYPE) {
+				derror(&expr->loc, "cannot make non-slice\n");
+			}
+			type_copy(&expr->type, &expr->make.type);
+		} break;
+
 		case AST_CAST_EXPR: {
 			determine_type(self, context, expr->cast.target, &expr->cast.type);
 			type_copy(&expr->type, &expr->cast.type);
@@ -408,7 +415,7 @@ build_assert(codegen_t *self,codegen_context_t *context, LLVMValueRef cond){
 
 	assert(fn && "Intrinsic function not found!");
 
-	printf("trap\n");
+	printf("lenptr\n");
 	LLVMDumpValue(fn);
 	LLVMDumpType(LLVMTypeOf(fn));
 
@@ -417,6 +424,70 @@ build_assert(codegen_t *self,codegen_context_t *context, LLVMValueRef cond){
 	LLVMBuildBr(self->builder, exit_block);
 
 	LLVMPositionBuilderAtEnd(self->builder, exit_block);
+}
+
+static LLVMValueRef
+codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lvalue, type_t *type_hint);
+
+static void
+dump_val(char* name,LLVMValueRef val){
+	printf("-- %s --:\n",name);
+	printf("Value: \t"); fflush(stdout); LLVMDumpValue(val);
+	printf("Type: \t"); fflush(stdout); LLVMDumpType(LLVMTypeOf(val));
+	printf("--    --\n"); fflush(stdout);
+}
+
+static void
+dump_type(char* name,LLVMTypeRef t){
+	printf("-- %s --:\n",name);
+	printf("Type: \t"); fflush(stdout); LLVMDumpType(t);
+	printf("--    --\n"); fflush(stdout);
+}
+
+static LLVMValueRef
+codegen_slice_new(codegen_t *self, codegen_context_t *context, LLVMValueRef ptr, type_t *type, expr_t *cap){
+	assert(self);
+	assert(context);
+	assert(type);
+	assert(cap);
+
+	//---- init length to zero
+	LLVMValueRef lenptr = LLVMBuildStructGEP(self->builder, ptr, 1, "");
+	dump_val("lenptr",lenptr);
+	LLVMBuildStore(self->builder,LLVMConstNull(LLVMInt64Type()),lenptr);
+
+	//---- init cap to given value
+	LLVMValueRef caparg = codegen_expr(self, context, cap, 0, 0);
+	dump_val("caparg",caparg);
+	LLVMValueRef capptr = LLVMBuildStructGEP(self->builder, ptr, 2, "");
+	dump_val("capptr",capptr);
+	LLVMTypeRef dst = LLVMGetElementType(LLVMTypeOf(capptr));
+	caparg = LLVMBuildIntCast(self->builder, caparg, dst,"");
+
+	LLVMBuildStore(self->builder,caparg,capptr);
+
+	//---- alloca array
+
+	LLVMTypeRef t = codegen_type(context, type);
+
+	LLVMValueRef arrptr = LLVMBuildArrayMalloc(self->builder,t,caparg,"");
+
+	dump_val("arrptr",arrptr);
+
+	LLVMValueRef arrptrptr = LLVMBuildStructGEP(self->builder, ptr, 0, "");
+	dump_val("arrptrptr",arrptrptr);
+
+	LLVMTypeRef tarrptr = LLVMGetElementType(LLVMTypeOf(arrptrptr));
+
+	dump_type("tarrptr",tarrptr);
+
+	arrptr = LLVMBuildPointerCast(self->builder,arrptr,tarrptr,"");
+
+	dump_val("casted arrptr",arrptr);
+	
+	LLVMBuildStore(self->builder,arrptr,arrptrptr);
+
+	return ptr;
 }
 
 
@@ -491,6 +562,11 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 				LLVMValueRef lenptr = LLVMBuildStructGEP(self->builder, target, 1, "");
 				LLVMValueRef len = LLVMBuildLoad(self->builder,lenptr,"");
 
+
+				LLVMTypeRef dst = LLVMTypeOf(len);
+
+				index = LLVMBuildIntCast(self->builder, index, dst,"");
+
 				// check idx vs length
 				LLVMValueRef oob = LLVMBuildICmp(self->builder, LLVMIntULT, index, len, "");
 				build_assert(self,context,oob);
@@ -498,8 +574,8 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 				LLVMValueRef arrptrptr = LLVMBuildStructGEP(self->builder, target, 0, "");
 				LLVMValueRef arrptr = LLVMBuildLoad(self->builder,arrptrptr,"");
 
-				LLVMValueRef oob = LLVMBuildICmp(self->builder, LLVMIntNE, LLVMConstNull(LLVMInt32Type()), arrptr, "");
-				build_assert(self,context,oob);
+				// LLVMValueRef nnull = LLVMBuildICmp(self->builder, LLVMIntNE, LLVMConstPointerNull(LLVMInt32Type()), arrptrptr, "");
+				// build_assert(self,context,nnull);
 
 				ptr = LLVMBuildInBoundsGEP(self->builder, arrptr, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), index}, 2, "");
 
@@ -685,6 +761,15 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 		case AST_FREE_BUILTIN: {
 			LLVMValueRef ptr = codegen_expr(self, context, expr->free.expr, 0, 0);
 			return LLVMBuildFree(self->builder,ptr);
+		}
+
+		case AST_MAKE_BUILTIN: {
+			assert(expr->make.type==AST_SLICE_TYPE && "MAKE only for slices defined");
+
+			LLVMTypeRef type = codegen_type(context, &expr->make.type);
+			LLVMValueRef ptr = LLVMBuildMalloc(self->builder,type,"");
+
+			return codegen_slice_new(self,context,ptr,expr->make.type.slice.type,expr->make.expr);
 		}
 
 		case AST_CAST_EXPR: {

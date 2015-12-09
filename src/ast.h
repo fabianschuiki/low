@@ -40,7 +40,7 @@ typedef struct unary_expr unary_expr_t;
 typedef struct unit unit_t;
 typedef struct variable_decl variable_decl_t;
 typedef struct number_literal number_literal_t;
-
+typedef struct make_builtin make_builtin_t;
 
 // --- type -------------------------------------------------------------
 
@@ -122,6 +122,7 @@ enum expr_kind {
 	AST_COMMA_EXPR,
 	AST_NEW_BUILTIN,
 	AST_FREE_BUILTIN,
+	AST_MAKE_BUILTIN,
 };
 
 
@@ -194,6 +195,11 @@ struct new_builtin {
 };
 
 struct free_builtin {
+	expr_t *expr;
+};
+
+struct make_builtin {
+	type_t type;
 	expr_t *expr;
 };
 
@@ -279,6 +285,7 @@ struct expr {
 		number_literal_t number_literal;
 		new_builtin_t newe;
 		free_builtin_t free;
+		make_builtin_t make;
 		index_access_expr_t index_access;
 		call_expr_t call;
 		member_access_expr_t member_access;

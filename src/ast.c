@@ -365,6 +365,9 @@ type_equal (const type_t *a, const type_t *b) {
 					return 0;
 			return 1;
 		}
+		case AST_SLICE_TYPE: {
+			return type_equal(a->slice.type,b->slice.type);
+		}
 		case AST_ARRAY_TYPE:
 			return a->array.length == b->array.length || type_equal(a->array.type, b->array.type);
 		default:
