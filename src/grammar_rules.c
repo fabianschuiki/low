@@ -313,6 +313,17 @@ REDUCER(cast_expr) {
 	out->ptr = e;
 }
 
+REDUCER(cast_expr2) {
+	expr_t *e = malloc(sizeof(expr_t));
+	bzero(e, sizeof(*e));
+	e->kind = AST_CAST_EXPR;
+	e->loc = in[0].loc;
+	e->cast.target = in[3].ptr;
+	e->cast.type = *(type_t*)in[1].ptr;
+	free(in[1].ptr);
+	out->ptr = e;
+}
+
 
 // --- multiplicative_expr -----------------------------------------------------
 
@@ -629,13 +640,37 @@ REDUCER(variable_decl) {
 	decl_t *d = malloc(sizeof(decl_t));
 	bzero(d, sizeof(*d));
 	d->kind = AST_VARIABLE_DECL;
-	d->loc = in[2].loc;
-	d->variable.type = *(type_t*)in[1].ptr;
-	free(in[1].ptr);
-	d->variable.name = strndup(in[2].first, in[2].last-in[2].first);
-	if (tag == 1)
-		d->variable.initial = in[4].ptr;
-	out->loc = in[2].loc;
+	unsigned p = 1;
+	if (tag == 0 || tag == 1) {
+		d->variable.type = *(type_t*)in[p].ptr;
+		free(in[p].ptr);
+		++p;
+	}
+	d->loc = in[p].loc;
+	d->variable.name = strndup(in[p].first, in[p].last-in[p].first);
+	p += 2;
+	if (tag == 1 || tag == 2)
+		d->variable.initial = in[p].ptr;
+	out->ptr = d;
+}
+
+REDUCER(variable_decl2) {
+	decl_t *d = malloc(sizeof(decl_t));
+	bzero(d, sizeof(*d));
+	d->kind = AST_VARIABLE_DECL;
+	unsigned p = 0;
+	d->loc = in[p].loc;
+	d->variable.name = strndup(in[p].first, in[p].last-in[p].first);
+	++p;
+	if (tag == 0 || tag == 1) {
+		++p;
+		d->variable.type = *(type_t*)in[p].ptr;
+		free(in[p].ptr);
+		++p;
+	}
+	++p;
+	if (tag == 1 || tag == 2)
+		d->variable.initial = in[p].ptr;
 	out->ptr = d;
 }
 
