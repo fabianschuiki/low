@@ -244,6 +244,8 @@ RULE(type) \
 	VAR TKN(LBRACK) TKN(RBRACK) SUB(type) REDUCE(type_slice) \
 	VAR TKN(FUNC) TKN(LPAREN) TKN(RPAREN) SUB(type) REDUCE_TAG(type_func,0) \
 	VAR TKN(FUNC) TKN(LPAREN) SUB(func_type_args) TKN(RPAREN) SUB(type) REDUCE_TAG(type_func,1) \
+	VAR TKN(INTERFACE) TKN(LBRACE) TKN(RBRACE) REDUCE_TAG(type_interface, 0) \
+	VAR TKN(INTERFACE) TKN(LBRACE) SUB(interface_member_list) TKN(RBRACE) REDUCE_TAG(type_interface, 1) \
 RULE_END \
 \
 RULE(struct_member_list) \
@@ -253,11 +255,21 @@ RULE_END \
 \
 RULE(struct_member) \
 	VAR SUB(type) TKN(IDENT) TKN(SEMICOLON) REDUCE(struct_member) \
+	VAR TKN(IDENT) TKN(COLON) SUB(type) TKN(SEMICOLON) REDUCE(struct_member2) \
 RULE_END \
 \
 RULE(func_type_args) \
 	VAR SUB(type) REDUCE_TAG(func_type_args, 0) \
 	VAR SUB(func_type_args) TKN(COMMA) SUB(type) REDUCE_TAG(func_type_args, 1) \
+RULE_END \
+\
+RULE(interface_member_list) \
+	VAR SUB(interface_member) REDUCE_TAG(interface_member_list, 0) \
+	VAR SUB(interface_member_list) SUB(interface_member) REDUCE_TAG(interface_member_list, 1) \
+RULE_END \
+\
+RULE(interface_member) \
+	VAR TKN(IDENT) TKN(COLON) SUB(type) TKN(SEMICOLON) REDUCE(interface_member_field) \
 RULE_END \
 \
 \
@@ -313,68 +325,6 @@ RULE(unit) \
 	VAR SUB(func_unit) REDUCE_DEFAULT \
 	VAR SUB(type_unit) REDUCE_DEFAULT \
 	VAR TKN(SEMICOLON) REDUCE_DEFAULT \
-RULE_END \
-\
-\
-\
-/* --- other stuff --------------------------------------------------------- */\
-\
-RULE(decl_specifiers) \
-	VAR SUB(storage_class_specifier) SUB(decl_specifiers) REDUCE_DEFAULT \
-	VAR SUB(type) SUB(decl_specifiers) REDUCE_DEFAULT \
-	VAR SUB(type_qualifier) SUB(decl_specifiers) REDUCE_DEFAULT \
-	VAR SUB(func_specifier) SUB(decl_specifiers) REDUCE_DEFAULT \
-	VAR SUB(alignment_specifier) SUB(decl_specifiers) REDUCE_DEFAULT \
-	VAR SUB(storage_class_specifier) REDUCE_DEFAULT \
-	VAR SUB(type) REDUCE_DEFAULT \
-	VAR SUB(type_qualifier) REDUCE_DEFAULT \
-	VAR SUB(func_specifier) REDUCE_DEFAULT \
-	VAR SUB(alignment_specifier) REDUCE_DEFAULT \
-RULE_END \
-\
-RULE(init_declarator_list) \
-	VAR SUB(init_declarator) REDUCE_DEFAULT \
-	VAR SUB(init_declarator_list) TKN(COMMA) SUB(init_declarator) REDUCE_DEFAULT \
-RULE_END \
-\
-RULE(init_declarator) \
-	VAR SUB(declarator) TKN(ASSIGN) SUB(initializer) REDUCE_DEFAULT \
-	VAR SUB(declarator) REDUCE_DEFAULT \
-RULE_END \
-\
-RULE(declarator) \
-	VAR TKN(IDENT) REDUCE_DEFAULT \
-RULE_END \
-\
-RULE(storage_class_specifier) \
-	VAR TKN(EXTERN) REDUCE_DEFAULT \
-	VAR TKN(STATIC) REDUCE_DEFAULT \
-RULE_END \
-\
-RULE(func_specifier) \
-	VAR TKN(INLINE) REDUCE_DEFAULT \
-RULE_END \
-\
-RULE(type_qualifier) \
-	VAR TKN(CONST) REDUCE_DEFAULT \
-	VAR TKN(VOLATILE) REDUCE_DEFAULT \
-	VAR TKN(ATOMIC) REDUCE_DEFAULT \
-RULE_END \
-\
-RULE(alignment_specifier) \
-	VAR TKN(ALIGNAS) TKN(LPAREN) SUB(type) TKN(RPAREN) REDUCE_DEFAULT \
-	VAR TKN(ALIGNAS) TKN(LPAREN) SUB(expr) TKN(RPAREN) REDUCE_DEFAULT \
-RULE_END \
-\
-RULE(initializer) \
-	VAR TKN(LBRACE) SUB(initializer_list) TKN(RBRACE) REDUCE_DEFAULT \
-	VAR TKN(LBRACE) SUB(initializer_list) TKN(COMMA) TKN(RBRACE) REDUCE_DEFAULT \
-	VAR SUB(assignment_expr) REDUCE_DEFAULT \
-RULE_END \
-\
-RULE(initializer_list) \
-	VAR SUB(initializer) REDUCE_DEFAULT \
-	VAR SUB(initializer_list) TKN(COMMA) SUB(initializer) REDUCE_DEFAULT \
 RULE_END \
 
 // The root node of the grammar.

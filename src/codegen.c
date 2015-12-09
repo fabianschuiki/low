@@ -77,6 +77,25 @@ resolve_type_name (codegen_context_t *context, type_t *type) {
 }
 
 
+static LLVMTypeRef codegen_type(context_t *context, const type_t *type);
+
+
+static LLVMTypeRef
+make_interface_table_type (context_t *context, interface_member_t *members, unsigned num_members) {
+	assert(context);
+	assert(members || num_members == 0);
+	unsigned i;
+
+	unsigned num_fields = 1+num_members;
+	LLVMTypeRef fields[num_fields];
+	fields[0] = LLVMPointerType(LLVMInt8Type(), 0); // pointer to the typeinfo, unused for now
+	for (i = 0; i < num_members; ++i)
+		fields[1+i] = LLVMPointerType(codegen_type(context, members[i].type), 0);
+
+	return LLVMStructType(fields, num_fields, 0);
+}
+
+
 static LLVMTypeRef
 codegen_type (context_t *context, const type_t *type) {
 	assert(type);
@@ -134,6 +153,13 @@ codegen_type (context_t *context, const type_t *type) {
 		case AST_ARRAY_TYPE: {
 			LLVMTypeRef element = codegen_type(context, type->array.type);
 			return LLVMArrayType(element, type->array.length);
+		}
+		case AST_INTERFACE_TYPE: {
+			LLVMTypeRef fields[] = {
+				LLVMPointerType(make_interface_table_type(context, type->interface.members, type->interface.num_members), 0),
+				LLVMPointerType(LLVMInt8Type(), 0), // pointer to the object
+			};
+			return LLVMStructType(fields, 2, 0);
 		}
 		default:
 			fprintf(stderr, "%s.%d: codegen for type kind %d not implemented\n", __FILE__, __LINE__, type->kind);
@@ -218,20 +244,31 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 		case AST_MEMBER_ACCESS_EXPR: {
 			determine_type(self, context, expr->member_access.target, 0);
 			type_t *st = resolve_type_name(context, &expr->member_access.target->type);
-			type_t tmp;
-			if (st->pointer > 0) {
-				tmp = *st;
-				--tmp.pointer;
-				st = resolve_type_name(context, &tmp);
+			if (st->kind == AST_INTERFACE_TYPE) {
+				if (st->pointer > 0)
+					derror(&expr->loc, "cannot access member of pointer to an interface, dereference the pointer\n");
+				for (i = 0; i < st->interface.num_members; ++i)
+					if (strcmp(expr->member_access.name, st->interface.members[i].name) == 0)
+						break;
+				if (i == st->interface.num_members)
+					derror(&expr->loc, "interface has no member named '%s'\n", expr->member_access.name);
+				type_copy(&expr->type, st->interface.members[i].type);
+			} else {
+				type_t tmp;
+				if (st->pointer > 0) {
+					tmp = *st;
+					--tmp.pointer;
+					st = resolve_type_name(context, &tmp);
+				}
+				if (st->kind != AST_STRUCT_TYPE)
+					derror(&expr->loc, "cannot access member of non-struct\n");
+				for (i = 0; i < st->strct.num_members; ++i)
+					if (strcmp(expr->member_access.name, st->strct.members[i].name) == 0)
+						break;
+				if (i == st->strct.num_members)
+					derror(&expr->loc, "struct has no member named '%s'\n", expr->member_access.name);
+				type_copy(&expr->type, st->strct.members[i].type);
 			}
-			if (st->kind != AST_STRUCT_TYPE)
-				derror(&expr->loc, "cannot access member of non-struct\n");
-			for (i = 0; i < st->strct.num_members; ++i)
-				if (strcmp(expr->member_access.name, st->strct.members[i].name) == 0)
-					break;
-			if (i == st->strct.num_members)
-				derror(&expr->loc, "struct has no member named '%s'\n", expr->member_access.name);
-			type_copy(&expr->type, st->strct.members[i].type);
 		} break;
 
 		case AST_INCDEC_EXPR: {
@@ -676,27 +713,50 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 				stderef = resolve_type_name(context, &tmp);
 			}
 
-			// char *sts = type_describe(stderef);
-			// printf("accessing member %s of %s\n", expr->member_access.name, sts);
-			// free(sts);
-			if (st->pointer > 1)
-				derror(&expr->loc, "cannot access member across multiple indirection\n");
-			LLVMValueRef target = codegen_expr(self, context, expr->member_access.target, st->pointer == 0, 0);
-			if (!target)
-				derror(&expr->loc, "cannot member-access target\n");
-			// LLVMValueRef struct_ptr = st->pointer == 1 ? LLVMBuildLoad(self->builder, target, "") : target;
-			LLVMValueRef struct_ptr = target;
-			assert(stderef->kind == AST_STRUCT_TYPE && "cannot access member of non-struct");
-			for (i = 0; i < stderef->strct.num_members; ++i)
-				if (strcmp(expr->member_access.name, stderef->strct.members[i].name) == 0)
-					break;
-			assert(i < stderef->strct.num_members && "struct has no such member");
+			LLVMValueRef ptr;
+			if (st->kind == AST_INTERFACE_TYPE) {
+				for (i = 0; i < st->interface.num_members; ++i)
+					if (strcmp(expr->member_access.name, st->interface.members[i].name) == 0)
+						break;
+				assert(i < st->interface.num_members && "interface has no such member");
+				LLVMValueRef target = codegen_expr(self, context, expr->member_access.target, 1, 0);
+				assert(target);
+				LLVMValueRef table_ptr_ptr = LLVMBuildStructGEP(self->builder, target, 0, "table_ptr_ptr");
+				LLVMValueRef table_ptr = LLVMBuildLoad(self->builder, table_ptr_ptr, "table_ptr");
+				LLVMValueRef table_entry_ptr = LLVMBuildStructGEP(self->builder, table_ptr, 1+i, "table_entry_ptr");
+				LLVMValueRef member_offset = LLVMBuildLoad(self->builder, table_entry_ptr, "table_entry");
 
-			// char *target_ts = LLVMPrintTypeToString(LLVMTypeOf(target));
-			// printf("  in LLVM accessing %s of %s\n", expr->member_access.name, target_ts);
-			// LLVMDisposeMessage(target_ts);
-			// type_copy(&expr->type, st->strct.members[i].type);
-			LLVMValueRef ptr = LLVMBuildStructGEP(self->builder, struct_ptr, i, "");
+				LLVMValueRef object_ptr_ptr = LLVMBuildStructGEP(self->builder, target, 1, "object_ptr_ptr");
+				LLVMValueRef object_ptr = LLVMBuildLoad(self->builder, object_ptr_ptr, "object_ptr");
+
+				LLVMValueRef member_offset_int = LLVMBuildPtrToInt(self->builder, member_offset, LLVMInt64Type(), "");
+				LLVMValueRef object_int = LLVMBuildPtrToInt(self->builder, object_ptr, LLVMInt64Type(), "");
+				LLVMValueRef ptr_int = LLVMBuildAdd(self->builder, object_int, member_offset_int, "");
+				ptr = LLVMBuildIntToPtr(self->builder, ptr_int, LLVMTypeOf(member_offset), "");
+
+				// ptr = LLVMConstNull(LLVMPointerType(LLVMInt8Type(), 0));
+
+			} else {
+				if (st->pointer > 1)
+					derror(&expr->loc, "cannot access member across multiple indirection\n");
+				LLVMValueRef target = codegen_expr(self, context, expr->member_access.target, st->pointer == 0, 0);
+				if (!target)
+					derror(&expr->loc, "cannot member-access target\n");
+				// LLVMValueRef struct_ptr = st->pointer == 1 ? LLVMBuildLoad(self->builder, target, "") : target;
+				LLVMValueRef struct_ptr = target;
+				assert(stderef->kind == AST_STRUCT_TYPE && "cannot access member of non-struct");
+				for (i = 0; i < stderef->strct.num_members; ++i)
+					if (strcmp(expr->member_access.name, stderef->strct.members[i].name) == 0)
+						break;
+				assert(i < stderef->strct.num_members && "struct has no such member");
+
+				// char *target_ts = LLVMPrintTypeToString(LLVMTypeOf(target));
+				// printf("  in LLVM accessing %s of %s\n", expr->member_access.name, target_ts);
+				// LLVMDisposeMessage(target_ts);
+				// type_copy(&expr->type, st->strct.members[i].type);
+				ptr = LLVMBuildStructGEP(self->builder, struct_ptr, i, "");
+			}
+
 			return lvalue ? ptr : LLVMBuildLoad(self->builder, ptr, "");
 		}
 
@@ -847,13 +907,58 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 				return target;
 			LLVMTypeRef dst = codegen_type(context, &expr->cast.type);
 
-			type_t *from = &expr->cast.target->type;
-			type_t *to = &expr->cast.type;
+			type_t *from = resolve_type_name(context, &expr->cast.target->type);
+			type_t *to = resolve_type_name(context, &expr->cast.type);
 			assert(from && to);
 			char *from_str = type_describe(from);
 			char *to_str = type_describe(to);
+			from = resolve_type_name(context, from);
+			to = resolve_type_name(context, to);
 
-			if (from->pointer > 0) {
+			if (to->kind == AST_INTERFACE_TYPE) {
+				if (from->pointer == 1) {
+					type_t refd;
+					type_copy(&refd, from);
+					--refd.pointer;
+					type_t *resolved = resolve_type_name(context, &refd);
+
+					if (resolved->kind == AST_STRUCT_TYPE) {
+						// LLVMTypeRef table_type = make_interface_table_type(context, to->interface.members, to->interface.num_members);
+						unsigned num_fields = 1+to->interface.num_members;
+						LLVMValueRef fields[num_fields];
+						fields[0] = LLVMConstNull(LLVMPointerType(LLVMInt8Type(), 0));
+						for (i = 0; i < to->interface.num_members; ++i) {
+							unsigned n;
+							for (n = 0; n < resolved->strct.num_members; ++n)
+								if (strcmp(resolved->strct.members[n].name, to->interface.members[i].name) == 0)
+									break;
+							if (n == resolved->strct.num_members)
+								derror(&expr->loc, "type %s has no member named '%s' required by the interface %s", from_str, to->interface.members[i].name, to_str);
+							if (!type_equal(to->interface.members[i].type, resolved->strct.members[n].type))
+								derror(&expr->loc, "field '%s' is of the wrong type for interface %s", to->interface.members[i].name, to_str);
+							// fields[1+i] = LLVMConstNull(LLVMPointerType(codegen_type(context, resolved->strct.members[n].type), 0));
+							fields[1+i] = LLVMBuildStructGEP(self->builder, LLVMConstNull(LLVMTypeOf(target)), n, "member");
+						}
+						LLVMValueRef table = LLVMConstStruct(fields, num_fields, 0);
+						LLVMValueRef table_global = LLVMAddGlobal(self->module, LLVMTypeOf(table), "interface_table");
+						LLVMSetInitializer(table_global, table);
+						// do some magic here
+						LLVMValueRef target_cast = LLVMBuildPointerCast(self->builder, target, LLVMPointerType(LLVMInt8Type(), 0), "");
+						LLVMValueRef temp = LLVMBuildAlloca(self->builder, dst, "");
+						LLVMBuildStore(self->builder, table_global, LLVMBuildStructGEP(self->builder, temp, 0, "table"));
+						LLVMBuildStore(self->builder, target_cast,  LLVMBuildStructGEP(self->builder, temp, 1, "target"));
+						// LLVMValueRef temp = LLVMBuildAlloca(self->builder, LLVMTypeOf(target_cast), "");
+						// LLVMBuildStore(self->builder, target_cast, temp);
+						// LLVMValueRef temp2 = LLVMBuildLoad(self->builder, temp, "");
+						// return LLVMConstStruct((LLVMValueRef[]){ table_global, temp2 }, 2, 0);
+						return LLVMBuildLoad(self->builder, temp, "");
+					} else {
+						derror(&expr->loc, "type %s is not a pointer to a struct and can therefore not be cast to an interface\n", from_str);
+					}
+				} else {
+					derror(&expr->loc, "only pointers can be cast to an interface\n");
+				}
+			} else if (from->pointer > 0) {
 				if (to->pointer > 0) {
 					return LLVMBuildPointerCast(self->builder, target, dst, "");
 				} else if (to->kind == AST_INTEGER_TYPE) {

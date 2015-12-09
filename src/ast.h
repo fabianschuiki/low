@@ -18,30 +18,34 @@ typedef struct conditional_expr conditional_expr_t;
 typedef struct const_decl const_decl_t;
 typedef struct decl decl_t;
 typedef struct expr expr_t;
-typedef struct new_builtin new_builtin_t;
 typedef struct free_builtin free_builtin_t;
 typedef struct func_param func_param_t;
 typedef struct func_type func_type_t;
 typedef struct func_unit func_unit_t;
 typedef struct incdec_expr incdec_expr_t;
 typedef struct index_access_expr index_access_expr_t;
+typedef struct interface_member interface_member_t;
+typedef struct interface_type interface_type_t;
 typedef struct iteration_stmt iteration_stmt_t;
 typedef struct label_stmt label_stmt_t;
+typedef struct lencap_builtin lencap_builtin_t;
+typedef struct make_builtin make_builtin_t;
 typedef struct member_access_expr member_access_expr_t;
+typedef struct new_builtin new_builtin_t;
+typedef struct number_literal number_literal_t;
+typedef struct number_literal number_literal_t;
 typedef struct selection_stmt selection_stmt_t;
 typedef struct sizeof_expr sizeof_expr_t;
+typedef struct slice_type slice_type_t;
 typedef struct stmt stmt_t;
 typedef struct struct_member struct_member_t;
 typedef struct struct_type struct_type_t;
-typedef struct slice_type slice_type_t;
 typedef struct type type_t;
 typedef struct type_unit type_unit_t;
 typedef struct unary_expr unary_expr_t;
 typedef struct unit unit_t;
 typedef struct variable_decl variable_decl_t;
-typedef struct number_literal number_literal_t;
-typedef struct make_builtin make_builtin_t;
-typedef struct lencap_builtin lencap_builtin_t;
+
 
 // --- type -------------------------------------------------------------
 
@@ -56,6 +60,7 @@ enum type_kind {
 	AST_STRUCT_TYPE,
 	AST_ARRAY_TYPE,
 	AST_SLICE_TYPE,
+	AST_INTERFACE_TYPE,
 };
 
 
@@ -88,6 +93,18 @@ struct slice_type {
 };
 
 
+struct interface_type {
+	unsigned num_members;
+	interface_member_t *members;
+};
+
+struct interface_member {
+	// unsigned kind;
+	char *name;
+	type_t *type;
+};
+
+
 struct type {
 	unsigned kind;
 	unsigned pointer;
@@ -98,6 +115,7 @@ struct type {
 		struct_type_t strct;
 		array_type_t array;
 		slice_type_t slice;
+		interface_type_t interface;
 	};
 };
 

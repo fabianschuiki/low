@@ -1,0 +1,68 @@
+// Copyright (c) 2015 Fabian Schuiki
+// Verifies that interfaces work on struct members.
+// +execute
+
+func printf(int8*, ...) void
+
+type coords2d: interface {
+	x : int32
+	y : int32
+}
+
+type vector2f: struct {
+	int32 x
+	int32 y
+}
+
+type vector3f: struct {
+	int32 x
+	int32 y
+	int32 z
+}
+
+type entity: struct {
+	name   : int8*;
+	y      : int32
+	id     : int64
+	health : float64
+	x      : int32
+	mlamla : int8
+}
+
+func swap_and_sum(coords2d i) int32 {
+	tmp := i.x
+	i.x = i.y
+	i.y = tmp
+	return i.x + i.y
+}
+
+func main() int32 {
+	k1 : vector2f
+	k1.x = 42
+	k1.y = 24
+
+	k2 : vector3f
+	k2.x = 42
+	k2.y = 24
+
+	k3 : entity
+	k3.x = 42
+	k3.y = 24
+
+	s1 := swap_and_sum(#coords2d(&k1))
+	s2 := swap_and_sum(#coords2d(&k2))
+	s3 := swap_and_sum(#coords2d(&k3))
+
+	printf("swap_and_sum(k1) = %d\n", s1);
+	printf("swap_and_sum(k2) = %d\n", s2);
+	printf("swap_and_sum(k3) = %d\n", s3);
+
+	printf("k1 = {x: %d, y: %d}\n", k1.x, k1.y);
+	printf("k2 = {x: %d, y: %d}\n", k2.x, k2.y);
+	printf("k3 = {x: %d, y: %d}\n", k3.x, k3.y);
+
+	return #int32(
+		k1.x != 24 || k1.y != 42 || s1 != 66 ||
+		k2.x != 24 || k2.y != 42 || s2 != 66 ||
+		k3.x != 24 || k3.y != 42 || s3 != 66)
+}

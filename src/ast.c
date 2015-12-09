@@ -289,6 +289,12 @@ type_describe(type_t *self) {
 			free(t);
 			break;
 		}
+		case AST_INTERFACE_TYPE:
+			if (self->interface.num_members == 0)
+				s = strdup("interface{}");
+			else
+				s = strdup("interface{...}");
+			break;
 		default:
 			fprintf(stderr, "%s.%d: type_describe for type kind %d not implemented\n", __FILE__, __LINE__, self->kind);
 			abort();
@@ -313,6 +319,12 @@ type_copy (type_t *dst, const type_t *src) {
 	*dst = *src;
 	unsigned i;
 	switch (src->kind) {
+		case AST_NO_TYPE:
+		case AST_VOID_TYPE:
+		case AST_BOOLEAN_TYPE:
+		case AST_INTEGER_TYPE:
+		case AST_FLOAT_TYPE:
+			break;
 		case AST_FUNC_TYPE:
 			dst->func.return_type = malloc(sizeof(type_t));
 			type_copy(dst->func.return_type, src->func.return_type);
@@ -330,11 +342,21 @@ type_copy (type_t *dst, const type_t *src) {
 				type_copy(dst->strct.members[i].type, src->strct.members[i].type);
 				dst->strct.members[i].name = strdup(src->strct.members[i].name);
 			}
+			break;
 		case AST_ARRAY_TYPE:
 			type_copy(dst->array.type, src->array.type);
 			break;
-		default:
+		case AST_INTERFACE_TYPE:
+			dst->interface.members = malloc(src->interface.num_members * sizeof(interface_member_t));
+			for (i = 0; i < src->interface.num_members; ++i) {
+				dst->interface.members[i].type = malloc(sizeof(type_t));
+				type_copy(dst->interface.members[i].type, src->interface.members[i].type);
+				dst->interface.members[i].name = strdup(src->interface.members[i].name);
+			}
 			break;
+		default:
+			fprintf(stderr, "%s.%d: type_copy for type kind %d not implemented\n", __FILE__, __LINE__, src->kind);
+			abort();
 	}
 }
 
@@ -379,6 +401,15 @@ type_equal (const type_t *a, const type_t *b) {
 		}
 		case AST_ARRAY_TYPE:
 			return a->array.length == b->array.length || type_equal(a->array.type, b->array.type);
+		case AST_INTERFACE_TYPE: {
+			if (a->interface.num_members != b->interface.num_members)
+				return 0;
+			for (i = 0; i < a->interface.num_members; ++i)
+				if (strcmp(a->interface.members[i].name, b->interface.members[i].name) != 0 ||
+					!type_equal(a->interface.members[i].type, b->interface.members[i].type))
+					return 0;
+			return 1;
+		}
 		default:
 			fprintf(stderr, "%s.%d: type_equal for type kind %d not implemented\n", __FILE__, __LINE__, a->kind);
 			abort();
@@ -421,6 +452,14 @@ type_dispose (type_t *self) {
 		case AST_SLICE_TYPE:
 			type_dispose(self->slice.type);
 			free(self->slice.type);
+			break;
+		case AST_INTERFACE_TYPE:
+			for (i = 0; i < self->interface.num_members; ++i) {
+				type_dispose(self->interface.members[i].type);
+				free(self->interface.members[i].name);
+				free(self->interface.members[i].type);
+			}
+			free(self->interface.members);
 			break;
 		default:
 			fprintf(stderr, "%s.%d: type_dispose for type kind %d not implemented\n", __FILE__, __LINE__, self->kind);

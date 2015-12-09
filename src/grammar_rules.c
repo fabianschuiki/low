@@ -787,6 +787,14 @@ REDUCER(struct_member) {
 	out->ptr = m;
 }
 
+REDUCER(struct_member2) {
+	struct_member_t *m = malloc(sizeof(struct_member_t));
+	bzero(m, sizeof(*m));
+	m->name = strndup(in[0].first, in[0].last-in[0].first);
+	m->type = in[2].ptr;
+	out->ptr = m;
+}
+
 REDUCER(type_array) {
 	type_t *t = malloc(sizeof(type_t));
 	bzero(t, sizeof(*t));
@@ -833,6 +841,41 @@ REDUCER(func_type_args) {
 		array_add(in[0].ptr, in[2].ptr);
 		free(in[2].ptr);
 	}
+}
+
+REDUCER(type_interface) {
+	type_t *t = malloc(sizeof(type_t));
+	bzero(t, sizeof(*t));
+	t->kind = AST_INTERFACE_TYPE;
+	if (tag == 1) {
+		array_t *p = in[2].ptr;
+		array_shrink(p);
+		t->interface.num_members = p->size;
+		t->interface.members = p->items;
+		free(p);
+	}
+	out->ptr = t;
+}
+
+REDUCER(interface_member_list) {
+	if (tag == 0) {
+		array_t *a = malloc(sizeof(array_t));
+		array_init(a, sizeof(interface_member_t));
+		array_add(a, in[0].ptr);
+		free(in[0].ptr);
+		out->ptr = a;
+	} else {
+		array_add(in[0].ptr, in[1].ptr);
+		free(in[1].ptr);
+	}
+}
+
+REDUCER(interface_member_field) {
+	interface_member_t *m = malloc(sizeof(interface_member_t));
+	bzero(m, sizeof(*m));
+	m->name = strndup(in[0].first, in[0].last-in[0].first);
+	m->type = in[2].ptr;
+	out->ptr = m;
 }
 
 
