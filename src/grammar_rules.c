@@ -300,6 +300,18 @@ REDUCER(builtin_func_make) {
 }
 
 
+
+REDUCER(builtin_func_lencap) {
+	expr_t *e = malloc(sizeof(expr_t));
+	bzero(e, sizeof(*e));
+	e->loc = in[0].loc;
+	e->lencap.expr = in[2].ptr;
+	e->lencap.kind = tag;
+
+	e->kind = AST_LENCAP_BUILTIN;
+	out->ptr = e;
+}
+
 // --- cast_expr ---------------------------------------------------------------
 
 REDUCER(cast_expr) {

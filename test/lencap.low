@@ -1,0 +1,22 @@
+// Copyright (c) 2015 Thomas Richner
+// Verify the cap and len builtin function.
+// +execute
+
+func printf(int8* f,...) void
+
+func main() int32{
+	
+	var []int32 blub
+
+	blub = make([]int32,77)
+
+	var int32 j = 6
+
+	printf("blub[%d] = %d\n",j,blub[j])
+
+	printf("cap(blub) = %d\n",cap(blub))
+
+	printf("len(blub) = %d\n",len(blub))
+
+	return 0
+}
