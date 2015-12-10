@@ -346,6 +346,9 @@ type_copy (type_t *dst, const type_t *src) {
 		case AST_ARRAY_TYPE:
 			type_copy(dst->array.type, src->array.type);
 			break;
+		case AST_SLICE_TYPE:
+			type_copy(dst->slice.type, src->slice.type);
+			break;
 		case AST_INTERFACE_TYPE:
 			dst->interface.members = malloc(src->interface.num_members * sizeof(interface_member_t));
 			for (i = 0; i < src->interface.num_members; ++i) {
