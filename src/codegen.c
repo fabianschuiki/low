@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015 Fabian Schuiki, Thomas Richner */
 #include "ast.h"
 #include "codegen.h"
 #include "llvm_intrinsics.h"

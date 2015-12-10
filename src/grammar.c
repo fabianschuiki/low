@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015 Fabian Schuiki, Thomas Richner */
 #include "grammar.h"
 #include "lexer.h"
 #include <stdio.h>
