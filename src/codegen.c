@@ -719,23 +719,16 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 					if (strcmp(expr->member_access.name, st->interface.members[i].name) == 0)
 						break;
 				assert(i < st->interface.num_members && "interface has no such member");
-				LLVMValueRef target = codegen_expr(self, context, expr->member_access.target, 1, 0);
+				LLVMValueRef target = codegen_expr(self, context, expr->member_access.target, 0, 0);
 				assert(target);
-				LLVMValueRef table_ptr_ptr = LLVMBuildStructGEP(self->builder, target, 0, "table_ptr_ptr");
-				LLVMValueRef table_ptr = LLVMBuildLoad(self->builder, table_ptr_ptr, "table_ptr");
-				LLVMValueRef table_entry_ptr = LLVMBuildStructGEP(self->builder, table_ptr, 1+i, "table_entry_ptr");
-				LLVMValueRef member_offset = LLVMBuildLoad(self->builder, table_entry_ptr, "table_entry");
+				LLVMValueRef table_ptr = LLVMBuildExtractValue(self->builder, target, 0, "table_ptr");
+				LLVMValueRef object_ptr = LLVMBuildExtractValue(self->builder, target, 1, "object_ptr");
 
-				LLVMValueRef object_ptr_ptr = LLVMBuildStructGEP(self->builder, target, 1, "object_ptr_ptr");
-				LLVMValueRef object_ptr = LLVMBuildLoad(self->builder, object_ptr_ptr, "object_ptr");
-
-				LLVMValueRef member_offset_int = LLVMBuildPtrToInt(self->builder, member_offset, LLVMInt64Type(), "");
-				LLVMValueRef object_int = LLVMBuildPtrToInt(self->builder, object_ptr, LLVMInt64Type(), "");
-				LLVMValueRef ptr_int = LLVMBuildAdd(self->builder, object_int, member_offset_int, "");
-				ptr = LLVMBuildIntToPtr(self->builder, ptr_int, LLVMTypeOf(member_offset), "");
-
-				// ptr = LLVMConstNull(LLVMPointerType(LLVMInt8Type(), 0));
-
+				LLVMValueRef table = LLVMBuildLoad(self->builder, table_ptr, "table");
+				LLVMValueRef member_offset = LLVMBuildExtractValue(self->builder, table, 1+i, "member_offset");
+				LLVMValueRef member_offset_int = LLVMBuildPtrToInt(self->builder, member_offset, LLVMInt64Type(), "member_offset_int");
+				LLVMValueRef ptr_bytes = LLVMBuildInBoundsGEP(self->builder, object_ptr, &member_offset_int, 1, "ptr_bytes");
+				ptr = LLVMBuildPointerCast(self->builder, ptr_bytes, LLVMTypeOf(member_offset), "");
 			} else {
 				if (st->pointer > 1)
 					derror(&expr->loc, "cannot access member across multiple indirection\n");
@@ -942,16 +935,12 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 						LLVMValueRef table = LLVMConstStruct(fields, num_fields, 0);
 						LLVMValueRef table_global = LLVMAddGlobal(self->module, LLVMTypeOf(table), "interface_table");
 						LLVMSetInitializer(table_global, table);
-						// do some magic here
 						LLVMValueRef target_cast = LLVMBuildPointerCast(self->builder, target, LLVMPointerType(LLVMInt8Type(), 0), "");
-						LLVMValueRef temp = LLVMBuildAlloca(self->builder, dst, "");
-						LLVMBuildStore(self->builder, table_global, LLVMBuildStructGEP(self->builder, temp, 0, "table"));
-						LLVMBuildStore(self->builder, target_cast,  LLVMBuildStructGEP(self->builder, temp, 1, "target"));
-						// LLVMValueRef temp = LLVMBuildAlloca(self->builder, LLVMTypeOf(target_cast), "");
-						// LLVMBuildStore(self->builder, target_cast, temp);
-						// LLVMValueRef temp2 = LLVMBuildLoad(self->builder, temp, "");
-						// return LLVMConstStruct((LLVMValueRef[]){ table_global, temp2 }, 2, 0);
-						return LLVMBuildLoad(self->builder, temp, "");
+
+						LLVMValueRef result = LLVMConstNull(dst);
+						result = LLVMBuildInsertValue(self->builder, result, table_global, 0, "");
+						result = LLVMBuildInsertValue(self->builder, result, target_cast, 1, "");
+						return result;
 					} else {
 						derror(&expr->loc, "type %s is not a pointer to a struct and can therefore not be cast to an interface\n", from_str);
 					}
