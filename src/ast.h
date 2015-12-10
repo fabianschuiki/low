@@ -41,6 +41,7 @@ typedef struct unit unit_t;
 typedef struct variable_decl variable_decl_t;
 typedef struct number_literal number_literal_t;
 typedef struct make_builtin make_builtin_t;
+typedef struct lencap_builtin lencap_builtin_t;
 
 // --- type -------------------------------------------------------------
 
@@ -123,6 +124,7 @@ enum expr_kind {
 	AST_NEW_BUILTIN,
 	AST_FREE_BUILTIN,
 	AST_MAKE_BUILTIN,
+	AST_LENCAP_BUILTIN,
 };
 
 
@@ -200,6 +202,16 @@ struct free_builtin {
 
 struct make_builtin {
 	type_t type;
+	expr_t *expr;
+};
+
+enum lencap_kind {
+	AST_LEN,
+	AST_CAP
+};
+
+struct lencap_builtin {
+	unsigned kind;
 	expr_t *expr;
 };
 
@@ -297,6 +309,7 @@ struct expr {
 		conditional_expr_t conditional;
 		assignment_expr_t assignment;
 		comma_expr_t comma;
+		lencap_builtin_t lencap;
 	};
 };
 

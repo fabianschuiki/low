@@ -320,6 +320,17 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 			type_copy(&expr->type, &expr->make.type);
 		} break;
 
+		case AST_LENCAP_BUILTIN: {
+			determine_type(self,context,expr->lencap.expr, 0);
+
+			if (expr->lencap.expr->type.kind != AST_SLICE_TYPE) {
+				derror(&expr->loc, "cannot use with non-slice type\n");
+			}
+
+			type_t int_type = {.kind=AST_INTEGER_TYPE,.width=64};
+			type_copy(&expr->type, &int_type);
+		} break;
+
 		case AST_CAST_EXPR: {
 			determine_type(self, context, expr->cast.target, &expr->cast.type);
 			type_copy(&expr->type, &expr->cast.type);
@@ -809,6 +820,24 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 			LLVMValueRef ptr = LLVMBuildAlloca(self->builder,type,"");
 
 			return LLVMBuildLoad(self->builder,codegen_slice_new(self,context,ptr,expr->make.type.slice.type,expr->make.expr),"");
+		}
+
+		case AST_LENCAP_BUILTIN: {
+			assert(expr->lencap.expr->type.kind==AST_SLICE_TYPE && "CAP/LEN only for slices defined");
+			LLVMValueRef aslice = codegen_expr(self, context, expr->lencap.expr, 0, 0);
+
+			//LLVMTypeRef type = codegen_type(context, &expr->lencap.expr->type);
+
+			LLVMValueRef eptr;
+			if(expr->lencap.kind==AST_LEN){
+				eptr = LLVMBuildStructGEP(self->builder,aslice,1,"len");
+			}else if(expr->lencap.kind==AST_CAP){
+				eptr = LLVMBuildStructGEP(self->builder,aslice,2,"cap");
+			}else{
+				assert(false && "what a terrible failure :(");
+			}
+
+			return LLVMBuildLoad(self->builder,eptr,"");
 		}
 
 		case AST_CAST_EXPR: {

@@ -66,6 +66,11 @@ expr_dispose (expr_t *self) {
 		case AST_MAKE_BUILTIN:
 			type_dispose(&self->make.type);
 			expr_dispose(self->make.expr);
+			free(self->make.expr);
+			break;
+		case AST_LENCAP_BUILTIN:
+			expr_dispose(self->lencap.expr);
+			free(self->lencap.expr);
 			break;
 		case AST_CAST_EXPR:
 			expr_dispose(self->cast.target);
