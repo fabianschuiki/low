@@ -6,8 +6,8 @@ func printf(int8* f,...) void
 
 func exit(int32) void
 
-func assert(int32 c) void{
-	if(c!=0){
+func assert(int1 c) void{
+	if(c==0){
 		printf("Assert failed, exiting.\n")
 		exit(1)
 	}
@@ -16,26 +16,24 @@ func assert(int32 c) void{
 
 func main(int32 argc,int8** argv) int32 {
 
-	var int8 i = 55
 	var []int32 blargh = make([]int32,77)
+
+	var int64 i
+	for (i = 0; i < 77; ++i) {
+		assert(blargh[i] == 0)
+	}
 
 	blargh[6] = 17
 
-	var int32 j = 0
+	var int64 j = 6
 	printf("blargh[%d]=%d\n",j,blargh[j])
-	assert(blargh[j])
+	assert(blargh[j]==17)
+
+	blargh[76] = 17
 
 	j = 76
 	printf("blargh[%d]=%d\n",j,blargh[j])
-	assert(blargh[j])
-
-	j = 6
-	printf("blargh[%d]=%d\n",j,blargh[j])
-	assert(blargh[j]-17)
-
-	j = 50
-	printf("blargh[%d]=%d\n",j,blargh[j])
-	assert(blargh[j])
+	assert(blargh[j]==17)
 
 	return 0
 }

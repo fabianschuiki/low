@@ -4,8 +4,17 @@
 
 func printf(int8* f,...) void
 
+func exit(int32) void
+
+func assert(int1 c) void{
+	if(c==0){
+		printf("Assert failed, exiting.\n")
+		exit(1)
+	}
+}
+
 func main() int32{
-	
+
 	var []int32 blub
 
 	blub = make([]int32,77)
@@ -13,6 +22,13 @@ func main() int32{
 	var int32 j = 6
 
 	printf("blub[%d] = %d\n",j,blub[j])
+	assert(blub[j]==0)
+
+	assert(blub[7]==0)
+	assert(blub[8]==0)
+	assert(blub[0]==0)
+	assert(blub[1]==0)
+	assert(blub[2]==0)
 
 	printf("cap(blub) = %d\n",cap(blub))
 
