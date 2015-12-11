@@ -547,9 +547,7 @@ codegen_slice_new(codegen_t *self, codegen_context_t *context, LLVMValueRef ptr,
 	//---- init cap to given value
 	LLVMValueRef caparg = codegen_expr(self, context, cap, 0, 0);
 	LLVMValueRef capptr = LLVMBuildStructGEP(self->builder, ptr, 2, "");
-	LLVMTypeRef dst = LLVMGetElementType(LLVMTypeOf(capptr));
-	caparg = LLVMBuildIntCast(self->builder, caparg, dst,"");
-
+	caparg = LLVMBuildIntCast(self->builder, caparg, LLVMInt64Type(),"");
 	LLVMBuildStore(self->builder,caparg,capptr);
 
 	//---- alloc array on heap
