@@ -22,8 +22,15 @@ log_skip() { printf "\r[skip]  %s\n" "$1"; }
 log_fail() { printf "\r[`tput setaf 1`fail`tput sgr0`]  %s\n" "$1"; expr `cat .test_failed` + 1 > .test_failed; }
 log_pass() { printf "\r[`tput setaf 2`pass`tput sgr0`]  %s\n" "$1"; expr `cat .test_passed` + 1 > .test_passed; }
 
-# iterate over all tests in the test directory
+
+
+
 DIR=$(dirname $0)
+
+# delete old compilated tests
+rm -f $DIR/*.ll
+
+# iterate over all tests in the test directory
 find $DIR -name "*.low" -print0 | while read -d $'\0' TEST; do
 	TESTLL=${TEST%.low}.ll
 	TEST_NAME=${TEST#$DIR/}
@@ -89,6 +96,9 @@ find $DIR -name "*.low" -print0 | while read -d $'\0' TEST; do
 
 	log_pass "$TEST_NAME"
 done
+
+# delete compilated files
+rm -f $DIR/*.ll
 
 NUM_PASSED=`cat .test_passed`
 NUM_FAILED=`cat .test_failed`
