@@ -28,7 +28,7 @@ log_pass() { printf "\r[`tput setaf 2`pass`tput sgr0`]  %s\n" "$1"; expr `cat .t
 DIR=$(dirname $0)
 
 # delete old compilated tests
-rm $DIR/*.ll
+rm -f $DIR/*.ll
 
 # iterate over all tests in the test directory
 find $DIR -name "*.low" -print0 | while read -d $'\0' TEST; do
@@ -98,7 +98,7 @@ find $DIR -name "*.low" -print0 | while read -d $'\0' TEST; do
 done
 
 # delete compilated files
-rm $DIR/*.ll
+rm -f $DIR/*.ll
 
 NUM_PASSED=`cat .test_passed`
 NUM_FAILED=`cat .test_failed`
