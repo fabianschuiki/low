@@ -33,7 +33,6 @@ typedef struct make_builtin make_builtin_t;
 typedef struct member_access_expr member_access_expr_t;
 typedef struct new_builtin new_builtin_t;
 typedef struct number_literal number_literal_t;
-typedef struct number_literal number_literal_t;
 typedef struct selection_stmt selection_stmt_t;
 typedef struct sizeof_expr sizeof_expr_t;
 typedef struct slice_type slice_type_t;
