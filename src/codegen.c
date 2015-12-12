@@ -879,13 +879,13 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 
 			//LLVMTypeRef type = codegen_type(context, &expr->lencap.expr->type);
 
-			LLVMValueRef eptr;
+			LLVMValueRef eptr = NULL;
 			if(expr->lencap.kind==AST_LEN){
 				eptr = LLVMBuildStructGEP(self->builder,aslice,1,"len");
 			}else if(expr->lencap.kind==AST_CAP){
 				eptr = LLVMBuildStructGEP(self->builder,aslice,2,"cap");
 			}else{
-				assert(false && "what a terrible failure :(");
+				derror(&expr->loc,"what a terrible failure :(");
 			}
 
 			return LLVMBuildLoad(self->builder,eptr,"");
