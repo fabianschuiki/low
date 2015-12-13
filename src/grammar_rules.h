@@ -173,8 +173,8 @@ RULE(block_item) \
 RULE_END \
 \
 RULE(selection_stmt) \
-	VAR TKN(IF) TKN(LPAREN) SUB(expr) TKN(RPAREN) SUB(stmt) REDUCE_TAG(selection_stmt_if, 0) \
-	VAR TKN(IF) TKN(LPAREN) SUB(expr) TKN(RPAREN) SUB(stmt) TKN(ELSE) SUB(stmt) REDUCE_TAG(selection_stmt_if, 1) \
+	VAR TKN(IF) SUB(expr) SUB(compound_stmt) REDUCE_TAG(selection_stmt_if, 0) \
+	VAR TKN(IF) SUB(expr) SUB(compound_stmt) TKN(ELSE) SUB(stmt) REDUCE_TAG(selection_stmt_if, 1) \
 	VAR TKN(SWITCH) TKN(LPAREN) SUB(expr) TKN(RPAREN) SUB(stmt) REDUCE(selection_stmt_switch) \
 RULE_END \
 \
