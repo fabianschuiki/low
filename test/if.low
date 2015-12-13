@@ -1,0 +1,28 @@
+// Copyright (c) 2015 Thomas Richner
+// Verify if statements.
+// +execute
+
+func printf(int8* f,...) void
+
+func main () int32 {
+
+	var int32 i = 17
+
+	if i==17 {
+		printf(" %d", i)
+	}
+
+	if i<77 {
+		printf(" %d", i)
+	} else {
+		printf("else %d", i)
+	}
+
+	if i>0 {
+		printf(" %d", i)
+	} else if i==0 {
+		printf("elseif %d", i)
+	} else {}
+
+	return 0;
+}
