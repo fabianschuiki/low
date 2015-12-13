@@ -80,7 +80,7 @@ func main(int32 argc, int8** argv) int32 {
 	// Sum up the arguments.
 	var int32 i
 	var int32 sum = 0
-	for (i = 1; i < argc; ++i) {
+	for i = 1; i < argc; ++i {
 		var int32 v = atoi(argv[i])
 
 		if (v == 0) {
@@ -161,7 +161,7 @@ func main(int32 argc, int8** argv) int32 {
 	// Dump the arguments we have received.
 	var int32 i
 	var int32 n
-	for (i = 0, n = 0; i < argc; ++i, ++n) {
+	for i = 0, n = 0; i < argc; ++i, ++n {
 		printf("arg #%d = %s\n", i, argv[i])
 	}
 
