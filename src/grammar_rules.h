@@ -181,8 +181,11 @@ RULE_END \
 RULE(iteration_stmt) \
 	VAR TKN(WHILE) TKN(LPAREN) SUB(expr) TKN(RPAREN) SUB(stmt) REDUCE(iteration_stmt_while) \
 	VAR TKN(DO) SUB(stmt) TKN(WHILE) TKN(LPAREN) SUB(expr) TKN(RPAREN) TKN(SEMICOLON) REDUCE(iteration_stmt_do) \
-	VAR TKN(FOR) TKN(LPAREN) SUB(expr_stmt) SUB(expr_stmt) SUB(expr) TKN(RPAREN) SUB(stmt) REDUCE_TAG(iteration_stmt_for, 0) \
-	VAR TKN(FOR) TKN(LPAREN) SUB(expr_stmt) SUB(expr_stmt) TKN(RPAREN) SUB(stmt) REDUCE_TAG(iteration_stmt_for, 1) \
+	/*VAR TKN(FOR) TKN(LPAREN) SUB(expr_stmt) SUB(expr_stmt) SUB(expr) TKN(RPAREN) SUB(stmt) REDUCE_TAG(iteration_stmt_for, 0)*/ \
+	/*VAR TKN(FOR) TKN(LPAREN) SUB(expr_stmt) SUB(expr_stmt) TKN(RPAREN) SUB(stmt) REDUCE_TAG(iteration_stmt_for, 1)*/ \
+	VAR TKN(FOR) SUB(expr_stmt) SUB(expr_stmt) SUB(expr) SUB(compound_stmt) REDUCE_TAG(iteration_stmt_for2, 0) \
+	VAR TKN(FOR) SUB(expr_stmt) SUB(expr_stmt) SUB(compound_stmt) TKN(RBRACE) REDUCE_TAG(iteration_stmt_for2, 1) \
+	VAR TKN(FOR) SUB(expr) SUB(compound_stmt) REDUCE(iteration_stmt_for_cond) \
 RULE_END \
 \
 RULE(jump_stmt) \

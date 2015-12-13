@@ -19,7 +19,7 @@ func main(int32 argc,int8** argv) int32 {
 	var []int32 blargh = make([]int32,77)
 
 	var int64 i
-	for (i = 0; i < 77; ++i) {
+	for i = 0; i < 77; ++i {
 		assert(blargh[i] == 0)
 	}
 

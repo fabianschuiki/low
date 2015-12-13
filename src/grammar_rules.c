@@ -579,6 +579,45 @@ REDUCER(iteration_stmt_for) {
 	out->ptr = s;
 }
 
+REDUCER(iteration_stmt_for2) {
+	stmt_t *s = malloc(sizeof(stmt_t));
+	bzero(s, sizeof(*s));
+	s->kind = AST_FOR_STMT;
+	s->loc = in[0].loc;
+
+	if (in[1].ptr) {
+		s->iteration.initial = ((stmt_t*)in[1].ptr)->expr;
+		free(in[1].ptr);
+	}
+	if (in[2].ptr) {
+		s->iteration.condition = ((stmt_t*)in[2].ptr)->expr;
+		free(in[2].ptr);
+	}
+	if (tag == 0) {
+		s->iteration.step = in[3].ptr;
+		s->iteration.stmt = in[4].ptr;
+	} else {
+		s->iteration.stmt = in[3].ptr;
+	}
+	out->ptr = s;
+}
+
+//TKN(FOR) SUB(expr) TKN(LBRACE) SUB(stmt) TKN(RBRACE) REDUCE(iteration_stmt_for_cond)
+
+REDUCER(iteration_stmt_for_cond){
+	stmt_t *s = malloc(sizeof(stmt_t));
+	bzero(s, sizeof(*s));
+	s->kind = AST_WHILE_STMT;
+	s->loc = in[0].loc;
+	if (in[1].ptr) {
+		s->iteration.condition = in[1].ptr;
+	}else{
+		fprintf(stderr,"while(1) like for loop not supported yet :'(\n");
+	}
+
+	s->iteration.stmt = in[2].ptr;
+	out->ptr = s;
+}
 
 // --- jump_stmt ---------------------------------------------------------------
 

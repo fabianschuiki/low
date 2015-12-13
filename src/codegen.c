@@ -1372,6 +1372,37 @@ codegen_stmt (codegen_t *self, codegen_context_t *context, stmt_t *stmt) {
 			break;
 		}
 
+		case AST_WHILE_STMT: {
+			context_t subctx;
+			codegen_context_init(&subctx);
+			subctx.prev = context;
+
+			LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(self->builder));
+			LLVMBasicBlockRef loop_block = LLVMAppendBasicBlock(func, "loopcond");
+			LLVMBasicBlockRef body_block = LLVMAppendBasicBlock(func, "loopbody");
+			LLVMBasicBlockRef exit_block = LLVMAppendBasicBlock(func, "loopexit");
+			LLVMBuildBr(self->builder, loop_block);
+
+			codegen_t cg = *self;
+			cg.continue_block = loop_block;
+			cg.break_block = exit_block;
+
+			// Check the loop condition.
+			LLVMPositionBuilderAtEnd(self->builder, loop_block);
+			LLVMValueRef cond = codegen_expr_top(self, &subctx, stmt->iteration.condition, 0, &bool_type);
+			LLVMBuildCondBr(self->builder, cond, body_block, exit_block);
+
+			// Execute the loop body.
+			LLVMPositionBuilderAtEnd(self->builder, body_block);
+			if (stmt->iteration.stmt)
+				codegen_stmt(&cg, &subctx, stmt->iteration.stmt);
+			LLVMBuildBr(self->builder, loop_block);
+
+			LLVMPositionBuilderAtEnd(self->builder, exit_block);
+			codegen_context_dispose(&subctx);
+			break;
+		}
+
 		case AST_CONTINUE_STMT:
 			assert(self->continue_block && "nowhere to continue to");
 			LLVMBuildBr(self->builder, self->continue_block);
