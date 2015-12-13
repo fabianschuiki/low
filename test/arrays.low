@@ -13,7 +13,7 @@ func main () int32 {
 	v[3] = 4
 	printf("heeeyayyayayayaya, what's going on?\n")
 	var int32 i
-	for (i = 0; i < 4; ++i) {
+	for i = 0; i < 4; ++i {
 		printf("  v[%d] = %d, x[%d] = %d\n", i, v[i], i, x[i]);
 	}
 	return 0;

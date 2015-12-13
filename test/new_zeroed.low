@@ -14,7 +14,7 @@ func main() int32{
 	if (*x1 != 0) return 1
 
 	var int64 i
-	for (i = 0; i < sizeof #foo; ++i) {
+	for i = 0; i < sizeof #foo; ++i {
 		if ((#(int8*)x2)[i] != 0) return 2
 	}
 
