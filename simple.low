@@ -30,7 +30,7 @@ func form_a_struct(int8 v) retval {
 func main(int32 argc, int8** argv) int32 {
 
 	// Verify that we have enough arguments.
-	if (argc <= 1) {
+	if argc <= 1 {
 		printf("usage: %s NUM...\n", argv[0])
 		return 1
 	}
@@ -83,10 +83,10 @@ func main(int32 argc, int8** argv) int32 {
 	for i = 1; i < argc; ++i {
 		var int32 v = atoi(argv[i])
 
-		if (v == 0) {
+		if v == 0 {
 			printf("arg %d is 0, aborting summation\n", i)
 			break
-		} else if (v == 1) {
+		} else if v == 1 {
 			printf("arg %d is 1, ignoring\n", i)
 			continue
 		}

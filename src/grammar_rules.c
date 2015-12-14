@@ -512,15 +512,18 @@ REDUCER(block_item_stmt) {
 
 // --- selection_stmt ----------------------------------------------------------
 
+// VAR TKN(IF) SUB(expr) SUB(compound_stmt) REDUCE_TAG(selection_stmt_if, 0) \
+// VAR TKN(IF) SUB(expr) SUB(compound_stmt) TKN(ELSE) SUB(stmt) REDUCE_TAG(selection_stmt_if, 1) \
+
 REDUCER(selection_stmt_if) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
 	s->kind = AST_IF_STMT;
 	s->loc = in[0].loc;
-	s->selection.condition = in[2].ptr;
-	s->selection.stmt = in[4].ptr;
+	s->selection.condition = in[1].ptr;
+	s->selection.stmt = in[2].ptr;
 	if (tag == 1)
-		s->selection.else_stmt = in[6].ptr;
+		s->selection.else_stmt = in[4].ptr;
 	out->ptr = s;
 }
 
