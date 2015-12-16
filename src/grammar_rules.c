@@ -572,7 +572,7 @@ REDUCER(iteration_stmt_for_step) {
 REDUCER(iteration_stmt_for_while) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
-	s->kind = AST_WHILE_STMT;
+	s->kind = AST_FOR_STMT;
 	s->loc = in[0].loc;
 	if (tag == 1)
 		s->iteration.condition = in[1].ptr;

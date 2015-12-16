@@ -134,7 +134,6 @@ stmt_dispose (stmt_t *self) {
 			free(self->selection.stmt);
 			free(self->selection.else_stmt);
 			break;
-		case AST_WHILE_STMT:
 		case AST_DO_STMT:
 		case AST_FOR_STMT:
 			expr_dispose(self->iteration.initial);
