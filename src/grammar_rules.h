@@ -179,13 +179,29 @@ RULE(selection_stmt) \
 RULE_END \
 \
 RULE(iteration_stmt) \
-	VAR TKN(WHILE) TKN(LPAREN) SUB(expr) TKN(RPAREN) SUB(stmt) REDUCE(iteration_stmt_while) \
 	VAR TKN(DO) SUB(stmt) TKN(WHILE) TKN(LPAREN) SUB(expr) TKN(RPAREN) TKN(SEMICOLON) REDUCE(iteration_stmt_do) \
-	/*VAR TKN(FOR) TKN(LPAREN) SUB(expr_stmt) SUB(expr_stmt) SUB(expr) TKN(RPAREN) SUB(stmt) REDUCE_TAG(iteration_stmt_for, 0)*/ \
-	/*VAR TKN(FOR) TKN(LPAREN) SUB(expr_stmt) SUB(expr_stmt) TKN(RPAREN) SUB(stmt) REDUCE_TAG(iteration_stmt_for, 1)*/ \
-	VAR TKN(FOR) SUB(expr_stmt) SUB(expr_stmt) SUB(expr) SUB(compound_stmt) REDUCE_TAG(iteration_stmt_for2, 0) \
-	VAR TKN(FOR) SUB(expr_stmt) SUB(expr_stmt) SUB(compound_stmt) TKN(RBRACE) REDUCE_TAG(iteration_stmt_for2, 1) \
-	VAR TKN(FOR) SUB(expr) SUB(compound_stmt) REDUCE(iteration_stmt_for_cond) \
+	VAR SUB(iteration_stmt_for_step) SUB(compound_stmt) REDUCE(iteration_stmt_for) \
+	VAR SUB(iteration_stmt_for_while) SUB(compound_stmt) REDUCE(iteration_stmt_for) \
+RULE_END \
+\
+RULE(iteration_stmt_for_init) \
+	VAR TKN(FOR) TKN(SEMICOLON) REDUCE_TAG(iteration_stmt_for_init, 0) \
+	VAR TKN(FOR) SUB(expr) TKN(SEMICOLON) REDUCE_TAG(iteration_stmt_for_init, 1) \
+RULE_END \
+\
+RULE(iteration_stmt_for_cond) \
+	VAR SUB(iteration_stmt_for_init) TKN(SEMICOLON) REDUCE_TAG(iteration_stmt_for_cond, 0) \
+	VAR SUB(iteration_stmt_for_init) SUB(expr) TKN(SEMICOLON) REDUCE_TAG(iteration_stmt_for_cond, 1) \
+RULE_END \
+\
+RULE(iteration_stmt_for_step) \
+	VAR SUB(iteration_stmt_for_cond) REDUCE_TAG(iteration_stmt_for_step, 0) \
+	VAR SUB(iteration_stmt_for_cond) SUB(expr) REDUCE_TAG(iteration_stmt_for_step, 1) \
+RULE_END \
+\
+RULE(iteration_stmt_for_while) \
+	VAR TKN(FOR) REDUCE_TAG(iteration_stmt_for_while, 0) \
+	VAR TKN(FOR) SUB(expr) REDUCE_TAG(iteration_stmt_for_while, 1) \
 RULE_END \
 \
 RULE(jump_stmt) \

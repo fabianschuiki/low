@@ -512,9 +512,6 @@ REDUCER(block_item_stmt) {
 
 // --- selection_stmt ----------------------------------------------------------
 
-// VAR TKN(IF) SUB(expr) SUB(compound_stmt) REDUCE_TAG(selection_stmt_if, 0) \
-// VAR TKN(IF) SUB(expr) SUB(compound_stmt) TKN(ELSE) SUB(stmt) REDUCE_TAG(selection_stmt_if, 1) \
-
 REDUCER(selection_stmt_if) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
@@ -540,16 +537,6 @@ REDUCER(selection_stmt_switch) {
 
 // --- iteration_stmt ----------------------------------------------------------
 
-REDUCER(iteration_stmt_while) {
-	stmt_t *s = malloc(sizeof(stmt_t));
-	bzero(s, sizeof(*s));
-	s->kind = AST_WHILE_STMT;
-	s->loc = in[0].loc;
-	s->iteration.condition = in[2].ptr;
-	s->iteration.stmt = in[4].ptr;
-	out->ptr = s;
-}
-
 REDUCER(iteration_stmt_do) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
@@ -560,66 +547,41 @@ REDUCER(iteration_stmt_do) {
 	out->ptr = s;
 }
 
-REDUCER(iteration_stmt_for) {
+REDUCER(iteration_stmt_for_init) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
 	s->kind = AST_FOR_STMT;
 	s->loc = in[0].loc;
-	if (in[2].ptr) {
-		s->iteration.initial = ((stmt_t*)in[2].ptr)->expr;
-		free(in[2].ptr);
-	}
-	if (in[3].ptr) {
-		s->iteration.condition = ((stmt_t*)in[3].ptr)->expr;
-		free(in[3].ptr);
-	}
-	if (tag == 0) {
-		s->iteration.step = in[4].ptr;
-		s->iteration.stmt = in[6].ptr;
-	} else {
-		s->iteration.stmt = in[5].ptr;
-	}
+	if (tag == 1)
+		s->iteration.initial = in[1].ptr;
 	out->ptr = s;
 }
 
-REDUCER(iteration_stmt_for2) {
-	stmt_t *s = malloc(sizeof(stmt_t));
-	bzero(s, sizeof(*s));
-	s->kind = AST_FOR_STMT;
-	s->loc = in[0].loc;
-
-	if (in[1].ptr) {
-		s->iteration.initial = ((stmt_t*)in[1].ptr)->expr;
-		free(in[1].ptr);
-	}
-	if (in[2].ptr) {
-		s->iteration.condition = ((stmt_t*)in[2].ptr)->expr;
-		free(in[2].ptr);
-	}
-	if (tag == 0) {
-		s->iteration.step = in[3].ptr;
-		s->iteration.stmt = in[4].ptr;
-	} else {
-		s->iteration.stmt = in[3].ptr;
-	}
-	out->ptr = s;
+REDUCER(iteration_stmt_for_cond) {
+	stmt_t *s = in->ptr;
+	if (tag == 1)
+		s->iteration.condition = in[1].ptr;
 }
 
-//TKN(FOR) SUB(expr) TKN(LBRACE) SUB(stmt) TKN(RBRACE) REDUCE(iteration_stmt_for_cond)
+REDUCER(iteration_stmt_for_step) {
+	stmt_t *s = in->ptr;
+	if (tag == 1)
+		s->iteration.step = in[1].ptr;
+}
 
-REDUCER(iteration_stmt_for_cond){
+REDUCER(iteration_stmt_for_while) {
 	stmt_t *s = malloc(sizeof(stmt_t));
 	bzero(s, sizeof(*s));
 	s->kind = AST_WHILE_STMT;
 	s->loc = in[0].loc;
-	if (in[1].ptr) {
+	if (tag == 1)
 		s->iteration.condition = in[1].ptr;
-	}else{
-		fprintf(stderr,"while(1) like for loop not supported yet :'(\n");
-	}
-
-	s->iteration.stmt = in[2].ptr;
 	out->ptr = s;
+}
+
+REDUCER(iteration_stmt_for) {
+	stmt_t *s = in->ptr;
+	s->iteration.stmt = in[1].ptr;
 }
 
 // --- jump_stmt ---------------------------------------------------------------

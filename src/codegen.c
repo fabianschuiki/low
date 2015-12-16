@@ -1337,7 +1337,8 @@ codegen_stmt (codegen_t *self, codegen_context_t *context, stmt_t *stmt) {
 			context_t subctx;
 			codegen_context_init(&subctx);
 			subctx.prev = context;
-			codegen_expr_top(self, &subctx, stmt->iteration.initial, 0, 0);
+			if (stmt->iteration.initial)
+				codegen_expr_top(self, &subctx, stmt->iteration.initial, 0, 0);
 
 			LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(self->builder));
 			LLVMBasicBlockRef loop_block = LLVMAppendBasicBlock(func, "loopcond");
@@ -1352,19 +1353,25 @@ codegen_stmt (codegen_t *self, codegen_context_t *context, stmt_t *stmt) {
 
 			// Check the loop condition.
 			LLVMPositionBuilderAtEnd(self->builder, loop_block);
-			LLVMValueRef cond = codegen_expr_top(self, &subctx, stmt->iteration.condition, 0, &bool_type);
-			LLVMBuildCondBr(self->builder, cond, body_block, exit_block);
+			if (stmt->iteration.condition) {
+				LLVMValueRef cond = codegen_expr_top(self, &subctx, stmt->iteration.condition, 0, &bool_type);
+				LLVMBuildCondBr(self->builder, cond, body_block, exit_block);
+			} else {
+				LLVMBuildBr(self->builder, body_block);
+			}
 
 			// Execute the loop body.
 			LLVMPositionBuilderAtEnd(self->builder, body_block);
-			if (stmt->iteration.stmt)
+			if (stmt->iteration.stmt) {
 				codegen_stmt(&cg, &subctx, stmt->iteration.stmt);
+			}
 			LLVMBuildBr(self->builder, step_block);
 
 			// Execute the loop step.
 			LLVMPositionBuilderAtEnd(self->builder, step_block);
-			if (stmt->iteration.step)
+			if (stmt->iteration.step) {
 				codegen_expr_top(self, &subctx, stmt->iteration.step, 0, 0);
+			}
 			LLVMBuildBr(self->builder, loop_block);
 
 			LLVMPositionBuilderAtEnd(self->builder, exit_block);
@@ -1389,13 +1396,18 @@ codegen_stmt (codegen_t *self, codegen_context_t *context, stmt_t *stmt) {
 
 			// Check the loop condition.
 			LLVMPositionBuilderAtEnd(self->builder, loop_block);
-			LLVMValueRef cond = codegen_expr_top(self, &subctx, stmt->iteration.condition, 0, &bool_type);
-			LLVMBuildCondBr(self->builder, cond, body_block, exit_block);
+			if (stmt->iteration.condition) {
+				LLVMValueRef cond = codegen_expr_top(self, &subctx, stmt->iteration.condition, 0, &bool_type);
+				LLVMBuildCondBr(self->builder, cond, body_block, exit_block);
+			} else {
+				LLVMBuildBr(self->builder, body_block);
+			}
 
 			// Execute the loop body.
 			LLVMPositionBuilderAtEnd(self->builder, body_block);
-			if (stmt->iteration.stmt)
+			if (stmt->iteration.stmt) {
 				codegen_stmt(&cg, &subctx, stmt->iteration.stmt);
+			}
 			LLVMBuildBr(self->builder, loop_block);
 
 			LLVMPositionBuilderAtEnd(self->builder, exit_block);

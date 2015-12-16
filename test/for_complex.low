@@ -1,6 +1,6 @@
 // Copyright (c) 2015 Thomas Richner
 // Verify for loops.
-// (+)execute
+// +execute
 
 func printf(int8* f,...) void
 
@@ -8,16 +8,36 @@ func main () int32 {
 
 	var int32 i = 0
 
+	yes := true
+	no := false
+
+	printf("for ;true; {}\n");
 	for ;true; {
 		printf(" %d", i)
-		if(i>10){
+		if (i > 10) {
 			break
 		}
 		++i
 	}
 
-	for i=0;i<4; {
+	printf("\nfor i = 0; i < 4; {}\n");
+	for i = 0; i < 4; {
 		printf(" %d", i)
+		++i
+	}
+
+	printf("\nfor i > 0 {}\n");
+	for i > 0 {
+		printf(" %d", i)
+		--i
+	}
+
+	printf("\nfor {}\n");
+	for {
+		printf(" %d", i)
+		if (i > 10) {
+			break
+		}
 		++i
 	}
 
