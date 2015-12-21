@@ -45,6 +45,12 @@ void codegen_context_dispose(codegen_context_t *self);
 
 void codegen_context_add_symbol(codegen_context_t *self, const codegen_symbol_t *symbol);
 codegen_symbol_t *codegen_context_find_symbol(codegen_context_t *self, const char *name);
+const char *codegen_context_find_mapping(codegen_context_t *self, type_t *interface, type_t *target, const char *name);
+type_t *resolve_type_name(codegen_context_t *context, type_t *type);
+
+LLVMTypeRef codegen_type(codegen_context_t *context, type_t *type);
+void determine_type(codegen_t *self, codegen_context_t *context, expr_t *expr, type_t *type_hint);
+LLVMValueRef codegen_expr(codegen_t *self, codegen_context_t *context, expr_t *expr, char lvalue, type_t *type_hint);
 
 void codegen_decls(codegen_t *self, codegen_context_t *context, const array_t *units);
 void codegen_defs(codegen_t *self, codegen_context_t *context, const array_t *units);

@@ -90,6 +90,12 @@ add_executable(lowc
 	src/array.c
 	src/ast.c
 	src/codegen.c
+	src/codegen_binary_expr.c
+	src/codegen_unary_expr.c
+	src/codegen_call_expr.c
+	src/codegen_member_access_expr.c
+	src/codegen_cast_expr.c
+	src/codegen_ident_expr.c
 	src/common.c
 	src/grammar.c
 	src/grammar_rules.c

@@ -1,6 +1,7 @@
 /* Copyright (c) 2015 Fabian Schuiki, Thomas Richner */
 #include "ast.h"
 #include "codegen.h"
+#include "codegen_funcs.h"
 #include "common.h"
 #include "llvm_intrinsics.h"
 #include <llvm-c/Analysis.h>
@@ -95,7 +96,7 @@ context_find_local (context_t *self, const char *name) {
 }
 
 
-static type_t *
+type_t *
 resolve_type_name (codegen_context_t *context, type_t *type) {
 	assert(type);
 	if (type->pointer == 0 && type->kind == AST_NAMED_TYPE) {
@@ -106,9 +107,6 @@ resolve_type_name (codegen_context_t *context, type_t *type) {
 		return type;
 	}
 }
-
-
-static LLVMTypeRef codegen_type(context_t *context, type_t *type);
 
 
 static LLVMTypeRef
@@ -145,7 +143,7 @@ make_interface_table_type (context_t *context, interface_member_t *members, unsi
 }
 
 
-static LLVMTypeRef
+LLVMTypeRef
 codegen_type (context_t *context, type_t *type) {
 	assert(type);
 	if (type->pointer > 0) {
@@ -226,7 +224,7 @@ codegen_type (context_t *context, type_t *type) {
 }
 
 
-static void
+void
 determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_t *type_hint) {
 	assert(self);
 	assert(context);
@@ -235,28 +233,29 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 	unsigned i;
 	switch (expr->kind) {
 
-		case AST_IDENT_EXPR: {
-			if (strcmp(expr->ident, "true") == 0 || strcmp(expr->ident, "false") == 0) {
-				expr->type.kind = AST_BOOLEAN_TYPE;
-				break;
-			}
+		case AST_IDENT_EXPR: return determine_type_ident_expr(self, context, expr, type_hint);
+		// case AST_IDENT_EXPR: {
+		// 	if (strcmp(expr->ident, "true") == 0 || strcmp(expr->ident, "false") == 0) {
+		// 		expr->type.kind = AST_BOOLEAN_TYPE;
+		// 		break;
+		// 	}
 
-			codegen_symbol_t *sym = codegen_context_find_symbol(context, expr->ident);
-			if (!sym)
-				derror(&expr->loc, "identifier '%s' unknown\n", expr->ident);
+		// 	codegen_symbol_t *sym = codegen_context_find_symbol(context, expr->ident);
+		// 	if (!sym)
+		// 		derror(&expr->loc, "identifier '%s' unknown\n", expr->ident);
 
-			if (sym->kind == FUNC_SYMBOL) {
-				type_copy(&expr->type, sym->type);
-				++expr->type.pointer;
-			} else if (sym->value) {
-				type_copy(&expr->type, sym->type);
-			} else {
-				if (!sym->decl || sym->decl->kind != AST_CONST_DECL)
-					derror(&expr->loc, "expected identifier '%s' to be a const", expr->ident);
-				determine_type(self, context, &sym->decl->cons.value, type_hint);
-				type_copy(&expr->type, &sym->decl->cons.value.type);
-			}
-		} break;
+		// 	if (sym->kind == FUNC_SYMBOL) {
+		// 		type_copy(&expr->type, sym->type);
+		// 		++expr->type.pointer;
+		// 	} else if (sym->value) {
+		// 		type_copy(&expr->type, sym->type);
+		// 	} else {
+		// 		if (!sym->decl || sym->decl->kind != AST_CONST_DECL)
+		// 			derror(&expr->loc, "expected identifier '%s' to be a const", expr->ident);
+		// 		determine_type(self, context, &sym->decl->cons.value, type_hint);
+		// 		type_copy(&expr->type, &sym->decl->cons.value.type);
+		// 	}
+		// } break;
 
 		case AST_NUMBER_LITERAL_EXPR: {
 			if (type_hint)
@@ -286,125 +285,16 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 			}
 		} break;
 
-		case AST_CALL_EXPR: {
-			expr_t *tgt = expr->call.target;
-			if (tgt->kind == AST_IDENT_EXPR) {
-				codegen_symbol_t *sym = codegen_context_find_symbol(context, tgt->ident);
-				if (!sym)
-					derror(&expr->loc, "identifier '%s' unknown\n", tgt->ident);
-				if (sym->kind == INTERFACE_FUNCTION_SYMBOL) {
-					interface_member_t *m = sym->interface->interface.members+sym->member;
-					assert(m->kind == AST_MEMBER_FUNCTION);
-					type_copy(&expr->type, m->func.return_type);
-					for (i = 0; i < expr->call.num_args; ++i)
-						determine_type(self, context, expr->call.args+i, m->func.args+i);
-				} else {
-					if (!sym->type || sym->type->kind != AST_FUNC_TYPE)
-						derror(&expr->loc, "identifier '%s' is not a function\n", sym->name);
-					type_copy(&expr->type, sym->type->func.return_type);
-					for (i = 0; i < expr->call.num_args; ++i)
-						determine_type(self, context, expr->call.args+i, sym->type->func.args+i);
-				}
-			} else if (tgt->kind == AST_MEMBER_ACCESS_EXPR) {
-				determine_type(self, context, tgt->member_access.target, 0);
-				type_t *intf = resolve_type_name(context, &tgt->member_access.target->type);
-				if (intf->kind == AST_INTERFACE_TYPE) {
-					derror(&tgt->loc, "interface calls not yet implemented\n");
-				} else {
-					derror(&tgt->loc, "non-interface cannot be called\n");
-				}
-			} else {
-				derror(&expr->loc, "expression cannot be called\n");
-			}
-		} break;
+		case AST_CALL_EXPR: return determine_type_call_expr(self, context, expr, type_hint);
 
-		case AST_MEMBER_ACCESS_EXPR: {
-			determine_type(self, context, expr->member_access.target, 0);
-			type_t *st = resolve_type_name(context, &expr->member_access.target->type);
-			if (st->kind == AST_INTERFACE_TYPE) {
-				if (st->pointer > 0)
-					derror(&expr->loc, "cannot access member of pointer to an interface, dereference the pointer\n");
-				for (i = 0; i < st->interface.num_members; ++i) {
-					interface_member_t *m = st->interface.members+i;
-					if (m->kind == AST_MEMBER_FIELD && strcmp(expr->member_access.name, m->field.name) == 0)
-						break;
-				}
-				if (i == st->interface.num_members)
-					derror(&expr->loc, "interface has no member named '%s'\n", expr->member_access.name);
-				type_copy(&expr->type, st->interface.members[i].field.type);
-			} else {
-				type_t tmp;
-				if (st->pointer > 0) {
-					tmp = *st;
-					--tmp.pointer;
-					st = resolve_type_name(context, &tmp);
-				}
-				if (st->kind != AST_STRUCT_TYPE)
-					derror(&expr->loc, "cannot access member of non-struct\n");
-				for (i = 0; i < st->strct.num_members; ++i)
-					if (strcmp(expr->member_access.name, st->strct.members[i].name) == 0)
-						break;
-				if (i == st->strct.num_members)
-					derror(&expr->loc, "struct has no member named '%s'\n", expr->member_access.name);
-				type_copy(&expr->type, st->strct.members[i].type);
-			}
-		} break;
+		case AST_MEMBER_ACCESS_EXPR: return determine_type_member_access_expr(self, context, expr, type_hint);
 
 		case AST_INCDEC_EXPR: {
 			determine_type(self, context, expr->incdec_op.target, type_hint);
 			type_copy(&expr->type, &expr->incdec_op.target->type);
 		} break;
 
-		case AST_UNARY_EXPR: {
-			switch (expr->unary_op.op) {
-				case AST_ADDRESS: {
-					type_t *inner_hint = 0;
-					type_t hint;
-					if (type_hint && type_hint->pointer > 0) {
-						type_copy(&hint, type_hint);
-						--hint.pointer;
-						inner_hint = &hint;
-					}
-					determine_type(self, context, expr->unary_op.target, inner_hint);
-					type_copy(&expr->type, &expr->unary_op.target->type);
-					++expr->type.pointer;
-				} break;
-
-				case AST_DEREF: {
-					if (type_hint) {
-						type_t new_hint;
-						type_copy(&new_hint, type_hint);
-						++new_hint.pointer;
-						determine_type(self, context, expr->unary_op.target, &new_hint);
-					} else {
-						determine_type(self, context, expr->unary_op.target, 0);
-					}
-					type_copy(&expr->type, &expr->unary_op.target->type);
-					expr->type = expr->unary_op.target->type;
-					if (expr->type.pointer == 0)
-						derror(&expr->loc, "cannot dereference non-pointer\n");
-					--expr->type.pointer;
-				} break;
-
-				case AST_POSITIVE:
-				case AST_NEGATIVE:
-				case AST_BITWISE_NOT: {
-					determine_type(self, context, expr->unary_op.target, type_hint);
-					type_copy(&expr->type, &expr->unary_op.target->type);
-				} break;
-
-				case AST_NOT: {
-					type_t bool_type = { .kind = AST_BOOLEAN_TYPE };
-					determine_type(self, context, expr->unary_op.target, &bool_type);
-					bzero(&expr->type, sizeof expr->type);
-					expr->type.kind = AST_BOOLEAN_TYPE;
-				} break;
-
-				default:
-					fprintf(stderr, "%s.%d: type determination for unary op %d not implemented\n", __FILE__, __LINE__, expr->unary_op.op);
-					abort();
-			}
-		} break;
+		case AST_UNARY_EXPR: return determine_type_unary_expr(self, context, expr, type_hint);
 
 		case AST_SIZEOF_EXPR: {
 			if (expr->sizeof_op.mode == AST_EXPR_SIZEOF)
@@ -447,49 +337,13 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 			type_copy(&expr->type, &int_type);
 		} break;
 
-		case AST_CAST_EXPR: {
-			determine_type(self, context, expr->cast.target, &expr->cast.type);
-			type_copy(&expr->type, &expr->cast.type);
-		} break;
+		case AST_CAST_EXPR: return determine_type_cast_expr(self, context, expr, type_hint);
+		// case AST_CAST_EXPR: {
+		// 	determine_type(self, context, expr->cast.target, &expr->cast.type);
+		// 	type_copy(&expr->type, &expr->cast.type);
+		// } break;
 
-		case AST_BINARY_EXPR: {
-			type_t *hint = 0;
-			if (expr->binary_op.op == AST_ADD ||
-				expr->binary_op.op == AST_SUB ||
-				expr->binary_op.op == AST_MUL ||
-				expr->binary_op.op == AST_DIV)
-				hint = type_hint;
-
-			determine_type(self, context, expr->binary_op.lhs, hint);
-			determine_type(self, context, expr->binary_op.rhs, hint);
-			if (expr->binary_op.lhs->type.kind == AST_NO_TYPE &&
-				expr->binary_op.rhs->type.kind != AST_NO_TYPE)
-				determine_type(self, context, expr->binary_op.lhs, &expr->binary_op.rhs->type);
-			if (expr->binary_op.rhs->type.kind == AST_NO_TYPE &&
-				expr->binary_op.lhs->type.kind != AST_NO_TYPE)
-				determine_type(self, context, expr->binary_op.rhs, &expr->binary_op.lhs->type);
-
-			if (expr->binary_op.lhs->type.kind == AST_NO_TYPE &&
-				expr->binary_op.rhs->type.kind == AST_NO_TYPE)
-				derror(&expr->loc, "cannot determine type of binary operation, use a cast\n");
-
-			switch (expr->binary_op.op) {
-				case AST_LT:
-				case AST_GT:
-				case AST_LE:
-				case AST_GE:
-				case AST_EQ:
-				case AST_NE:
-				case AST_AND:
-				case AST_OR:
-					bzero(&expr->type, sizeof expr->type);
-					expr->type.kind = AST_BOOLEAN_TYPE;
-					break;
-				default:
-					type_copy(&expr->type, &expr->binary_op.lhs->type);
-					break;
-			}
-		} break;
+		case AST_BINARY_EXPR: return determine_type_binary_expr(self, context, expr, type_hint);
 
 		case AST_CONDITIONAL_EXPR: {
 			type_t bool_type = { .kind = AST_BOOLEAN_TYPE };
@@ -554,9 +408,6 @@ build_assert(codegen_t *self,codegen_context_t *context, LLVMValueRef cond){
 
 	LLVMPositionBuilderAtEnd(self->builder, exit_block);
 }
-
-static LLVMValueRef
-codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lvalue, type_t *type_hint);
 
 static void
 dump_val(char* name,LLVMValueRef val){
@@ -647,44 +498,45 @@ codegen_slice_new(codegen_t *self, codegen_context_t *context, make_builtin_t *m
 	return slice;
 }
 
-static LLVMValueRef
+LLVMValueRef
 codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lvalue, type_t *type_hint) {
 	assert(self);
 	assert(context);
 	assert(expr);
 	/// TODO(fabianschuiki): Split this function up into three functions. One for rvalues that returns the corresponding value, one for lvalues that returns a pointer to the corresponding value, and one for rvalue pointers that returns a pointer to the corresponding value. These will be used for regular expressions, assignments, and struct member accesses respectively.
 
-	unsigned i,n;
+	unsigned i;
 	switch (expr->kind) {
 
-		case AST_IDENT_EXPR: {
-			if (strcmp(expr->ident, "true") == 0) {
-				if (lvalue)
-					derror(&expr->loc, "true is not a valid lvalue\n");
-				return LLVMConstAllOnes(LLVMInt1Type());
-			}
+		case AST_IDENT_EXPR: return codegen_ident_expr(self, context, expr, lvalue);
+		// case AST_IDENT_EXPR: {
+		// 	if (strcmp(expr->ident, "true") == 0) {
+		// 		if (lvalue)
+		// 			derror(&expr->loc, "true is not a valid lvalue\n");
+		// 		return LLVMConstAllOnes(LLVMInt1Type());
+		// 	}
 
-			if (strcmp(expr->ident, "false") == 0) {
-				if (lvalue)
-					derror(&expr->loc, "false is not a valid lvalue\n");
-				return LLVMConstNull(LLVMInt1Type());
-			}
+		// 	if (strcmp(expr->ident, "false") == 0) {
+		// 		if (lvalue)
+		// 			derror(&expr->loc, "false is not a valid lvalue\n");
+		// 		return LLVMConstNull(LLVMInt1Type());
+		// 	}
 
-			codegen_symbol_t *sym = codegen_context_find_symbol(context, expr->ident);
-			assert(sym && "identifier unknown");
+		// 	codegen_symbol_t *sym = codegen_context_find_symbol(context, expr->ident);
+		// 	assert(sym && "identifier unknown");
 
-			if (sym->kind == FUNC_SYMBOL) {
-				return sym->value;
-			} else if (sym->value) {
-				LLVMValueRef ptr = sym->value;
-				return lvalue || expr->type.kind == AST_ARRAY_TYPE || expr->type.kind == AST_SLICE_TYPE ? ptr : LLVMBuildLoad(self->builder, ptr, "");
-			} else {
-				assert(sym->decl && sym->decl->kind == AST_CONST_DECL && "expected identifier to be a const");
-				assert(!lvalue && "const is not a valid lvalue");
-				LLVMValueRef value = codegen_expr(self, context, &sym->decl->cons.value, 0, type_hint);
-				return value;
-			}
-		}
+		// 	if (sym->kind == FUNC_SYMBOL) {
+		// 		return sym->value;
+		// 	} else if (sym->value) {
+		// 		LLVMValueRef ptr = sym->value;
+		// 		return lvalue || expr->type.kind == AST_ARRAY_TYPE || expr->type.kind == AST_SLICE_TYPE ? ptr : LLVMBuildLoad(self->builder, ptr, "");
+		// 	} else {
+		// 		assert(sym->decl && sym->decl->kind == AST_CONST_DECL && "expected identifier to be a const");
+		// 		assert(!lvalue && "const is not a valid lvalue");
+		// 		LLVMValueRef value = codegen_expr(self, context, &sym->decl->cons.value, 0, type_hint);
+		// 		return value;
+		// 	}
+		// }
 
 		case AST_NUMBER_LITERAL_EXPR: {
 			assert(!lvalue && "number literal is not a valid lvalue");
@@ -752,134 +604,9 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 			return lvalue ? ptr : LLVMBuildLoad(self->builder, ptr, "");
 		}
 
-		case AST_CALL_EXPR: {
-			assert(expr->call.target->kind == AST_IDENT_EXPR && "can only call functions by name at the moment");
+		case AST_CALL_EXPR: return codegen_call_expr(self, context, expr, lvalue);
 
-			codegen_symbol_t *sym = codegen_context_find_symbol(context, expr->call.target->ident);
-			if (!sym) {
-				fprintf(stderr, "identifier '%s' unknown\n", expr->call.target->ident);
-				exit(1);
-			}
-
-			LLVMValueRef result;
-			if (sym->kind == INTERFACE_FUNCTION_SYMBOL) {
-				interface_member_t *m = sym->interface->interface.members+sym->member;
-				if (m->func.num_args != expr->call.num_args)
-					derror(&expr->loc, "'%s' requires %d arguments, but only %d given\n", sym->name, m->func.num_args, expr->call.num_args);
-
-				// Find the placeholder argument in the function.
-				unsigned ph_idx;
-				for (ph_idx = 0; ph_idx < m->func.num_args; ++ph_idx)
-					if (m->func.args[ph_idx].kind == AST_PLACEHOLDER_TYPE)
-						break;
-				if (ph_idx == m->func.num_args)
-					derror(&expr->loc, "unable to find a placeholder argument\n");
-
-				// Verify that the argument supplied for the placeholder is an
-				// interface of the required type.
-				expr_t *ph = expr->call.args+ph_idx;
-				type_t *ph_type = resolve_type_name(context, &ph->type);
-				if (ph_type->kind != AST_INTERFACE_TYPE)
-					derror(&ph->loc, "argument %d of '%s' should be an interface\n", ph_idx, sym->name);
-				if (!type_equal(ph_type, sym->interface))
-					derror(&ph->loc, "argument %d of '%s' is an incompatible interface\n", ph_idx, sym->name);
-
-
-				// Load the interface table of the placeholder.
-				LLVMValueRef target = codegen_expr(self, context, ph, 0, 0);
-				assert(target);
-				LLVMValueRef table_ptr = LLVMBuildExtractValue(self->builder, target, 0, "table_ptr");
-				LLVMValueRef object_ptr = LLVMBuildExtractValue(self->builder, target, 1, "object_ptr");
-
-				LLVMValueRef table = LLVMBuildLoad(self->builder, table_ptr, "table");
-				LLVMValueRef member_func = LLVMBuildExtractValue(self->builder, table, 1+sym->member, m->func.name);
-
-				// Generate the code for the arguments.
-				LLVMValueRef args[expr->call.num_args];
-				for (i = 0; i < expr->call.num_args; ++i) {
-					if (i == ph_idx)
-						args[i] = object_ptr;
-					else
-						args[i] = codegen_expr(self, context, &expr->call.args[i], 0, 0);
-				}
-				result = LLVMBuildCall(self->builder, member_func, args, expr->call.num_args, "");
-
-			} else {
-				if (sym->type->kind != AST_FUNC_TYPE) {
-					fprintf(stderr, "identifier '%s' is not a function\n", sym->name);
-					exit(1);
-				}
-
-				LLVMValueRef funcptr = sym->value;
-				if (sym->kind != FUNC_SYMBOL)
-					funcptr = LLVMBuildLoad(self->builder, sym->value, "funcptr");
-
-				LLVMValueRef args[expr->call.num_args];
-				for (i = 0; i < expr->call.num_args; ++i)
-					args[i] = codegen_expr(self, context, &expr->call.args[i], 0, 0);
-				result = LLVMBuildCall(self->builder, funcptr, args, expr->call.num_args, "");
-			}
-
-			if (lvalue) {
-				LLVMValueRef ptr = LLVMBuildAlloca(self->builder, LLVMTypeOf(result), "");
-				LLVMBuildStore(self->builder, result, ptr);
-				return ptr;
-			} else {
-				return result;
-			}
-		}
-
-		case AST_MEMBER_ACCESS_EXPR: {
-			type_t *st = resolve_type_name(context, &expr->member_access.target->type);
-			type_t *stderef = st;
-			type_t tmp;
-			if (stderef->pointer > 0) {
-				tmp = *stderef;
-				--tmp.pointer;
-				stderef = resolve_type_name(context, &tmp);
-			}
-
-			LLVMValueRef ptr;
-			if (st->kind == AST_INTERFACE_TYPE) {
-				for (i = 0; i < st->interface.num_members; ++i) {
-					interface_member_t *m = st->interface.members+i;
-					if (m->kind == AST_MEMBER_FIELD && strcmp(expr->member_access.name, m->field.name) == 0)
-						break;
-				}
-				assert(i < st->interface.num_members && "interface has no such member");
-				LLVMValueRef target = codegen_expr(self, context, expr->member_access.target, 0, 0);
-				assert(target);
-				LLVMValueRef table_ptr = LLVMBuildExtractValue(self->builder, target, 0, "table_ptr");
-				LLVMValueRef object_ptr = LLVMBuildExtractValue(self->builder, target, 1, "object_ptr");
-
-				LLVMValueRef table = LLVMBuildLoad(self->builder, table_ptr, "table");
-				LLVMValueRef member_offset = LLVMBuildExtractValue(self->builder, table, 1+i, "member_offset");
-				LLVMValueRef member_offset_int = LLVMBuildPtrToInt(self->builder, member_offset, LLVMInt64Type(), "member_offset_int");
-				LLVMValueRef ptr_bytes = LLVMBuildInBoundsGEP(self->builder, object_ptr, &member_offset_int, 1, "ptr_bytes");
-				ptr = LLVMBuildPointerCast(self->builder, ptr_bytes, LLVMTypeOf(member_offset), "");
-			} else {
-				if (st->pointer > 1)
-					derror(&expr->loc, "cannot access member across multiple indirection\n");
-				LLVMValueRef target = codegen_expr(self, context, expr->member_access.target, st->pointer == 0, 0);
-				if (!target)
-					derror(&expr->loc, "cannot member-access target\n");
-				// LLVMValueRef struct_ptr = st->pointer == 1 ? LLVMBuildLoad(self->builder, target, "") : target;
-				LLVMValueRef struct_ptr = target;
-				assert(stderef->kind == AST_STRUCT_TYPE && "cannot access member of non-struct");
-				for (i = 0; i < stderef->strct.num_members; ++i)
-					if (strcmp(expr->member_access.name, stderef->strct.members[i].name) == 0)
-						break;
-				assert(i < stderef->strct.num_members && "struct has no such member");
-
-				// char *target_ts = LLVMPrintTypeToString(LLVMTypeOf(target));
-				// printf("  in LLVM accessing %s of %s\n", expr->member_access.name, target_ts);
-				// LLVMDisposeMessage(target_ts);
-				// type_copy(&expr->type, st->strct.members[i].type);
-				ptr = LLVMBuildStructGEP(self->builder, struct_ptr, i, "");
-			}
-
-			return lvalue ? ptr : LLVMBuildLoad(self->builder, ptr, "");
-		}
+		case AST_MEMBER_ACCESS_EXPR: return codegen_member_access_expr(self, context, expr, lvalue);
 
 		case AST_INCDEC_EXPR: {
 			assert(expr->incdec_op.order == AST_PRE && "post-increment/-decrement not yet implemented");
@@ -907,61 +634,7 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 			return lvalue ? target : new_value;
 		}
 
-		case AST_UNARY_EXPR: {
-			type_t *type = &expr->unary_op.target->type;
-			switch (expr->unary_op.op) {
-				LLVMValueRef target;
-
-				case AST_ADDRESS:
-					return codegen_expr(self, context, expr->unary_op.target, 1, 0);
-
-				case AST_DEREF:
-					target = codegen_expr(self, context, expr->unary_op.target, 0, 0);
-					return lvalue ? target : LLVMBuildLoad(self->builder, target, "");
-
-				case AST_POSITIVE:
-					return codegen_expr(self, context, expr->unary_op.target, 0, 0);
-
-				case AST_NEGATIVE:
-					target = codegen_expr(self, context, expr->unary_op.target, 0, 0);
-					if (type->kind == AST_INTEGER_TYPE) {
-						return LLVMBuildNeg(self->builder, target, "");
-					} else if (type->kind == AST_FLOAT_TYPE) {
-						return LLVMBuildFNeg(self->builder, target, "");
-					} else {
-						char *td = type_describe(type);
-						derror(&expr->loc, "expression of type %s cannot be negated\n", td);
-						free(td);
-					}
-					break;
-
-				case AST_BITWISE_NOT:
-					if (type->kind == AST_INTEGER_TYPE) {
-						target = codegen_expr(self, context, expr->unary_op.target, 0, 0);
-						return LLVMBuildNot(self->builder, target, "");
-					} else {
-						char *td = type_describe(type);
-						derror(&expr->loc, "unary operator not available for type %s\n", td);
-						free(td);
-					}
-					break;
-
-				case AST_NOT:
-					if (type->kind == AST_BOOLEAN_TYPE) {
-						target = codegen_expr(self, context, expr->unary_op.target, 0, 0);
-						return LLVMBuildNot(self->builder, target, "");
-					} else {
-						char *td = type_describe(type);
-						derror(&expr->loc, "unary operator not available for type %s\n", td);
-						free(td);
-					}
-					break;
-
-				default:
-					fprintf(stderr, "%s.%d: codegen for unary op %d not implemented\n", __FILE__, __LINE__, expr->unary_op.op);
-					abort();
-			}
-		}
+		case AST_UNARY_EXPR: return codegen_unary_expr(self, context, expr, lvalue);
 
 		case AST_SIZEOF_EXPR: {
 			assert(!lvalue && "result of sizeof expression is not a valid lvalue");
@@ -1017,227 +690,123 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 			return LLVMBuildLoad(self->builder,eptr,"");
 		}
 
-		case AST_CAST_EXPR: {
-			assert(!lvalue && "result of a cast is not a valid lvalue");
-			LLVMValueRef target = codegen_expr(self, context, expr->cast.target, 0, 0);
-			if (type_equal(&expr->cast.target->type, &expr->cast.type))
-				return target;
-			LLVMTypeRef dst = codegen_type(context, &expr->cast.type);
+		case AST_CAST_EXPR: return codegen_cast_expr(self, context, expr, lvalue);
+		// case AST_CAST_EXPR: {
+		// 	assert(!lvalue && "result of a cast is not a valid lvalue");
+		// 	LLVMValueRef target = codegen_expr(self, context, expr->cast.target, 0, 0);
+		// 	if (type_equal(&expr->cast.target->type, &expr->cast.type))
+		// 		return target;
+		// 	LLVMTypeRef dst = codegen_type(context, &expr->cast.type);
 
-			type_t *from = resolve_type_name(context, &expr->cast.target->type);
-			type_t *to = resolve_type_name(context, &expr->cast.type);
-			assert(from && to);
-			char *from_str = type_describe(from);
-			char *to_str = type_describe(to);
-			from = resolve_type_name(context, from);
-			to = resolve_type_name(context, to);
+		// 	type_t *from = resolve_type_name(context, &expr->cast.target->type);
+		// 	type_t *to = resolve_type_name(context, &expr->cast.type);
+		// 	assert(from && to);
+		// 	char *from_str = type_describe(from);
+		// 	char *to_str = type_describe(to);
+		// 	from = resolve_type_name(context, from);
+		// 	to = resolve_type_name(context, to);
 
-			if (to->kind == AST_INTERFACE_TYPE) {
-				if (from->pointer == 1) {
-					type_t refd;
-					type_copy(&refd, from);
-					--refd.pointer;
-					type_t *resolved = resolve_type_name(context, &refd);
+		// 	if (to->kind == AST_INTERFACE_TYPE) {
+		// 		if (from->pointer == 1) {
+		// 			type_t refd;
+		// 			type_copy(&refd, from);
+		// 			--refd.pointer;
+		// 			type_t *resolved = resolve_type_name(context, &refd);
 
-					if (resolved->kind == AST_STRUCT_TYPE) {
-						// LLVMTypeRef table_type = make_interface_table_type(context, to->interface.members, to->interface.num_members);
-						unsigned num_fields = 1+to->interface.num_members;
-						LLVMValueRef fields[num_fields];
-						fields[0] = LLVMConstNull(LLVMPointerType(LLVMInt8Type(), 0));
-						for (i = 0; i < to->interface.num_members; ++i) {
-							interface_member_t *m = to->interface.members+i;
-							switch (m->kind) {
-								case AST_MEMBER_FUNCTION: {
+		// 			if (resolved->kind == AST_STRUCT_TYPE) {
+		// 				// LLVMTypeRef table_type = make_interface_table_type(context, to->interface.members, to->interface.num_members);
+		// 				unsigned num_fields = 1+to->interface.num_members;
+		// 				LLVMValueRef fields[num_fields];
+		// 				fields[0] = LLVMConstNull(LLVMPointerType(LLVMInt8Type(), 0));
+		// 				for (i = 0; i < to->interface.num_members; ++i) {
+		// 					interface_member_t *m = to->interface.members+i;
+		// 					switch (m->kind) {
+		// 						case AST_MEMBER_FUNCTION: {
 
-									// Try to lookup which function implements this interface member.
-									const char *mapped = codegen_context_find_mapping(context, &expr->cast.type, &refd, m->func.name);
-									if (!mapped)
-										derror(&expr->loc, "cannot determine which function maps to '%s'\n", m->func.name);
+		// 							// Try to lookup which function implements this interface member.
+		// 							const char *mapped = codegen_context_find_mapping(context, &expr->cast.type, &refd, m->func.name);
+		// 							if (!mapped)
+		// 								derror(&expr->loc, "cannot determine which function maps to '%s'\n", m->func.name);
 
-									// Find the implementing function.
-									codegen_symbol_t *sym = codegen_context_find_symbol(context, mapped);
-									if (!sym)
-										derror(&expr->loc, "function '%s' which is supposed to implement '%s' is unknown\n", mapped, m->func.name);
+		// 							// Find the implementing function.
+		// 							codegen_symbol_t *sym = codegen_context_find_symbol(context, mapped);
+		// 							if (!sym)
+		// 								derror(&expr->loc, "function '%s' which is supposed to implement '%s' is unknown\n", mapped, m->func.name);
 
-									// Store a pointer to the function.
-									// fields[1+i] = sym->value;
-									LLVMTypeRef args[m->func.num_args];
-									for (n = 0; n < m->func.num_args; ++n) {
-										if (m->func.args[n].kind == AST_PLACEHOLDER_TYPE)
-											args[n] = LLVMPointerType(LLVMInt8Type(), 0);
-										else
-											args[n] = codegen_type(context, m->func.args+n);
-									}
-									LLVMTypeRef ft = LLVMPointerType(LLVMFunctionType(codegen_type(context, m->func.return_type), args, m->func.num_args, 0), 0);
-									fields[1+i] = LLVMBuildPointerCast(self->builder, sym->value, ft, "");
-									// fields[1+i] = LLVMConstNull(ft);
-								} break;
+		// 							// Store a pointer to the function.
+		// 							// fields[1+i] = sym->value;
+		// 							LLVMTypeRef args[m->func.num_args];
+		// 							for (n = 0; n < m->func.num_args; ++n) {
+		// 								if (m->func.args[n].kind == AST_PLACEHOLDER_TYPE)
+		// 									args[n] = LLVMPointerType(LLVMInt8Type(), 0);
+		// 								else
+		// 									args[n] = codegen_type(context, m->func.args+n);
+		// 							}
+		// 							LLVMTypeRef ft = LLVMPointerType(LLVMFunctionType(codegen_type(context, m->func.return_type), args, m->func.num_args, 0), 0);
+		// 							fields[1+i] = LLVMBuildPointerCast(self->builder, sym->value, ft, "");
+		// 							// fields[1+i] = LLVMConstNull(ft);
+		// 						} break;
 
-								case AST_MEMBER_FIELD: {
-									unsigned n;
-									for (n = 0; n < resolved->strct.num_members; ++n)
-										if (strcmp(resolved->strct.members[n].name, m->field.name) == 0)
-											break;
-									if (n == resolved->strct.num_members)
-										derror(&expr->loc, "type %s has no member named '%s' required by the interface %s", from_str, m->field.name, to_str);
-									if (!type_equal(m->field.type, resolved->strct.members[n].type))
-										derror(&expr->loc, "field '%s' is of the wrong type for interface %s", m->field.name, to_str);
-									fields[1+i] = LLVMBuildStructGEP(self->builder, LLVMConstNull(LLVMTypeOf(target)), n, "member");
-								} break;
+		// 						case AST_MEMBER_FIELD: {
+		// 							unsigned n;
+		// 							for (n = 0; n < resolved->strct.num_members; ++n)
+		// 								if (strcmp(resolved->strct.members[n].name, m->field.name) == 0)
+		// 									break;
+		// 							if (n == resolved->strct.num_members)
+		// 								derror(&expr->loc, "type %s has no member named '%s' required by the interface %s", from_str, m->field.name, to_str);
+		// 							if (!type_equal(m->field.type, resolved->strct.members[n].type))
+		// 								derror(&expr->loc, "field '%s' is of the wrong type for interface %s", m->field.name, to_str);
+		// 							fields[1+i] = LLVMBuildStructGEP(self->builder, LLVMConstNull(LLVMTypeOf(target)), n, "member");
+		// 						} break;
 
-								default:
-									die("mapping of interface member kind %d not implemented", m->kind);
-							}
-						}
-						LLVMValueRef table = LLVMConstStruct(fields, num_fields, 0);
-						LLVMValueRef table_global = LLVMAddGlobal(self->module, LLVMTypeOf(table), "interface_table");
-						LLVMSetInitializer(table_global, table);
-						LLVMValueRef target_cast = LLVMBuildPointerCast(self->builder, target, LLVMPointerType(LLVMInt8Type(), 0), "");
+		// 						default:
+		// 							die("mapping of interface member kind %d not implemented", m->kind);
+		// 					}
+		// 				}
+		// 				LLVMValueRef table = LLVMConstStruct(fields, num_fields, 0);
+		// 				LLVMValueRef table_global = LLVMAddGlobal(self->module, LLVMTypeOf(table), "interface_table");
+		// 				LLVMSetInitializer(table_global, table);
+		// 				LLVMValueRef target_cast = LLVMBuildPointerCast(self->builder, target, LLVMPointerType(LLVMInt8Type(), 0), "");
 
-						LLVMValueRef result = LLVMConstNull(dst);
-						result = LLVMBuildInsertValue(self->builder, result, table_global, 0, "");
-						result = LLVMBuildInsertValue(self->builder, result, target_cast, 1, "");
-						return result;
-					} else {
-						derror(&expr->loc, "type %s is not a pointer to a struct and can therefore not be cast to an interface\n", from_str);
-					}
-				} else {
-					derror(&expr->loc, "only pointers can be cast to an interface\n");
-				}
-			} else if (from->pointer > 0) {
-				if (to->pointer > 0) {
-					return LLVMBuildPointerCast(self->builder, target, dst, "");
-				} else if (to->kind == AST_INTEGER_TYPE) {
-					return LLVMBuildPtrToInt(self->builder, target, dst, "");
-				}
-			} else if (from->kind == AST_INTEGER_TYPE) {
-				if (to->pointer > 0) {
-					return LLVMBuildIntToPtr(self->builder, target, dst, "");
-				} else if (to->kind == AST_INTEGER_TYPE) {
-					return LLVMBuildIntCast(self->builder, target, dst, "");
-				} else if (to->kind == AST_BOOLEAN_TYPE) {
-					return LLVMBuildICmp(self->builder, LLVMIntSGT, target, LLVMConstNull(LLVMTypeOf(target)), "");
-				}
-			} else if (from->kind == AST_BOOLEAN_TYPE && to->pointer == 0) {
-				if (to->kind == AST_INTEGER_TYPE)
-					return LLVMBuildZExt(self->builder, target, dst, "");
-			} else if (from->kind == AST_ARRAY_TYPE && to->pointer > 0) {
-				if (to->kind == from->array.type->kind)
-					return LLVMBuildInBoundsGEP(self->builder, target, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), LLVMConstNull(LLVMInt32Type())}, 2, "");
-			}
+		// 				LLVMValueRef result = LLVMConstNull(dst);
+		// 				result = LLVMBuildInsertValue(self->builder, result, table_global, 0, "");
+		// 				result = LLVMBuildInsertValue(self->builder, result, target_cast, 1, "");
+		// 				return result;
+		// 			} else {
+		// 				derror(&expr->loc, "type %s is not a pointer to a struct and can therefore not be cast to an interface\n", from_str);
+		// 			}
+		// 		} else {
+		// 			derror(&expr->loc, "only pointers can be cast to an interface\n");
+		// 		}
+		// 	} else if (from->pointer > 0) {
+		// 		if (to->pointer > 0) {
+		// 			return LLVMBuildPointerCast(self->builder, target, dst, "");
+		// 		} else if (to->kind == AST_INTEGER_TYPE) {
+		// 			return LLVMBuildPtrToInt(self->builder, target, dst, "");
+		// 		}
+		// 	} else if (from->kind == AST_INTEGER_TYPE) {
+		// 		if (to->pointer > 0) {
+		// 			return LLVMBuildIntToPtr(self->builder, target, dst, "");
+		// 		} else if (to->kind == AST_INTEGER_TYPE) {
+		// 			return LLVMBuildIntCast(self->builder, target, dst, "");
+		// 		} else if (to->kind == AST_BOOLEAN_TYPE) {
+		// 			return LLVMBuildICmp(self->builder, LLVMIntSGT, target, LLVMConstNull(LLVMTypeOf(target)), "");
+		// 		}
+		// 	} else if (from->kind == AST_BOOLEAN_TYPE && to->pointer == 0) {
+		// 		if (to->kind == AST_INTEGER_TYPE)
+		// 			return LLVMBuildZExt(self->builder, target, dst, "");
+		// 	} else if (from->kind == AST_ARRAY_TYPE && to->pointer > 0) {
+		// 		if (to->kind == from->array.type->kind)
+		// 			return LLVMBuildInBoundsGEP(self->builder, target, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), LLVMConstNull(LLVMInt32Type())}, 2, "");
+		// 	}
 
-			derror(&expr->loc, "cannot cast from %s to %s\n", from_str, to_str);
-			free(from_str);
-			free(to_str);
-			return 0;
-		}
+		// 	derror(&expr->loc, "cannot cast from %s to %s\n", from_str, to_str);
+		// 	free(from_str);
+		// 	free(to_str);
+		// 	return 0;
+		// }
 
-		case AST_BINARY_EXPR: {
-			assert(!lvalue && "result of a binary operation is not a valid lvalue");
-			LLVMValueRef lhs = codegen_expr(self, context, expr->binary_op.lhs, 0, 0);
-			LLVMValueRef rhs = codegen_expr(self, context, expr->binary_op.rhs, 0, 0);
-			if (!type_equal(&expr->binary_op.lhs->type, &expr->binary_op.rhs->type))
-				derror(&expr->loc, "operands to binary operator must be of the same type");
-			// expr->type = expr->assignment.expr->type;
-
-			type_t *t = &expr->binary_op.lhs->type;
-			if (t->kind == AST_BOOLEAN_TYPE) {
-				switch (expr->binary_op.op) {
-					case AST_EQ:
-						return LLVMBuildICmp(self->builder, LLVMIntEQ, lhs, rhs, "");
-					case AST_NE:
-						return LLVMBuildICmp(self->builder, LLVMIntNE, lhs, rhs, "");
-					case AST_AND:
-						return LLVMBuildAnd(self->builder, lhs, rhs, "");
-					case AST_OR:
-						return LLVMBuildOr(self->builder, lhs, rhs, "");
-					default:
-						fprintf(stderr, "%s.%d: codegen for binary op %d on boolean types not implemented\n", __FILE__, __LINE__, expr->binary_op.op);
-						abort();
-				}
-			} else if (t->kind == AST_INTEGER_TYPE) {
-				switch (expr->binary_op.op) {
-					case AST_ADD:
-						return LLVMBuildAdd(self->builder, lhs, rhs, "");
-					case AST_SUB:
-						return LLVMBuildSub(self->builder, lhs, rhs, "");
-					case AST_MUL:
-						return LLVMBuildMul(self->builder, lhs, rhs, "");
-					case AST_DIV:
-						return LLVMBuildSDiv(self->builder, lhs, rhs, "");
-					case AST_MOD:
-						return LLVMBuildSRem(self->builder, lhs, rhs, "");
-					case AST_LEFT:
-						return LLVMBuildShl(self->builder, lhs, rhs, "");
-					case AST_RIGHT:
-						return LLVMBuildAShr(self->builder, lhs, rhs, "");
-					case AST_LT:
-						return LLVMBuildICmp(self->builder, LLVMIntSLT, lhs, rhs, "");
-					case AST_GT:
-						return LLVMBuildICmp(self->builder, LLVMIntSGT, lhs, rhs, "");
-					case AST_LE:
-						return LLVMBuildICmp(self->builder, LLVMIntSLE, lhs, rhs, "");
-					case AST_GE:
-						return LLVMBuildICmp(self->builder, LLVMIntSGE, lhs, rhs, "");
-					case AST_EQ:
-						return LLVMBuildICmp(self->builder, LLVMIntEQ, lhs, rhs, "");
-					case AST_NE:
-						return LLVMBuildICmp(self->builder, LLVMIntNE, lhs, rhs, "");
-					case AST_BITWISE_AND:
-						return LLVMBuildAnd(self->builder, lhs, rhs, "");
-					case AST_BITWISE_XOR:
-						return LLVMBuildXor(self->builder, lhs, rhs, "");
-					case AST_BITWISE_OR:
-						return LLVMBuildOr(self->builder, lhs, rhs, "");
-					case AST_AND:
-					case AST_OR:
-						derror(&expr->loc, "binary operator not available for integer types\n");
-					default:
-						fprintf(stderr, "%s.%d: codegen for binary op %d on integer types not implemented\n", __FILE__, __LINE__, expr->binary_op.op);
-						abort();
-				}
-			} else if (t->kind == AST_FLOAT_TYPE) {
-				switch (expr->binary_op.op) {
-					case AST_ADD:
-						return LLVMBuildFAdd(self->builder, lhs, rhs, "");
-					case AST_SUB:
-						return LLVMBuildFSub(self->builder, lhs, rhs, "");
-					case AST_MUL:
-						return LLVMBuildFMul(self->builder, lhs, rhs, "");
-					case AST_DIV:
-						return LLVMBuildFDiv(self->builder, lhs, rhs, "");
-					case AST_MOD:
-						return LLVMBuildFRem(self->builder, lhs, rhs, "");
-					case AST_LEFT:
-					case AST_RIGHT:
-					case AST_LT:
-						return LLVMBuildFCmp(self->builder, LLVMRealOLT, lhs, rhs, "");
-					case AST_GT:
-						return LLVMBuildFCmp(self->builder, LLVMRealOGT, lhs, rhs, "");
-					case AST_LE:
-						return LLVMBuildFCmp(self->builder, LLVMRealOLE, lhs, rhs, "");
-					case AST_GE:
-						return LLVMBuildFCmp(self->builder, LLVMRealOGE, lhs, rhs, "");
-					case AST_EQ:
-						return LLVMBuildFCmp(self->builder, LLVMRealOEQ, lhs, rhs, "");
-					case AST_NE:
-						return LLVMBuildFCmp(self->builder, LLVMRealONE, lhs, rhs, "");
-					case AST_BITWISE_AND:
-					case AST_BITWISE_XOR:
-					case AST_BITWISE_OR:
-					case AST_AND:
-					case AST_OR:
-						derror(&expr->loc, "binary operator not available for floating point types\n");
-					default:
-						fprintf(stderr, "%s.%d: codegen for binary op %d on floating point types not implemented\n", __FILE__, __LINE__, expr->binary_op.op);
-						abort();
-				}
-			} else {
-				char *td = type_describe(t);
-				derror(&expr->loc, "invalid type %s to binary operator\n", td);
-				free(td);
-			}
-		}
+		case AST_BINARY_EXPR: return codegen_binary_expr(self, context, expr, lvalue);
 
 		case AST_CONDITIONAL_EXPR: {
 			assert(!lvalue && "result of a conditional is not a valid lvalue");
