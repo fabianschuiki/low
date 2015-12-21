@@ -533,34 +533,37 @@ codegen_array_new(codegen_t* self, codegen_context_t *context,LLVMTypeRef type,L
 	return arrptr;
 }
 
+/* struct {
+ *    *arr: *[i32 x 0]
+ *    len: i64
+ *    cap: i64
+ * }
+ */
+
 static LLVMValueRef
-codegen_slice_new(codegen_t *self, codegen_context_t *context, LLVMValueRef ptr, type_t *type, expr_t *cap){
+codegen_slice_new(codegen_t *self, codegen_context_t *context, LLVMValueRef ptr, make_builtin_t *make){
 	assert(self);
 	assert(context);
-	assert(type);
-	assert(cap);
-
-	//---- init length to zero
-	LLVMValueRef lenptr = LLVMBuildStructGEP(self->builder, ptr, 1, "");
-	LLVMBuildStore(self->builder,LLVMConstNull(LLVMInt64Type()),lenptr);
+	assert(make);
 
 	//---- init cap to given value
-	LLVMValueRef caparg = codegen_expr(self, context, cap, 0, 0);
-	LLVMValueRef capptr = LLVMBuildStructGEP(self->builder, ptr, 2, "");
+	LLVMValueRef caparg = codegen_expr(self, context, make->expr, 0, 0);
 	caparg = LLVMBuildIntCast(self->builder, caparg, LLVMInt64Type(),"");
-	LLVMBuildStore(self->builder,caparg,capptr);
 
 	//---- alloc array on heap
-	LLVMTypeRef t = codegen_type(context, type); // array element type
-	LLVMValueRef arrptr = codegen_array_new(self,context,t,caparg);
+	LLVMTypeRef element_type = codegen_type(context, make->type.slice.type); // array element type
+	LLVMValueRef arrptr = codegen_array_new(self,context,element_type,caparg);
+	LLVMTypeRef array_type = LLVMPointerType(LLVMArrayType(element_type,0),0);
+	arrptr = LLVMBuildPointerCast(self->builder,arrptr,array_type,"");
 
-	//---- attach new array to slice
-	LLVMValueRef arrptrptr = LLVMBuildStructGEP(self->builder, ptr, 0, "");
-	LLVMTypeRef tarrptr = LLVMGetElementType(LLVMTypeOf(arrptrptr));
-	arrptr = LLVMBuildPointerCast(self->builder,arrptr,tarrptr,"");
-	LLVMBuildStore(self->builder,arrptr,arrptrptr);
+	//---- assemble struct
+	LLVMTypeRef make_type = codegen_type(context, &make->type);
+	LLVMValueRef slice = LLVMConstNull(make_type);
 
-	return ptr;
+	slice = LLVMBuildInsertValue(self->builder, slice, arrptr, 0, "arrptr");
+	slice = LLVMBuildInsertValue(self->builder, slice, caparg, 2, "cap");
+
+	return slice;
 }
 
 
@@ -646,7 +649,6 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 
 				LLVMValueRef capptr = LLVMBuildStructGEP(self->builder, target, 2, "");
 				LLVMValueRef cap = LLVMBuildLoad(self->builder,capptr,"");
-
 
 				LLVMTypeRef dst = LLVMTypeOf(cap);
 
@@ -870,7 +872,7 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 			LLVMTypeRef type = codegen_type(context, &expr->make.type);
 			LLVMValueRef ptr = LLVMBuildAlloca(self->builder,type,"");
 
-			return LLVMBuildLoad(self->builder,codegen_slice_new(self,context,ptr,expr->make.type.slice.type,expr->make.expr),"");
+			return codegen_slice_new(self,context,ptr,&expr->make);
 		}
 
 		case AST_LENCAP_BUILTIN: {
