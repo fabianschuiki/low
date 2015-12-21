@@ -503,6 +503,8 @@ codegen_array_new(codegen_t* self, codegen_context_t *context,LLVMTypeRef type,L
 	//---- malloc on heap
 	LLVMValueRef arrptr = LLVMBuildArrayMalloc(self->builder,type,size,"");
 
+	//TODO check for nonzero
+
 	//---- zero initialise
 	LLVMValueRef cntrptr = LLVMBuildAlloca(self->builder,LLVMTypeOf(size),"cntrptr");
 	LLVMBuildStore(self->builder,size,cntrptr);
@@ -541,7 +543,7 @@ codegen_array_new(codegen_t* self, codegen_context_t *context,LLVMTypeRef type,L
  */
 
 static LLVMValueRef
-codegen_slice_new(codegen_t *self, codegen_context_t *context, LLVMValueRef ptr, make_builtin_t *make){
+codegen_slice_new(codegen_t *self, codegen_context_t *context, make_builtin_t *make){
 	assert(self);
 	assert(context);
 	assert(make);
@@ -565,7 +567,6 @@ codegen_slice_new(codegen_t *self, codegen_context_t *context, LLVMValueRef ptr,
 
 	return slice;
 }
-
 
 static LLVMValueRef
 codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lvalue, type_t *type_hint) {
@@ -868,11 +869,7 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 
 		case AST_MAKE_BUILTIN: {
 			assert(expr->make.type.kind==AST_SLICE_TYPE && "MAKE only for slices defined");
-
-			LLVMTypeRef type = codegen_type(context, &expr->make.type);
-			LLVMValueRef ptr = LLVMBuildAlloca(self->builder,type,"");
-
-			return codegen_slice_new(self,context,ptr,&expr->make);
+			return codegen_slice_new(self,context,&expr->make);
 		}
 
 		case AST_LENCAP_BUILTIN: {
