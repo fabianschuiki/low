@@ -1,6 +1,7 @@
 /* Copyright (c) 2015 Fabian Schuiki, Thomas Richner */
 #include "ast.h"
 #include "codegen.h"
+#include "common.h"
 #include "llvm_intrinsics.h"
 #include <llvm-c/Analysis.h>
 #include <assert.h>
@@ -34,7 +35,6 @@ codegen_symbol_t *
 codegen_context_find_symbol (codegen_context_t *self, const char *name) {
 	assert(self);
 	assert(name);
-	assert(self);
 
 	unsigned i;
 	for (i = 0; i < self->symbols.size; ++i) {
@@ -44,6 +44,37 @@ codegen_context_find_symbol (codegen_context_t *self, const char *name) {
 	}
 
 	return self->prev ? codegen_context_find_symbol(self->prev, name) : 0;
+}
+
+/// Tries to find the name of the function that implements one of an interface's
+/// member functions.
+const char *
+codegen_context_find_mapping (
+	codegen_context_t *self,
+	type_t *interface,
+	type_t *target,
+	const char *name
+) {
+	assert(self);
+	assert(interface);
+	assert(target);
+	assert(name);
+
+	unsigned i,n;
+	for (i = 0; i < self->symbols.size; ++i) {
+		codegen_symbol_t *symbol = array_get(&self->symbols, i);
+		if (symbol->kind != IMPLEMENTATION_SYMBOL)
+			continue;
+		if (!type_equal(symbol->decl->impl.interface, interface))
+			continue;
+		if (!type_equal(symbol->decl->impl.target, target))
+			continue;
+		for (n = 0; n < symbol->decl->impl.num_mappings; ++n)
+			if (strcmp(symbol->decl->impl.mappings[n].intf, name) == 0)
+				return symbol->decl->impl.mappings[n].func;
+	}
+
+	return self->prev ? codegen_context_find_mapping(self->prev, interface, target, name) : 0;
 }
 
 
@@ -77,27 +108,45 @@ resolve_type_name (codegen_context_t *context, type_t *type) {
 }
 
 
-static LLVMTypeRef codegen_type(context_t *context, const type_t *type);
+static LLVMTypeRef codegen_type(context_t *context, type_t *type);
 
 
 static LLVMTypeRef
 make_interface_table_type (context_t *context, interface_member_t *members, unsigned num_members) {
 	assert(context);
 	assert(members || num_members == 0);
-	unsigned i;
+	unsigned i,n;
 
 	unsigned num_fields = 1+num_members;
 	LLVMTypeRef fields[num_fields];
 	fields[0] = LLVMPointerType(LLVMInt8Type(), 0); // pointer to the typeinfo, unused for now
-	for (i = 0; i < num_members; ++i)
-		fields[1+i] = LLVMPointerType(codegen_type(context, members[i].type), 0);
+	for (i = 0; i < num_members; ++i) {
+		switch (members[i].kind) {
+			case AST_MEMBER_FIELD:
+				fields[1+i] = LLVMPointerType(codegen_type(context, members[i].field.type), 0);
+				break;
+			case AST_MEMBER_FUNCTION: {
+				LLVMTypeRef args[members[i].func.num_args];
+				for (n = 0; n < members[i].func.num_args; ++n) {
+					if (members[i].func.args[n].kind == AST_PLACEHOLDER_TYPE)
+						args[n] = LLVMPointerType(LLVMInt8Type(), 0);
+					else
+						args[n] = codegen_type(context, members[i].func.args+n);
+				}
+				LLVMTypeRef ft = LLVMFunctionType(codegen_type(context, members[i].func.return_type), args, members[i].func.num_args, 0);
+				fields[1+i] = LLVMPointerType(ft, 0);
+			} break;
+			default:
+				die("codegen for interface member kind %d not implemented", members[i].kind);
+		}
+	}
 
 	return LLVMStructType(fields, num_fields, 0);
 }
 
 
 static LLVMTypeRef
-codegen_type (context_t *context, const type_t *type) {
+codegen_type (context_t *context, type_t *type) {
 	assert(type);
 	if (type->pointer > 0) {
 		type_t inner = *type;
@@ -159,12 +208,20 @@ codegen_type (context_t *context, const type_t *type) {
 				LLVMPointerType(make_interface_table_type(context, type->interface.members, type->interface.num_members), 0),
 				LLVMPointerType(LLVMInt8Type(), 0), // pointer to the object
 			};
+			for (i = 0; i < type->interface.num_members; ++i) {
+				codegen_symbol_t sym = {
+					.kind = INTERFACE_FUNCTION_SYMBOL,
+					.name = type->interface.members[i].func.name,
+					.interface = type,
+					.member = i,
+				};
+				codegen_context_add_symbol(context, &sym);
+			}
 			return LLVMStructType(fields, 2, 0);
 		}
 		default:
 			fprintf(stderr, "%s.%d: codegen for type kind %d not implemented\n", __FILE__, __LINE__, type->kind);
 			abort();
-			return 0;
 	}
 }
 
@@ -230,15 +287,35 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 		} break;
 
 		case AST_CALL_EXPR: {
-			assert(expr->call.target->kind == AST_IDENT_EXPR && "can only call functions by name at the moment");
-			codegen_symbol_t *sym = codegen_context_find_symbol(context, expr->call.target->ident);
-			if (!sym)
-				derror(&expr->loc, "identifier '%s' unknown\n", expr->call.target->ident);
-			if (sym->type->kind != AST_FUNC_TYPE)
-				derror(&expr->loc, "identifier '%s' is not a function\n", sym->name);
-			type_copy(&expr->type, sym->type->func.return_type);
-			for (i = 0; i < expr->call.num_args; ++i)
-				determine_type(self, context, expr->call.args+i, sym->type->func.args+i);
+			expr_t *tgt = expr->call.target;
+			if (tgt->kind == AST_IDENT_EXPR) {
+				codegen_symbol_t *sym = codegen_context_find_symbol(context, tgt->ident);
+				if (!sym)
+					derror(&expr->loc, "identifier '%s' unknown\n", tgt->ident);
+				if (sym->kind == INTERFACE_FUNCTION_SYMBOL) {
+					interface_member_t *m = sym->interface->interface.members+sym->member;
+					assert(m->kind == AST_MEMBER_FUNCTION);
+					type_copy(&expr->type, m->func.return_type);
+					for (i = 0; i < expr->call.num_args; ++i)
+						determine_type(self, context, expr->call.args+i, m->func.args+i);
+				} else {
+					if (!sym->type || sym->type->kind != AST_FUNC_TYPE)
+						derror(&expr->loc, "identifier '%s' is not a function\n", sym->name);
+					type_copy(&expr->type, sym->type->func.return_type);
+					for (i = 0; i < expr->call.num_args; ++i)
+						determine_type(self, context, expr->call.args+i, sym->type->func.args+i);
+				}
+			} else if (tgt->kind == AST_MEMBER_ACCESS_EXPR) {
+				determine_type(self, context, tgt->member_access.target, 0);
+				type_t *intf = resolve_type_name(context, &tgt->member_access.target->type);
+				if (intf->kind == AST_INTERFACE_TYPE) {
+					derror(&tgt->loc, "interface calls not yet implemented\n");
+				} else {
+					derror(&tgt->loc, "non-interface cannot be called\n");
+				}
+			} else {
+				derror(&expr->loc, "expression cannot be called\n");
+			}
 		} break;
 
 		case AST_MEMBER_ACCESS_EXPR: {
@@ -247,12 +324,14 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 			if (st->kind == AST_INTERFACE_TYPE) {
 				if (st->pointer > 0)
 					derror(&expr->loc, "cannot access member of pointer to an interface, dereference the pointer\n");
-				for (i = 0; i < st->interface.num_members; ++i)
-					if (strcmp(expr->member_access.name, st->interface.members[i].name) == 0)
+				for (i = 0; i < st->interface.num_members; ++i) {
+					interface_member_t *m = st->interface.members+i;
+					if (m->kind == AST_MEMBER_FIELD && strcmp(expr->member_access.name, m->field.name) == 0)
 						break;
+				}
 				if (i == st->interface.num_members)
 					derror(&expr->loc, "interface has no member named '%s'\n", expr->member_access.name);
-				type_copy(&expr->type, st->interface.members[i].type);
+				type_copy(&expr->type, st->interface.members[i].field.type);
 			} else {
 				type_t tmp;
 				if (st->pointer > 0) {
@@ -575,7 +654,7 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 	assert(expr);
 	/// TODO(fabianschuiki): Split this function up into three functions. One for rvalues that returns the corresponding value, one for lvalues that returns a pointer to the corresponding value, and one for rvalue pointers that returns a pointer to the corresponding value. These will be used for regular expressions, assignments, and struct member accesses respectively.
 
-	unsigned i;
+	unsigned i,n;
 	switch (expr->kind) {
 
 		case AST_IDENT_EXPR: {
@@ -681,19 +760,65 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 				fprintf(stderr, "identifier '%s' unknown\n", expr->call.target->ident);
 				exit(1);
 			}
-			if (sym->type->kind != AST_FUNC_TYPE) {
-				fprintf(stderr, "identifier '%s' is not a function\n", sym->name);
-				exit(1);
+
+			LLVMValueRef result;
+			if (sym->kind == INTERFACE_FUNCTION_SYMBOL) {
+				interface_member_t *m = sym->interface->interface.members+sym->member;
+				if (m->func.num_args != expr->call.num_args)
+					derror(&expr->loc, "'%s' requires %d arguments, but only %d given\n", sym->name, m->func.num_args, expr->call.num_args);
+
+				// Find the placeholder argument in the function.
+				unsigned ph_idx;
+				for (ph_idx = 0; ph_idx < m->func.num_args; ++ph_idx)
+					if (m->func.args[ph_idx].kind == AST_PLACEHOLDER_TYPE)
+						break;
+				if (ph_idx == m->func.num_args)
+					derror(&expr->loc, "unable to find a placeholder argument\n");
+
+				// Verify that the argument supplied for the placeholder is an
+				// interface of the required type.
+				expr_t *ph = expr->call.args+ph_idx;
+				type_t *ph_type = resolve_type_name(context, &ph->type);
+				if (ph_type->kind != AST_INTERFACE_TYPE)
+					derror(&ph->loc, "argument %d of '%s' should be an interface\n", ph_idx, sym->name);
+				if (!type_equal(ph_type, sym->interface))
+					derror(&ph->loc, "argument %d of '%s' is an incompatible interface\n", ph_idx, sym->name);
+
+
+				// Load the interface table of the placeholder.
+				LLVMValueRef target = codegen_expr(self, context, ph, 0, 0);
+				assert(target);
+				LLVMValueRef table_ptr = LLVMBuildExtractValue(self->builder, target, 0, "table_ptr");
+				LLVMValueRef object_ptr = LLVMBuildExtractValue(self->builder, target, 1, "object_ptr");
+
+				LLVMValueRef table = LLVMBuildLoad(self->builder, table_ptr, "table");
+				LLVMValueRef member_func = LLVMBuildExtractValue(self->builder, table, 1+sym->member, m->func.name);
+
+				// Generate the code for the arguments.
+				LLVMValueRef args[expr->call.num_args];
+				for (i = 0; i < expr->call.num_args; ++i) {
+					if (i == ph_idx)
+						args[i] = object_ptr;
+					else
+						args[i] = codegen_expr(self, context, &expr->call.args[i], 0, 0);
+				}
+				result = LLVMBuildCall(self->builder, member_func, args, expr->call.num_args, "");
+
+			} else {
+				if (sym->type->kind != AST_FUNC_TYPE) {
+					fprintf(stderr, "identifier '%s' is not a function\n", sym->name);
+					exit(1);
+				}
+
+				LLVMValueRef funcptr = sym->value;
+				if (sym->kind != FUNC_SYMBOL)
+					funcptr = LLVMBuildLoad(self->builder, sym->value, "funcptr");
+
+				LLVMValueRef args[expr->call.num_args];
+				for (i = 0; i < expr->call.num_args; ++i)
+					args[i] = codegen_expr(self, context, &expr->call.args[i], 0, 0);
+				result = LLVMBuildCall(self->builder, funcptr, args, expr->call.num_args, "");
 			}
-
-			LLVMValueRef funcptr = sym->value;
-			if (sym->kind != FUNC_SYMBOL)
-				funcptr = LLVMBuildLoad(self->builder, sym->value, "funcptr");
-
-			LLVMValueRef args[expr->call.num_args];
-			for (i = 0; i < expr->call.num_args; ++i)
-				args[i] = codegen_expr(self, context, &expr->call.args[i], 0, 0);
-			LLVMValueRef result = LLVMBuildCall(self->builder, funcptr, args, expr->call.num_args, "");
 
 			if (lvalue) {
 				LLVMValueRef ptr = LLVMBuildAlloca(self->builder, LLVMTypeOf(result), "");
@@ -716,9 +841,11 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 
 			LLVMValueRef ptr;
 			if (st->kind == AST_INTERFACE_TYPE) {
-				for (i = 0; i < st->interface.num_members; ++i)
-					if (strcmp(expr->member_access.name, st->interface.members[i].name) == 0)
+				for (i = 0; i < st->interface.num_members; ++i) {
+					interface_member_t *m = st->interface.members+i;
+					if (m->kind == AST_MEMBER_FIELD && strcmp(expr->member_access.name, m->field.name) == 0)
 						break;
+				}
 				assert(i < st->interface.num_members && "interface has no such member");
 				LLVMValueRef target = codegen_expr(self, context, expr->member_access.target, 0, 0);
 				assert(target);
@@ -918,16 +1045,49 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 						LLVMValueRef fields[num_fields];
 						fields[0] = LLVMConstNull(LLVMPointerType(LLVMInt8Type(), 0));
 						for (i = 0; i < to->interface.num_members; ++i) {
-							unsigned n;
-							for (n = 0; n < resolved->strct.num_members; ++n)
-								if (strcmp(resolved->strct.members[n].name, to->interface.members[i].name) == 0)
-									break;
-							if (n == resolved->strct.num_members)
-								derror(&expr->loc, "type %s has no member named '%s' required by the interface %s", from_str, to->interface.members[i].name, to_str);
-							if (!type_equal(to->interface.members[i].type, resolved->strct.members[n].type))
-								derror(&expr->loc, "field '%s' is of the wrong type for interface %s", to->interface.members[i].name, to_str);
-							// fields[1+i] = LLVMConstNull(LLVMPointerType(codegen_type(context, resolved->strct.members[n].type), 0));
-							fields[1+i] = LLVMBuildStructGEP(self->builder, LLVMConstNull(LLVMTypeOf(target)), n, "member");
+							interface_member_t *m = to->interface.members+i;
+							switch (m->kind) {
+								case AST_MEMBER_FUNCTION: {
+
+									// Try to lookup which function implements this interface member.
+									const char *mapped = codegen_context_find_mapping(context, &expr->cast.type, &refd, m->func.name);
+									if (!mapped)
+										derror(&expr->loc, "cannot determine which function maps to '%s'\n", m->func.name);
+
+									// Find the implementing function.
+									codegen_symbol_t *sym = codegen_context_find_symbol(context, mapped);
+									if (!sym)
+										derror(&expr->loc, "function '%s' which is supposed to implement '%s' is unknown\n", mapped, m->func.name);
+
+									// Store a pointer to the function.
+									// fields[1+i] = sym->value;
+									LLVMTypeRef args[m->func.num_args];
+									for (n = 0; n < m->func.num_args; ++n) {
+										if (m->func.args[n].kind == AST_PLACEHOLDER_TYPE)
+											args[n] = LLVMPointerType(LLVMInt8Type(), 0);
+										else
+											args[n] = codegen_type(context, m->func.args+n);
+									}
+									LLVMTypeRef ft = LLVMPointerType(LLVMFunctionType(codegen_type(context, m->func.return_type), args, m->func.num_args, 0), 0);
+									fields[1+i] = LLVMBuildPointerCast(self->builder, sym->value, ft, "");
+									// fields[1+i] = LLVMConstNull(ft);
+								} break;
+
+								case AST_MEMBER_FIELD: {
+									unsigned n;
+									for (n = 0; n < resolved->strct.num_members; ++n)
+										if (strcmp(resolved->strct.members[n].name, m->field.name) == 0)
+											break;
+									if (n == resolved->strct.num_members)
+										derror(&expr->loc, "type %s has no member named '%s' required by the interface %s", from_str, m->field.name, to_str);
+									if (!type_equal(m->field.type, resolved->strct.members[n].type))
+										derror(&expr->loc, "field '%s' is of the wrong type for interface %s", m->field.name, to_str);
+									fields[1+i] = LLVMBuildStructGEP(self->builder, LLVMConstNull(LLVMTypeOf(target)), n, "member");
+								} break;
+
+								default:
+									die("mapping of interface member kind %d not implemented", m->kind);
+							}
 						}
 						LLVMValueRef table = LLVMConstStruct(fields, num_fields, 0);
 						LLVMValueRef table_global = LLVMAddGlobal(self->module, LLVMTypeOf(table), "interface_table");
@@ -1236,10 +1396,18 @@ codegen_decl (codegen_t *self, codegen_context_t *context, decl_t *decl) {
 			break;
 		}
 
-		default:
-			fprintf(stderr, "%s.%d: codegen for decl kind %d not implemented\n", __FILE__, __LINE__, decl->kind);
-			abort();
+		case AST_IMPLEMENTATION_DECL: {
+			codegen_symbol_t sym = {
+				.kind = IMPLEMENTATION_SYMBOL,
+				.decl = decl,
+			};
+
+			codegen_context_add_symbol(context, &sym);
 			break;
+		}
+
+		default:
+			die("codegen for decl kind %d not implemented", decl->kind);
 	}
 }
 

@@ -26,6 +26,8 @@ struct codegen_context {
 enum codegen_symbol_kind {
 	INVALID_SYMBOL = 0,
 	FUNC_SYMBOL,
+	IMPLEMENTATION_SYMBOL,
+	INTERFACE_FUNCTION_SYMBOL,
 };
 
 struct codegen_symbol {
@@ -34,6 +36,8 @@ struct codegen_symbol {
 	type_t *type;
 	LLVMValueRef value;
 	decl_t *decl;
+	type_t *interface;
+	unsigned member;
 };
 
 void codegen_context_init(codegen_context_t *self);

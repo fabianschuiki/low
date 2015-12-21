@@ -90,6 +90,7 @@ add_executable(lowc
 	src/array.c
 	src/ast.c
 	src/codegen.c
+	src/common.c
 	src/grammar.c
 	src/grammar_rules.c
 	src/lexer.c

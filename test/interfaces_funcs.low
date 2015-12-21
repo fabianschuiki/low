@@ -1,0 +1,66 @@
+// Copyright (c) 2015 Fabian Schuiki
+// Verifies that interfaces work with functions.
+// +execute
+
+func printf(int8*, ...) void
+
+
+// Define an interface.
+type consumer: interface {
+	func consume(#, int32) int32
+}
+
+
+// Define two types and corresponding functions.
+type adder: struct {
+	result : int32
+}
+
+type multiplier: struct {
+	result : int32
+}
+
+
+func adder_consume(adder *self, int32 v) int32 {
+	self.result += v
+	printf("  adder.result = %d\n", self.result)
+	return self.result
+}
+
+func multiplier_consume(multiplier *self, int32 v) int32 {
+	self.result *= v
+	printf("  multiplier.result = %d\n", self.result)
+	return self.result
+}
+
+
+// Specify which functions implement which interface function for the two types.
+interface consumer(adder) {
+	consume = adder_consume
+}
+
+interface consumer(multiplier) {
+	consume = multiplier_consume
+}
+
+
+// Test the whole scheme.
+func main() int32 {
+
+	a : adder
+	a.result = 0
+	m : multiplier
+	m.result = 1
+
+	i1 := #consumer(&a)
+	i2 := #consumer(&m)
+
+	i : int32
+	for i = 1; i <= 4; ++i {
+		printf("consume(..., %d)\n", i)
+		consume(i1, i)
+		consume(i2, i)
+	}
+
+	return a.result == 10 && m.result == 24 ? 0 : 1;
+}

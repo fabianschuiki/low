@@ -245,9 +245,23 @@ RULE(const_decl) \
 	VAR TKN(CONST) TKN(IDENT) SUB(type) TKN(ASSIGN) SUB(assignment_expr) TKN(SEMICOLON) REDUCE_TAG(const_decl, 1) \
 RULE_END \
 \
+RULE(implementation_decl) \
+	VAR TKN(INTERFACE) SUB(type) TKN(LPAREN) SUB(type) TKN(RPAREN) TKN(LBRACE) SUB(implementation_mapping_list) TKN(RBRACE) REDUCE(implementation_decl) \
+RULE_END \
+\
+RULE(implementation_mapping_list) \
+	VAR SUB(implementation_mapping) REDUCE_TAG(implementation_mapping_list, 0) \
+	VAR SUB(implementation_mapping_list) SUB(implementation_mapping) REDUCE_TAG(implementation_mapping_list, 1) \
+RULE_END \
+\
+RULE(implementation_mapping) \
+	VAR TKN(IDENT) TKN(ASSIGN) TKN(IDENT) TKN(SEMICOLON) REDUCE(implementation_mapping) \
+RULE_END \
+\
 RULE(decl) \
 	VAR SUB(variable_decl) REDUCE_DEFAULT \
 	VAR SUB(const_decl) REDUCE_DEFAULT \
+	VAR SUB(implementation_decl) REDUCE_DEFAULT \
 RULE_END \
 \
 \
@@ -289,6 +303,17 @@ RULE_END \
 \
 RULE(interface_member) \
 	VAR TKN(IDENT) TKN(COLON) SUB(type) TKN(SEMICOLON) REDUCE(interface_member_field) \
+	VAR TKN(FUNC) TKN(IDENT) TKN(LPAREN) SUB(interface_member_func_parameter_list) TKN(RPAREN) SUB(type) TKN(SEMICOLON) REDUCE(interface_member_func) \
+RULE_END \
+\
+RULE(interface_member_func_parameter_list) \
+	VAR SUB(interface_member_func_parameter) REDUCE_TAG(interface_member_func_parameter_list, 0) \
+	VAR SUB(interface_member_func_parameter_list) TKN(COMMA) SUB(interface_member_func_parameter) REDUCE_TAG(interface_member_func_parameter_list, 1) \
+RULE_END \
+\
+RULE(interface_member_func_parameter) \
+	VAR TKN(HASH) REDUCE(interface_member_func_parameter) \
+	VAR SUB(type) REDUCE_DEFAULT \
 RULE_END \
 \
 \

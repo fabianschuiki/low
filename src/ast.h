@@ -25,6 +25,8 @@ typedef struct func_unit func_unit_t;
 typedef struct incdec_expr incdec_expr_t;
 typedef struct index_access_expr index_access_expr_t;
 typedef struct interface_member interface_member_t;
+typedef struct interface_member_field interface_member_field_t;
+typedef struct interface_member_func interface_member_func_t;
 typedef struct interface_type interface_type_t;
 typedef struct iteration_stmt iteration_stmt_t;
 typedef struct label_stmt label_stmt_t;
@@ -44,6 +46,8 @@ typedef struct type_unit type_unit_t;
 typedef struct unary_expr unary_expr_t;
 typedef struct unit unit_t;
 typedef struct variable_decl variable_decl_t;
+typedef struct implementation_decl implementation_decl_t;
+typedef struct implementation_mapping implementation_mapping_t;
 
 
 // --- type -------------------------------------------------------------
@@ -60,6 +64,7 @@ enum type_kind {
 	AST_ARRAY_TYPE,
 	AST_SLICE_TYPE,
 	AST_INTERFACE_TYPE,
+	AST_PLACEHOLDER_TYPE,
 };
 
 
@@ -97,10 +102,29 @@ struct interface_type {
 	interface_member_t *members;
 };
 
-struct interface_member {
-	// unsigned kind;
+enum interface_member_kind {
+	AST_MEMBER_FIELD,
+	AST_MEMBER_FUNCTION,
+};
+
+struct interface_member_field {
 	char *name;
 	type_t *type;
+};
+
+struct interface_member_func {
+	char *name;
+	type_t *return_type;
+	unsigned num_args;
+	type_t *args;
+};
+
+struct interface_member {
+	unsigned kind;
+	union {
+		interface_member_field_t field;
+		interface_member_func_t func;
+	};
 };
 
 
@@ -421,6 +445,7 @@ enum decl_kind {
 	AST_CONST_DECL,
 	// AST_TYPE_DECL,
 	// AST_FUNCTION_DECL,
+	AST_IMPLEMENTATION_DECL,
 };
 
 
@@ -438,12 +463,26 @@ struct const_decl {
 };
 
 
+struct implementation_decl {
+	type_t *interface;
+	type_t *target;
+	unsigned num_mappings;
+	implementation_mapping_t *mappings;
+};
+
+struct implementation_mapping {
+	char *intf;
+	char *func;
+};
+
+
 struct decl {
 	unsigned kind;
 	loc_t loc;
 	union {
 		variable_decl_t variable;
 		const_decl_t cons;
+		implementation_decl_t impl;
 	};
 };
 

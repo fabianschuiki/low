@@ -709,6 +709,42 @@ REDUCER(const_decl) {
 	out->ptr = d;
 }
 
+REDUCER(implementation_decl) {
+	decl_t *d = malloc(sizeof(decl_t));
+	bzero(d, sizeof(*d));
+	d->kind = AST_IMPLEMENTATION_DECL;
+	d->loc = in[0].loc;
+	d->impl.interface = in[1].ptr;
+	d->impl.target = in[3].ptr;
+	array_t *a = in[6].ptr;
+	array_shrink(a);
+	d->impl.num_mappings = a->size;
+	d->impl.mappings = a->items;
+	free(a);
+	out->ptr = d;
+}
+
+REDUCER(implementation_mapping_list) {
+	if (tag == 0) {
+		array_t *a = malloc(sizeof(array_t));
+		array_init(a, sizeof(implementation_mapping_t));
+		array_add(a, in[0].ptr);
+		free(in[0].ptr);
+		out->ptr = a;
+	} else {
+		array_add(in[0].ptr, in[2].ptr);
+		free(in[2].ptr);
+	}
+}
+
+REDUCER(implementation_mapping) {
+	implementation_mapping_t *m = malloc(sizeof(implementation_mapping_t));
+	bzero(m, sizeof(*m));
+	m->intf = strndup(in[0].first, in[0].last-in[0].first);
+	m->func = strndup(in[2].first, in[2].last-in[2].first);
+	out->ptr = m;
+}
+
 
 // --- type --------------------------------------------------------------------
 
@@ -877,9 +913,44 @@ REDUCER(interface_member_list) {
 REDUCER(interface_member_field) {
 	interface_member_t *m = malloc(sizeof(interface_member_t));
 	bzero(m, sizeof(*m));
-	m->name = strndup(in[0].first, in[0].last-in[0].first);
-	m->type = in[2].ptr;
+	m->kind = AST_MEMBER_FIELD;
+	m->field.name = strndup(in[0].first, in[0].last-in[0].first);
+	m->field.type = in[2].ptr;
 	out->ptr = m;
+}
+
+REDUCER(interface_member_func) {
+	interface_member_t *m = malloc(sizeof(interface_member_t));
+	bzero(m, sizeof(*m));
+	m->kind = AST_MEMBER_FUNCTION;
+	m->func.name = strndup(in[1].first, in[1].last-in[1].first);
+	m->func.return_type = in[5].ptr;
+	array_t *a = in[3].ptr;
+	array_shrink(a);
+	m->func.num_args = a->size;
+	m->func.args = a->items;
+	free(a);
+	out->ptr = m;
+}
+
+REDUCER(interface_member_func_parameter_list) {
+	if (tag == 0) {
+		array_t *a = malloc(sizeof(array_t));
+		array_init(a, sizeof(type_t));
+		array_add(a, in[0].ptr);
+		free(in[0].ptr);
+		out->ptr = a;
+	} else {
+		array_add(in[0].ptr, in[2].ptr);
+		free(in[2].ptr);
+	}
+}
+
+REDUCER(interface_member_func_parameter) {
+	type_t *t = malloc(sizeof(type_t));
+	bzero(t, sizeof(*t));
+	t->kind = AST_PLACEHOLDER_TYPE;
+	out->ptr = t;
 }
 
 
