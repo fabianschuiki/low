@@ -235,24 +235,10 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 	unsigned i;
 	switch (expr->kind) {
 
-		case AST_IDENT_EXPR: return determine_type_ident_expr(self, context, expr, type_hint);
-
-		case AST_NUMBER_LITERAL_EXPR: return determine_type_number_literal_expr(self, context, expr, type_hint);
-
-		case AST_STRING_LITERAL_EXPR: return determine_type_string_literal_expr(self, context, expr, type_hint);
-
-		case AST_INDEX_ACCESS_EXPR: return determine_type_index_access_expr(self, context, expr, type_hint);
-
-		case AST_CALL_EXPR: return determine_type_call_expr(self, context, expr, type_hint);
-
-		case AST_MEMBER_ACCESS_EXPR: return determine_type_member_access_expr(self, context, expr, type_hint);
-
 		case AST_INCDEC_EXPR: {
 			determine_type(self, context, expr->incdec_op.target, type_hint);
 			type_copy(&expr->type, &expr->incdec_op.target->type);
 		} break;
-
-		case AST_UNARY_EXPR: return determine_type_unary_expr(self, context, expr, type_hint);
 
 		case AST_SIZEOF_EXPR: {
 			if (expr->sizeof_op.mode == AST_EXPR_SIZEOF)
@@ -295,12 +281,6 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 			type_copy(&expr->type, &int_type);
 		} break;
 
-		case AST_CAST_EXPR: return determine_type_cast_expr(self, context, expr, type_hint);
-
-		case AST_BINARY_EXPR: return determine_type_binary_expr(self, context, expr, type_hint);
-
-		case AST_CONDITIONAL_EXPR: return determine_type_conditional_expr(self, context, expr, type_hint);
-
 		case AST_COMMA_EXPR: {
 			type_t *type;
 			for (i = 0; i < expr->comma.num_exprs; ++i) {
@@ -311,9 +291,7 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 		} break;
 
 		default:
-			fprintf(stderr, "%s.%d: type determination for expr kind %d not implemented\n", __FILE__, __LINE__, expr->kind);
-			abort();
-			return;
+			die("type determination for expr kind %d not implemented", expr->kind);
 	}
 }
 
@@ -419,18 +397,6 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 	unsigned i;
 	switch (expr->kind) {
 
-		case AST_IDENT_EXPR: return codegen_ident_expr(self, context, expr, lvalue);
-
-		case AST_NUMBER_LITERAL_EXPR: return codegen_number_literal_expr(self, context, expr, lvalue);
-
-		case AST_STRING_LITERAL_EXPR: return codegen_string_literal_expr(self, context, expr, lvalue);
-
-		case AST_INDEX_ACCESS_EXPR: return codegen_index_access_expr(self, context, expr, lvalue);
-
-		case AST_CALL_EXPR: return codegen_call_expr(self, context, expr, lvalue);
-
-		case AST_MEMBER_ACCESS_EXPR: return codegen_member_access_expr(self, context, expr, lvalue);
-
 		case AST_INCDEC_EXPR: {
 			assert(expr->incdec_op.order == AST_PRE && "post-increment/-decrement not yet implemented");
 
@@ -456,8 +422,6 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 			LLVMBuildStore(self->builder, new_value, target);
 			return lvalue ? target : new_value;
 		}
-
-		case AST_UNARY_EXPR: return codegen_unary_expr(self, context, expr, lvalue);
 
 		case AST_SIZEOF_EXPR: {
 			assert(!lvalue && "result of sizeof expression is not a valid lvalue");
@@ -513,12 +477,6 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 			return LLVMBuildLoad(self->builder,eptr,"");
 		}
 
-		case AST_CAST_EXPR: return codegen_cast_expr(self, context, expr, lvalue);
-
-		case AST_BINARY_EXPR: return codegen_binary_expr(self, context, expr, lvalue);
-
-		case AST_CONDITIONAL_EXPR: return codegen_conditional_expr(self, context, expr, lvalue);
-
 		case AST_COMMA_EXPR: {
 			assert(!lvalue && "comma expression is not a valid lvalue");
 			LLVMValueRef value;
@@ -532,8 +490,7 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 		}
 
 		default:
-			fprintf(stderr, "%s.%d: codegen for expr kind %d not implemented\n", __FILE__, __LINE__, expr->kind);
-			abort();
+			die("codegen for expr kind %d not implemented", expr->kind);
 			return 0;
 	}
 }
