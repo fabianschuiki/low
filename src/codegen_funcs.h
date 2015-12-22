@@ -5,6 +5,7 @@
 	DETERMINE_TYPE(name); \
 	CODEGEN_EXPR(name);
 
+BOTH(assignment_expr);
 BOTH(binary_expr);
 BOTH(call_expr);
 BOTH(cast_expr);
@@ -17,3 +18,11 @@ BOTH(string_literal_expr);
 BOTH(unary_expr);
 
 #undef BOTH
+
+const determine_type_fn_t determine_type_fn[AST_NUM_EXPRS] = {
+	[AST_ASSIGNMENT_EXPR] = determine_type_assignment_expr,
+};
+
+const codegen_expr_fn_t codegen_expr_fn[AST_NUM_EXPRS] = {
+	[AST_ASSIGNMENT_EXPR] = codegen_assignment_expr,
+};

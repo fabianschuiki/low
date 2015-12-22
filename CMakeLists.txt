@@ -90,6 +90,7 @@ add_executable(lowc
 	src/array.c
 	src/ast.c
 	src/codegen.c
+	src/codegen_assignment_expr.c
 	src/codegen_binary_expr.c
 	src/codegen_call_expr.c
 	src/codegen_cast_expr.c

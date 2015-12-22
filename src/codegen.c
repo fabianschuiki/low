@@ -229,6 +229,9 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 	assert(context);
 	assert(expr);
 
+	determine_type_fn_t fn = determine_type_fn[expr->kind];
+	if (fn) return fn(self, context, expr, type_hint);
+
 	unsigned i;
 	switch (expr->kind) {
 
@@ -297,19 +300,6 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 		case AST_BINARY_EXPR: return determine_type_binary_expr(self, context, expr, type_hint);
 
 		case AST_CONDITIONAL_EXPR: return determine_type_conditional_expr(self, context, expr, type_hint);
-
-		case AST_ASSIGNMENT_EXPR: {
-			determine_type(self, context, expr->assignment.target, type_hint);
-			determine_type(self, context, expr->assignment.expr, &expr->assignment.target->type);
-			if (!type_equal(&expr->assignment.target->type, &expr->assignment.expr->type)) {
-				char *t1 = type_describe(&expr->assignment.target->type);
-				char *t2 = type_describe(&expr->assignment.expr->type);
-				derror(&expr->loc, "incompatible types in assignment ('%s' and '%s')\n", t1, t2);
-				free(t1);
-				free(t2);
-			}
-			type_copy(&expr->type, &expr->assignment.target->type);
-		} break;
 
 		case AST_COMMA_EXPR: {
 			type_t *type;
@@ -423,6 +413,9 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 	assert(expr);
 	/// TODO(fabianschuiki): Split this function up into three functions. One for rvalues that returns the corresponding value, one for lvalues that returns a pointer to the corresponding value, and one for rvalue pointers that returns a pointer to the corresponding value. These will be used for regular expressions, assignments, and struct member accesses respectively.
 
+	codegen_expr_fn_t fn = codegen_expr_fn[expr->kind];
+	if (fn) return fn(self, context, expr, lvalue);
+
 	unsigned i;
 	switch (expr->kind) {
 
@@ -525,39 +518,6 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 		case AST_BINARY_EXPR: return codegen_binary_expr(self, context, expr, lvalue);
 
 		case AST_CONDITIONAL_EXPR: return codegen_conditional_expr(self, context, expr, lvalue);
-
-		case AST_ASSIGNMENT_EXPR: {
-			LLVMValueRef lv = codegen_expr(self, context, expr->assignment.target, 1, 0);
-			if (!lv) {
-				fprintf(stderr, "expr %d cannot be assigned a value\n", expr->assignment.target->kind);
-				abort();
-				return 0;
-			}
-			LLVMValueRef rv = codegen_expr(self, context, expr->assignment.expr, 0, 0);
-			// assert(expr->assignment.target->type.kind == expr->assignment.expr->type.kind &&
-			//        expr->assignment.target->type.width == expr->assignment.expr->type.width &&
-			//        expr->assignment.target->type.pointer == expr->assignment.expr->type.pointer &&
-			//        "incompatible types in assignment");
-			// expr->type = expr->assignment.expr->type;
-			LLVMValueRef v;
-			if (expr->assignment.op == AST_ASSIGN) {
-				v = rv;
-			} else {
-				LLVMValueRef dv = LLVMBuildLoad(self->builder, lv, "");
-				switch (expr->assignment.op) {
-					case AST_ADD_ASSIGN: v = LLVMBuildAdd(self->builder, dv, rv, ""); break;
-					case AST_SUB_ASSIGN: v = LLVMBuildSub(self->builder, dv, rv, ""); break;
-					case AST_MUL_ASSIGN: v = LLVMBuildMul(self->builder, dv, rv, ""); break;
-					case AST_DIV_ASSIGN: v = LLVMBuildUDiv(self->builder, dv, rv, ""); break;
-					default:
-						fprintf(stderr, "%s.%d: codegen for assignment op %d not implemented\n", __FILE__, __LINE__, expr->assignment.op);
-						abort();
-						return 0;
-				}
-			}
-			LLVMBuildStore(self->builder, v, lv);
-			return rv;
-		}
 
 		case AST_COMMA_EXPR: {
 			assert(!lvalue && "comma expression is not a valid lvalue");
