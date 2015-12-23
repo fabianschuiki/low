@@ -2,8 +2,8 @@
 #include "codegen_internal.h"
 
 
-DETERMINE_TYPE(cast_expr) {
-	determine_type(self, context, expr->cast.target, &expr->cast.type);
+PREPARE_TYPE(cast_expr) {
+	prepare_expr(self, context, expr->cast.target, &expr->cast.type);
 	type_copy(&expr->type, &expr->cast.type);
 }
 

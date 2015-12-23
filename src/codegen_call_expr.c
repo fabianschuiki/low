@@ -2,7 +2,7 @@
 #include "codegen_internal.h"
 
 
-DETERMINE_TYPE(call_expr) {
+PREPARE_TYPE(call_expr) {
 	unsigned i;
 	expr_t *tgt = expr->call.target;
 	if (tgt->kind == AST_IDENT_EXPR) {
@@ -14,16 +14,16 @@ DETERMINE_TYPE(call_expr) {
 			assert(m->kind == AST_MEMBER_FUNCTION);
 			type_copy(&expr->type, m->func.return_type);
 			for (i = 0; i < expr->call.num_args; ++i)
-				determine_type(self, context, expr->call.args+i, m->func.args+i);
+				prepare_expr(self, context, expr->call.args+i, m->func.args+i);
 		} else {
 			if (!sym->type || sym->type->kind != AST_FUNC_TYPE)
 				derror(&expr->loc, "identifier '%s' is not a function\n", sym->name);
 			type_copy(&expr->type, sym->type->func.return_type);
 			for (i = 0; i < expr->call.num_args; ++i)
-				determine_type(self, context, expr->call.args+i, sym->type->func.args+i);
+				prepare_expr(self, context, expr->call.args+i, sym->type->func.args+i);
 		}
 	} else if (tgt->kind == AST_MEMBER_ACCESS_EXPR) {
-		determine_type(self, context, tgt->member_access.target, 0);
+		prepare_expr(self, context, tgt->member_access.target, 0);
 		type_t *intf = resolve_type_name(context, &tgt->member_access.target->type);
 		if (intf->kind == AST_INTERFACE_TYPE) {
 			derror(&tgt->loc, "interface calls not yet implemented\n");

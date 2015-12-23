@@ -49,7 +49,7 @@ const char *codegen_context_find_mapping(codegen_context_t *self, type_t *interf
 type_t *resolve_type_name(codegen_context_t *context, type_t *type);
 
 LLVMTypeRef codegen_type(codegen_context_t *context, type_t *type);
-void determine_type(codegen_t *self, codegen_context_t *context, expr_t *expr, type_t *type_hint);
+void prepare_expr(codegen_t *self, codegen_context_t *context, expr_t *expr, type_t *type_hint);
 LLVMValueRef codegen_expr(codegen_t *self, codegen_context_t *context, expr_t *expr, char lvalue, type_t *type_hint);
 
 void codegen_decls(codegen_t *self, codegen_context_t *context, const array_t *units);

@@ -2,9 +2,9 @@
 #include "codegen_internal.h"
 
 
-DETERMINE_TYPE(assignment_expr) {
-	determine_type(self, context, expr->assignment.target, type_hint);
-	determine_type(self, context, expr->assignment.expr, &expr->assignment.target->type);
+PREPARE_TYPE(assignment_expr) {
+	prepare_expr(self, context, expr->assignment.target, type_hint);
+	prepare_expr(self, context, expr->assignment.expr, &expr->assignment.target->type);
 	if (!type_equal(&expr->assignment.target->type, &expr->assignment.expr->type)) {
 		char *t1 = type_describe(&expr->assignment.target->type);
 		char *t2 = type_describe(&expr->assignment.expr->type);

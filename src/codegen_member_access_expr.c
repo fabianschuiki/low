@@ -2,9 +2,9 @@
 #include "codegen_internal.h"
 
 
-DETERMINE_TYPE(member_access_expr) {
+PREPARE_TYPE(member_access_expr) {
 	unsigned i;
-	determine_type(self, context, expr->member_access.target, 0);
+	prepare_expr(self, context, expr->member_access.target, 0);
 	type_t *st = resolve_type_name(context, &expr->member_access.target->type);
 	if (st->kind == AST_INTERFACE_TYPE) {
 		if (st->pointer > 0)

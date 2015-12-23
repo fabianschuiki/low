@@ -2,7 +2,7 @@
 #include "codegen_internal.h"
 
 
-DETERMINE_TYPE(number_literal_expr) {
+PREPARE_TYPE(number_literal_expr) {
 	if (type_hint)
 		type_copy(&expr->type, type_hint);
 }

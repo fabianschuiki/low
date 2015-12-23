@@ -2,7 +2,7 @@
 #include "codegen_internal.h"
 
 
-DETERMINE_TYPE(unary_expr) {
+PREPARE_TYPE(unary_expr) {
 	switch (expr->unary_op.op) {
 		case AST_ADDRESS: {
 			type_t *inner_hint = 0;
@@ -12,7 +12,7 @@ DETERMINE_TYPE(unary_expr) {
 				--hint.pointer;
 				inner_hint = &hint;
 			}
-			determine_type(self, context, expr->unary_op.target, inner_hint);
+			prepare_expr(self, context, expr->unary_op.target, inner_hint);
 			type_copy(&expr->type, &expr->unary_op.target->type);
 			++expr->type.pointer;
 		} break;
@@ -22,9 +22,9 @@ DETERMINE_TYPE(unary_expr) {
 				type_t new_hint;
 				type_copy(&new_hint, type_hint);
 				++new_hint.pointer;
-				determine_type(self, context, expr->unary_op.target, &new_hint);
+				prepare_expr(self, context, expr->unary_op.target, &new_hint);
 			} else {
-				determine_type(self, context, expr->unary_op.target, 0);
+				prepare_expr(self, context, expr->unary_op.target, 0);
 			}
 			type_copy(&expr->type, &expr->unary_op.target->type);
 			expr->type = expr->unary_op.target->type;
@@ -36,13 +36,13 @@ DETERMINE_TYPE(unary_expr) {
 		case AST_POSITIVE:
 		case AST_NEGATIVE:
 		case AST_BITWISE_NOT: {
-			determine_type(self, context, expr->unary_op.target, type_hint);
+			prepare_expr(self, context, expr->unary_op.target, type_hint);
 			type_copy(&expr->type, &expr->unary_op.target->type);
 		} break;
 
 		case AST_NOT: {
 			type_t bool_type = { .kind = AST_BOOLEAN_TYPE };
-			determine_type(self, context, expr->unary_op.target, &bool_type);
+			prepare_expr(self, context, expr->unary_op.target, &bool_type);
 			bzero(&expr->type, sizeof expr->type);
 			expr->type.kind = AST_BOOLEAN_TYPE;
 		} break;

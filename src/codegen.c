@@ -224,12 +224,12 @@ codegen_type (context_t *context, type_t *type) {
 
 
 void
-determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_t *type_hint) {
+prepare_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, type_t *type_hint) {
 	assert(self);
 	assert(context);
 	assert(expr);
 
-	determine_type_fn_t fn = determine_type_fn[expr->kind];
+	prepare_expr_fn_t fn = prepare_expr_fn[expr->kind];
 	if (fn) return fn(self, context, expr, type_hint);
 
 	unsigned i;
@@ -238,7 +238,7 @@ determine_type (codegen_t *self, codegen_context_t *context, expr_t *expr, type_
 		case AST_COMMA_EXPR: {
 			type_t *type;
 			for (i = 0; i < expr->comma.num_exprs; ++i) {
-				determine_type(self, context, expr->comma.exprs+i, type_hint);
+				prepare_expr(self, context, expr->comma.exprs+i, type_hint);
 				type = &expr->comma.exprs[i].type;
 			}
 			type_copy(&expr->type, type);
@@ -299,7 +299,7 @@ codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lv
 
 static LLVMValueRef
 codegen_expr_top (codegen_t *self, codegen_context_t *context, expr_t *expr, char lvalue, type_t *type_hint) {
-	determine_type(self, context, expr, type_hint);
+	prepare_expr(self, context, expr, type_hint);
 	return codegen_expr(self, context, expr, lvalue, type_hint);
 }
 

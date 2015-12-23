@@ -2,7 +2,7 @@
 #include "codegen_internal.h"
 
 #define BOTH(name) \
-	DETERMINE_TYPE(name); \
+	PREPARE_TYPE(name); \
 	CODEGEN_EXPR(name);
 
 BOTH(assignment_expr);
@@ -26,24 +26,24 @@ BOTH(unary_expr);
 #undef BOTH
 
 
-const determine_type_fn_t determine_type_fn[AST_NUM_EXPRS] = {
-	[AST_ASSIGNMENT_EXPR]     = determine_type_assignment_expr,
-	[AST_BINARY_EXPR]         = determine_type_binary_expr,
-	[AST_CALL_EXPR]           = determine_type_call_expr,
-	[AST_CAST_EXPR]           = determine_type_cast_expr,
-	[AST_CONDITIONAL_EXPR]    = determine_type_conditional_expr,
-	[AST_FREE_BUILTIN]        = determine_type_free_builtin_expr,
-	[AST_IDENT_EXPR]          = determine_type_ident_expr,
-	[AST_INCDEC_EXPR]         = determine_type_incdec_expr,
-	[AST_INDEX_ACCESS_EXPR]   = determine_type_index_access_expr,
-	[AST_LENCAP_BUILTIN]      = determine_type_lencap_builtin_expr,
-	[AST_MAKE_BUILTIN]        = determine_type_make_builtin_expr,
-	[AST_MEMBER_ACCESS_EXPR]  = determine_type_member_access_expr,
-	[AST_NEW_BUILTIN]         = determine_type_new_builtin_expr,
-	[AST_NUMBER_LITERAL_EXPR] = determine_type_number_literal_expr,
-	[AST_SIZEOF_EXPR]         = determine_type_sizeof_expr,
-	[AST_STRING_LITERAL_EXPR] = determine_type_string_literal_expr,
-	[AST_UNARY_EXPR]          = determine_type_unary_expr,
+const prepare_expr_fn_t prepare_expr_fn[AST_NUM_EXPRS] = {
+	[AST_ASSIGNMENT_EXPR]     = prepare_assignment_expr,
+	[AST_BINARY_EXPR]         = prepare_binary_expr,
+	[AST_CALL_EXPR]           = prepare_call_expr,
+	[AST_CAST_EXPR]           = prepare_cast_expr,
+	[AST_CONDITIONAL_EXPR]    = prepare_conditional_expr,
+	[AST_FREE_BUILTIN]        = prepare_free_builtin_expr,
+	[AST_IDENT_EXPR]          = prepare_ident_expr,
+	[AST_INCDEC_EXPR]         = prepare_incdec_expr,
+	[AST_INDEX_ACCESS_EXPR]   = prepare_index_access_expr,
+	[AST_LENCAP_BUILTIN]      = prepare_lencap_builtin_expr,
+	[AST_MAKE_BUILTIN]        = prepare_make_builtin_expr,
+	[AST_MEMBER_ACCESS_EXPR]  = prepare_member_access_expr,
+	[AST_NEW_BUILTIN]         = prepare_new_builtin_expr,
+	[AST_NUMBER_LITERAL_EXPR] = prepare_number_literal_expr,
+	[AST_SIZEOF_EXPR]         = prepare_sizeof_expr,
+	[AST_STRING_LITERAL_EXPR] = prepare_string_literal_expr,
+	[AST_UNARY_EXPR]          = prepare_unary_expr,
 };
 
 

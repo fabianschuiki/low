@@ -2,12 +2,12 @@
 #include "codegen_internal.h"
 
 
-DETERMINE_TYPE(conditional_expr) {
+PREPARE_TYPE(conditional_expr) {
 	type_t bool_type = { .kind = AST_BOOLEAN_TYPE };
-	determine_type(self, context, expr->conditional.condition, &bool_type);
+	prepare_expr(self, context, expr->conditional.condition, &bool_type);
 
-	determine_type(self, context, expr->conditional.true_expr, type_hint);
-	determine_type(self, context, expr->conditional.false_expr, type_hint);
+	prepare_expr(self, context, expr->conditional.true_expr, type_hint);
+	prepare_expr(self, context, expr->conditional.false_expr, type_hint);
 
 	if (!type_equal(&expr->conditional.true_expr->type, &expr->conditional.false_expr->type))
 		derror(&expr->loc, "true and false expression of conditional must be of the same type");

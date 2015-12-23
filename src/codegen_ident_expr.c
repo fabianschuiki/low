@@ -2,7 +2,7 @@
 #include "codegen_internal.h"
 
 
-DETERMINE_TYPE(ident_expr) {
+PREPARE_TYPE(ident_expr) {
 	if (strcmp(expr->ident, "true") == 0 || strcmp(expr->ident, "false") == 0) {
 		expr->type.kind = AST_BOOLEAN_TYPE;
 		return;
@@ -20,7 +20,7 @@ DETERMINE_TYPE(ident_expr) {
 	} else {
 		if (!sym->decl || sym->decl->kind != AST_CONST_DECL)
 			derror(&expr->loc, "expected identifier '%s' to be a const", expr->ident);
-		determine_type(self, context, &sym->decl->cons.value, type_hint);
+		prepare_expr(self, context, &sym->decl->cons.value, type_hint);
 		type_copy(&expr->type, &sym->decl->cons.value.type);
 	}
 }

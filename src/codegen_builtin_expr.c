@@ -79,13 +79,13 @@ codegen_slice_new(codegen_t *self, codegen_context_t *context, make_builtin_t *m
 
 
 
-DETERMINE_TYPE(new_builtin_expr) {
+PREPARE_TYPE(new_builtin_expr) {
 	type_copy(&expr->type, &expr->newe.type);
 	++expr->type.pointer;
 }
 
-DETERMINE_TYPE(free_builtin_expr) {
-	determine_type(self, context, expr->free.expr, 0);
+PREPARE_TYPE(free_builtin_expr) {
+	prepare_expr(self, context, expr->free.expr, 0);
 	expr->type.kind = AST_VOID_TYPE;
 
 	if (expr->free.expr->type.pointer == 0) {
@@ -93,17 +93,17 @@ DETERMINE_TYPE(free_builtin_expr) {
 	}
 }
 
-DETERMINE_TYPE(make_builtin_expr) {
+PREPARE_TYPE(make_builtin_expr) {
 	if (expr->make.type.kind != AST_SLICE_TYPE) {
 		derror(&expr->loc, "cannot make non-slice\n");
 	}
 	type_t int_type = {.kind=AST_INTEGER_TYPE,.width=64};
-	determine_type(self,context,expr->make.expr, &int_type);
+	prepare_expr(self,context,expr->make.expr, &int_type);
 	type_copy(&expr->type, &expr->make.type);
 }
 
-DETERMINE_TYPE(lencap_builtin_expr) {
-	determine_type(self,context,expr->lencap.expr, 0);
+PREPARE_TYPE(lencap_builtin_expr) {
+	prepare_expr(self,context,expr->lencap.expr, 0);
 
 	if (expr->lencap.expr->type.kind != AST_SLICE_TYPE) {
 		derror(&expr->loc, "cannot use with non-slice type\n");

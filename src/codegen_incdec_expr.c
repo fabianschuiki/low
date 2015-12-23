@@ -2,8 +2,8 @@
 #include "codegen_internal.h"
 
 
-DETERMINE_TYPE(incdec_expr) {
-	determine_type(self, context, expr->incdec_op.target, type_hint);
+PREPARE_TYPE(incdec_expr) {
+	prepare_expr(self, context, expr->incdec_op.target, type_hint);
 	type_copy(&expr->type, &expr->incdec_op.target->type);
 }
 

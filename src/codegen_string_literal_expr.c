@@ -2,7 +2,7 @@
 #include "codegen_internal.h"
 
 
-DETERMINE_TYPE(string_literal_expr) {
+PREPARE_TYPE(string_literal_expr) {
 	expr->type.kind = AST_INTEGER_TYPE;
 	expr->type.width = 8;
 	expr->type.pointer = 1;

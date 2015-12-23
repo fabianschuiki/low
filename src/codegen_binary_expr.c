@@ -2,7 +2,7 @@
 #include "codegen_internal.h"
 
 
-DETERMINE_TYPE(binary_expr) {
+PREPARE_TYPE(binary_expr) {
 	type_t *hint = 0;
 	if (expr->binary_op.op == AST_ADD ||
 		expr->binary_op.op == AST_SUB ||
@@ -10,14 +10,14 @@ DETERMINE_TYPE(binary_expr) {
 		expr->binary_op.op == AST_DIV)
 		hint = type_hint;
 
-	determine_type(self, context, expr->binary_op.lhs, hint);
-	determine_type(self, context, expr->binary_op.rhs, hint);
+	prepare_expr(self, context, expr->binary_op.lhs, hint);
+	prepare_expr(self, context, expr->binary_op.rhs, hint);
 	if (expr->binary_op.lhs->type.kind == AST_NO_TYPE &&
 		expr->binary_op.rhs->type.kind != AST_NO_TYPE)
-		determine_type(self, context, expr->binary_op.lhs, &expr->binary_op.rhs->type);
+		prepare_expr(self, context, expr->binary_op.lhs, &expr->binary_op.rhs->type);
 	if (expr->binary_op.rhs->type.kind == AST_NO_TYPE &&
 		expr->binary_op.lhs->type.kind != AST_NO_TYPE)
-		determine_type(self, context, expr->binary_op.rhs, &expr->binary_op.lhs->type);
+		prepare_expr(self, context, expr->binary_op.rhs, &expr->binary_op.lhs->type);
 
 	if (expr->binary_op.lhs->type.kind == AST_NO_TYPE &&
 		expr->binary_op.rhs->type.kind == AST_NO_TYPE)

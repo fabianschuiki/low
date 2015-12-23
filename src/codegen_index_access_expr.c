@@ -26,10 +26,10 @@ build_assert(codegen_t *self,codegen_context_t *context, LLVMValueRef cond){
 }
 
 
-DETERMINE_TYPE(index_access_expr) {
+PREPARE_TYPE(index_access_expr) {
 	type_t int_type = { .kind = AST_INTEGER_TYPE, .pointer = 0, .width = 64 };
-	determine_type(self, context, expr->index_access.target, 0);
-	determine_type(self, context, expr->index_access.index, &int_type);
+	prepare_expr(self, context, expr->index_access.target, 0);
+	prepare_expr(self, context, expr->index_access.index, &int_type);
 	type_t *target = &expr->index_access.target->type;
 	if (target->pointer > 0) {
 		type_copy(&expr->type, target);

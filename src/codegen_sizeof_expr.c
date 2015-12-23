@@ -2,9 +2,9 @@
 #include "codegen_internal.h"
 
 
-DETERMINE_TYPE(sizeof_expr) {
+PREPARE_TYPE(sizeof_expr) {
 	if (expr->sizeof_op.mode == AST_EXPR_SIZEOF)
-		determine_type(self, context, expr->sizeof_op.expr, 0);
+		prepare_expr(self, context, expr->sizeof_op.expr, 0);
 	if (type_hint)
 		type_copy(&expr->type, type_hint);
 }
