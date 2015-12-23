@@ -92,13 +92,16 @@ add_executable(lowc
 	src/codegen.c
 	src/codegen_assignment_expr.c
 	src/codegen_binary_expr.c
+	src/codegen_builtin_expr.c
 	src/codegen_call_expr.c
 	src/codegen_cast_expr.c
 	src/codegen_conditional_expr.c
 	src/codegen_ident_expr.c
+	src/codegen_incdec_expr.c
 	src/codegen_index_access_expr.c
 	src/codegen_member_access_expr.c
 	src/codegen_number_literal_expr.c
+	src/codegen_sizeof_expr.c
 	src/codegen_string_literal_expr.c
 	src/codegen_unary_expr.c
 	src/common.c
