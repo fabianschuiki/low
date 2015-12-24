@@ -77,24 +77,6 @@ codegen_context_find_mapping (
 	return self->prev ? codegen_context_find_mapping(self->prev, interface, target, name) : 0;
 }
 
-
-/*static codegen_symbol_t*
-context_find_local (context_t *self, const char *name) {
-	assert(self);
-
-	unsigned i;
-	for (i = 0; i < self->symbols.size; ++i) {
-		codegen_symbol_t *local = array_get(&self->symbols, i);
-		// if (local->decl && strcmp(local->decl->variable.name, name) == 0)
-		// 	return local;
-		if (local->name && strcmp(local->name, name) == 0)
-			return local;
-	}
-
-	return self->prev ? context_find_local(self->prev, name) : 0;
-}*/
-
-
 type_t *
 resolve_type_name (codegen_context_t *context, type_t *type) {
 	assert(type);
