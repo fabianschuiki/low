@@ -104,6 +104,7 @@ add_executable(lowc
 	src/codegen_sizeof_expr.c
 	src/codegen_string_literal_expr.c
 	src/codegen_unary_expr.c
+	src/codegen_type.c
 	src/common.c
 	src/grammar.c
 	src/grammar_rules.c

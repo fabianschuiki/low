@@ -78,7 +78,7 @@ codegen_context_find_mapping (
 }
 
 
-static codegen_symbol_t*
+/*static codegen_symbol_t*
 context_find_local (context_t *self, const char *name) {
 	assert(self);
 
@@ -92,7 +92,7 @@ context_find_local (context_t *self, const char *name) {
 	}
 
 	return self->prev ? context_find_local(self->prev, name) : 0;
-}
+}*/
 
 
 type_t *
@@ -106,122 +106,6 @@ resolve_type_name (codegen_context_t *context, type_t *type) {
 		return type;
 	}
 }
-
-
-static LLVMTypeRef
-make_interface_table_type (context_t *context, interface_member_t *members, unsigned num_members) {
-	assert(context);
-	assert(members || num_members == 0);
-	unsigned i,n;
-
-	unsigned num_fields = 1+num_members;
-	LLVMTypeRef fields[num_fields];
-	fields[0] = LLVMPointerType(LLVMInt8Type(), 0); // pointer to the typeinfo, unused for now
-	for (i = 0; i < num_members; ++i) {
-		switch (members[i].kind) {
-			case AST_MEMBER_FIELD:
-				fields[1+i] = LLVMPointerType(codegen_type(context, members[i].field.type), 0);
-				break;
-			case AST_MEMBER_FUNCTION: {
-				LLVMTypeRef args[members[i].func.num_args];
-				for (n = 0; n < members[i].func.num_args; ++n) {
-					if (members[i].func.args[n].kind == AST_PLACEHOLDER_TYPE)
-						args[n] = LLVMPointerType(LLVMInt8Type(), 0);
-					else
-						args[n] = codegen_type(context, members[i].func.args+n);
-				}
-				LLVMTypeRef ft = LLVMFunctionType(codegen_type(context, members[i].func.return_type), args, members[i].func.num_args, 0);
-				fields[1+i] = LLVMPointerType(ft, 0);
-			} break;
-			default:
-				die("codegen for interface member kind %d not implemented", members[i].kind);
-		}
-	}
-
-	return LLVMStructType(fields, num_fields, 0);
-}
-
-
-LLVMTypeRef
-codegen_type (context_t *context, type_t *type) {
-	assert(type);
-	if (type->pointer > 0) {
-		type_t inner = *type;
-		--inner.pointer;
-		return LLVMPointerType(codegen_type(context, &inner), 0);
-	}
-	unsigned i;
-	switch (type->kind) {
-		case AST_VOID_TYPE:
-			return LLVMVoidType();
-		case AST_BOOLEAN_TYPE:
-			return LLVMInt1Type();
-		case AST_INTEGER_TYPE:
-			return LLVMIntType(type->width);
-		case AST_FLOAT_TYPE:
-			switch (type->width) {
-				case 16: return LLVMHalfType();
-				case 32: return LLVMFloatType();
-				case 64: return LLVMDoubleType();
-				case 128: return LLVMFP128Type();
-				default:
-					derror(0, "floating point type must be 16, 32, 64 or 128 bits wide\n");
-			}
-		case AST_FUNC_TYPE: {
-			LLVMTypeRef args[type->func.num_args];
-			for (i = 0; i < type->func.num_args; ++i)
-				args[i] = codegen_type(context, &type->func.args[i]);
-			return LLVMFunctionType(codegen_type(context, type->func.return_type), args, type->func.num_args, 0);
-		}
-		case AST_NAMED_TYPE: {
-			codegen_symbol_t *sym = context_find_local(context, type->name);
-			if (!sym)
-				derror(0, "unknown type name '%s'\n", type->name);
-			if (!sym->type)
-				derror(0, "'%s' is not a type name\n", type->name);
-			// assert(sym && "unknown type name");
-			return codegen_type(context, sym->type);
-		}
-		case AST_STRUCT_TYPE: {
-			LLVMTypeRef members[type->strct.num_members];
-			for (i = 0; i < type->strct.num_members; ++i)
-				members[i] = codegen_type(context, type->strct.members[i].type);
-			return LLVMStructType(members, type->strct.num_members, 0);
-		}
-		case AST_SLICE_TYPE: {
-			// underlying struct of a slice
-			LLVMTypeRef members[3];
-			members[0] = LLVMPointerType(LLVMArrayType(codegen_type(context, type->slice.type),0),0); // pointer to array
-			members[1] = LLVMIntType(64); 			// length @HARDCODED
-			members[2] = LLVMIntType(64); 			// capacity @HARDCODED
-			return LLVMStructType(members, 3, 0); 	// NOT PACKED
-		}
-		case AST_ARRAY_TYPE: {
-			LLVMTypeRef element = codegen_type(context, type->array.type);
-			return LLVMArrayType(element, type->array.length);
-		}
-		case AST_INTERFACE_TYPE: {
-			LLVMTypeRef fields[] = {
-				LLVMPointerType(make_interface_table_type(context, type->interface.members, type->interface.num_members), 0),
-				LLVMPointerType(LLVMInt8Type(), 0), // pointer to the object
-			};
-			for (i = 0; i < type->interface.num_members; ++i) {
-				codegen_symbol_t sym = {
-					.kind = INTERFACE_FUNCTION_SYMBOL,
-					.name = type->interface.members[i].func.name,
-					.interface = type,
-					.member = i,
-				};
-				codegen_context_add_symbol(context, &sym);
-			}
-			return LLVMStructType(fields, 2, 0);
-		}
-		default:
-			fprintf(stderr, "%s.%d: codegen for type kind %d not implemented\n", __FILE__, __LINE__, type->kind);
-			abort();
-	}
-}
-
 
 void
 prepare_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, type_t *type_hint) {

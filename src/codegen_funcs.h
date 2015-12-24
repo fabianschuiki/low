@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015 Fabian Schuiki, Thomas Richner */
 #include "codegen_internal.h"
 
 #define BOTH(name) \
@@ -66,3 +66,7 @@ const codegen_expr_fn_t codegen_expr_fn[AST_NUM_EXPRS] = {
 	[AST_STRING_LITERAL_EXPR] = codegen_string_literal_expr,
 	[AST_UNARY_EXPR]          = codegen_unary_expr,
 };
+
+
+LLVMTypeRef
+codegen_type(codegen_context_t *context, type_t *type);
