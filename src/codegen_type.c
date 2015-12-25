@@ -103,11 +103,13 @@ CODEGEN_TYPE(struct){
 
 CODEGEN_TYPE(slice){
 	// underlying struct of a slice
-	LLVMTypeRef members[3];
-	members[0] = LLVMPointerType(LLVMArrayType(codegen_type(context, type->slice.type),0),0); // pointer to array
+	LLVMTypeRef arrtype = LLVMPointerType(LLVMArrayType(codegen_type(context, type->slice.type),0),0);
+	LLVMTypeRef members[4];
+	members[0] = arrtype; // pointer to array
 	members[1] = LLVMIntType(64); 			// length @HARDCODED
 	members[2] = LLVMIntType(64); 			// capacity @HARDCODED
-	return LLVMStructType(members, 3, 0); 	// NOT PACKED
+	members[3] = arrtype; // base
+	return LLVMStructType(members, 4, 0); 	// NOT PACKED
 }
 
 CODEGEN_TYPE(array){

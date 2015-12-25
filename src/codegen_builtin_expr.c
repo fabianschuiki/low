@@ -13,7 +13,7 @@ codegen_array_new(codegen_t* self, codegen_context_t *context,LLVMTypeRef type,L
 
 	//TODO check for nonzero
 
-	//---- zero initialise
+	//---- zero initialise TODO: use memset intrinsic
 	LLVMValueRef cntrptr = LLVMBuildAlloca(self->builder,LLVMTypeOf(size),"cntrptr");
 	LLVMBuildStore(self->builder,size,cntrptr);
 
@@ -48,6 +48,7 @@ codegen_array_new(codegen_t* self, codegen_context_t *context,LLVMTypeRef type,L
  *    *arr: *[i32 x 0]
  *    len: i64
  *    cap: i64
+ *	  off: i64
  * }
  */
 
@@ -73,6 +74,7 @@ codegen_slice_new(codegen_t *self, codegen_context_t *context, make_builtin_t *m
 
 	slice = LLVMBuildInsertValue(self->builder, slice, arrptr, 0, "arrptr");
 	slice = LLVMBuildInsertValue(self->builder, slice, caparg, 2, "cap");
+	slice = LLVMBuildInsertValue(self->builder, slice, arrptr, 3, "baseptr");
 
 	return slice;
 }
@@ -113,6 +115,10 @@ PREPARE_TYPE(lencap_builtin_expr) {
 	type_copy(&expr->type, &int_type);
 }
 
+PREPARE_TYPE(dispose_builtin_expr) {
+	prepare_expr(self, context, expr->dispose.expr, 0);
+	expr->type.kind = AST_VOID_TYPE;
+}
 
 CODEGEN_EXPR(new_builtin_expr) {
 	LLVMTypeRef type = codegen_type(context, &expr->newe.type);
@@ -135,8 +141,6 @@ CODEGEN_EXPR(lencap_builtin_expr) {
 	assert(expr->lencap.expr->type.kind==AST_SLICE_TYPE && "CAP/LEN only for slices defined");
 	LLVMValueRef aslice = codegen_expr(self, context, expr->lencap.expr, 0, 0);
 
-	//LLVMTypeRef type = codegen_type(context, &expr->lencap.expr->type);
-
 	LLVMValueRef eptr = NULL;
 	if(expr->lencap.kind==AST_LEN){
 		eptr = LLVMBuildStructGEP(self->builder,aslice,1,"len");
@@ -147,4 +151,18 @@ CODEGEN_EXPR(lencap_builtin_expr) {
 	}
 
 	return LLVMBuildLoad(self->builder,eptr,"");
+}
+
+CODEGEN_EXPR(dispose_builtin_expr) {
+
+	assert(expr->dispose.expr->type.kind==AST_SLICE_TYPE && "DISPOSE only for slices defined");
+	LLVMValueRef aslice = codegen_expr(self, context, expr->dispose.expr, 0, 0);
+	dump_val("aslice",aslice);
+
+	LLVMValueRef eptr	= LLVMBuildStructGEP(self->builder,aslice,3,"baseptr");
+	LLVMValueRef arrptr = LLVMBuildLoad(self->builder,eptr,"");
+
+	dump_val("arrptr",arrptr);
+
+	return LLVMBuildFree(self->builder,arrptr);
 }

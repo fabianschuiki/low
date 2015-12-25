@@ -282,6 +282,7 @@ lexer_next (lexer_t *self) {
 			CHECK_KEYWORD("inline",    TKN_INLINE);
 			CHECK_KEYWORD("interface", TKN_INTERFACE);
 			CHECK_KEYWORD("len",       TKN_LEN);
+			CHECK_KEYWORD("dispose",   TKN_DISPOSE);
 			CHECK_KEYWORD("make",      TKN_MAKE);
 			CHECK_KEYWORD("new",       TKN_NEW);
 			CHECK_KEYWORD("return",    TKN_RETURN);

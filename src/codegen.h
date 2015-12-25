@@ -40,6 +40,11 @@ struct codegen_symbol {
 	unsigned member;
 };
 
+
+void dump_val(char* name,LLVMValueRef val);
+
+void dump_type(char* name,LLVMTypeRef t);
+
 void codegen_context_init(codegen_context_t *self);
 void codegen_context_dispose(codegen_context_t *self);
 

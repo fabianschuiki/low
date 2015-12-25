@@ -73,6 +73,10 @@ expr_dispose (expr_t *self) {
 			expr_dispose(self->lencap.expr);
 			free(self->lencap.expr);
 			break;
+		case AST_DISPOSE_BUILTIN:
+			expr_dispose(self->dispose.expr);
+			free(self->dispose.expr);
+			break;
 		case AST_CAST_EXPR:
 			expr_dispose(self->cast.target);
 			type_dispose(&self->cast.type);

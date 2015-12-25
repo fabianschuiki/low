@@ -280,6 +280,15 @@ REDUCER(builtin_func_new) {
 	out->ptr = e;
 }
 
+REDUCER(builtin_func_dispose) {
+	expr_t *e = malloc(sizeof(expr_t));
+	bzero(e, sizeof(*e));
+	e->kind = AST_DISPOSE_BUILTIN;
+	e->loc = in[0].loc;
+	e->dispose.expr = in[2].ptr;
+	out->ptr = e;
+}
+
 REDUCER(builtin_func_free) {
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));

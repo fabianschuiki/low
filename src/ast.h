@@ -31,6 +31,7 @@ typedef struct interface_type interface_type_t;
 typedef struct iteration_stmt iteration_stmt_t;
 typedef struct label_stmt label_stmt_t;
 typedef struct lencap_builtin lencap_builtin_t;
+typedef struct dispose_builtin dispose_builtin_t;
 typedef struct make_builtin make_builtin_t;
 typedef struct member_access_expr member_access_expr_t;
 typedef struct new_builtin new_builtin_t;
@@ -167,6 +168,7 @@ enum expr_kind {
 	AST_FREE_BUILTIN,
 	AST_MAKE_BUILTIN,
 	AST_LENCAP_BUILTIN,
+	AST_DISPOSE_BUILTIN,
 	AST_NUM_EXPRS
 };
 
@@ -255,6 +257,10 @@ enum lencap_kind {
 
 struct lencap_builtin {
 	unsigned kind;
+	expr_t *expr;
+};
+
+struct dispose_builtin {
 	expr_t *expr;
 };
 
@@ -353,6 +359,7 @@ struct expr {
 		assignment_expr_t assignment;
 		comma_expr_t comma;
 		lencap_builtin_t lencap;
+		dispose_builtin_t dispose;
 	};
 };
 

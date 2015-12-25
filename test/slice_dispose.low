@@ -1,0 +1,41 @@
+// Copyright (c) 2015 Thomas Richner
+// Verifies that slice allocation and index access works.
+// +execute
+
+func printf(int8* f,...) void
+
+func exit(int32) void
+
+func assert(int1 c) void{
+	if(c==0){
+		printf("Assert failed, exiting.\n")
+		exit(1)
+	}
+}
+
+
+func main(int32 argc,int8** argv) int32 {
+
+	var []int32 blargh = make([]int32,77)
+
+	var int64 i
+	for i = 0; i < 77; ++i {
+		assert(blargh[i] == 0)
+	}
+
+	blargh[6] = 17
+
+	var int64 j = 6
+	printf("blargh[%d]=%d\n",j,blargh[j])
+	assert(blargh[j]==17)
+
+	blargh[76] = 17
+
+	j = 76
+	printf("blargh[%d]=%d\n",j,blargh[j])
+	assert(blargh[j]==17)
+
+	dispose(blargh)
+
+	return 0
+}
