@@ -79,3 +79,97 @@ CODEGEN_EXPR(index_access_expr) {
 	}
 	return lvalue ? ptr : LLVMBuildLoad(self->builder, ptr, "");
 }
+
+PREPARE_TYPE(index_slice_expr) {
+	type_t int_type = { .kind = AST_INTEGER_TYPE, .pointer = 0, .width = 64 };
+
+	prepare_expr(self, context, expr->index_slice.target, 0);
+	if(expr->index_slice.start){
+		prepare_expr(self, context, expr->index_slice.start, &int_type);
+	}
+	if(expr->index_slice.end){
+		prepare_expr(self, context, expr->index_slice.end, &int_type);
+	}
+
+	type_t *target = &expr->index_slice.target->type;
+	if(target->kind != AST_SLICE_TYPE){
+		derror(&expr->loc, "can only slice slices");
+	}
+	type_copy(&expr->type, target->type);
+}
+
+CODEGEN_EXPR(index_slice_expr) {
+	LLVMValueRef target = codegen_expr(self, context, expr->index_slice.target, 0, 0);
+
+	LLVMValueRef start 	= 0;
+	LLVMValueRef end 	= 0;
+	if(expr->index_slice.start){
+		if (expr->index_slice.start->type.kind != AST_INTEGER_TYPE){
+			derror(&expr->index_slice.start->loc, "index needs to be an integer\n");
+		}
+		start = codegen_expr(self, context, expr->index_slice.start, 0, 0);
+
+	}else{
+		start = LLVMConstNull(LLVMInt64Type());
+	}
+	if(expr->index_slice.end){
+		if (expr->index_slice.end->type.kind != AST_INTEGER_TYPE){
+			derror(&expr->index_slice.end->loc, "index needs to be an integer\n");
+		}
+		end = codegen_expr(self, context, expr->index_slice.end, 0, 0);
+	}else{
+		end = LLVMConstNull(LLVMInt64Type());
+	}
+
+	//------------
+	LLVMValueRef capptr = LLVMBuildStructGEP(self->builder, target, 2, "");
+	LLVMValueRef cap = LLVMBuildLoad(self->builder,capptr,"");
+
+	LLVMTypeRef dst = LLVMTypeOf(cap);
+
+	start = LLVMBuildIntCast(self->builder, start, dst,"");
+	end = LLVMBuildIntCast(self->builder, end, dst,"");
+
+	// ncap = end - start
+	// nlen = len - start
+	// narrptr = arrptr + start
+
+	// check idx vs cap
+	LLVMValueRef oob = LLVMBuildICmp(self->builder, LLVMIntULT, index, cap, "");
+	build_assert(self,context,oob);
+
+	LLVMValueRef arrptrptr = LLVMBuildStructGEP(self->builder, target, 0, "");
+	LLVMValueRef arrptr = LLVMBuildLoad(self->builder,arrptrptr,"");
+
+	ptr = LLVMBuildInBoundsGEP(self->builder, arrptr, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), index}, 2, "");
+
+
+	//--------------------------------
+	LLVMValueRef ptr;
+	if (expr->index_access.target->type.pointer > 0) {
+		ptr = LLVMBuildInBoundsGEP(self->builder, target, &index, 1, "");
+	} else if (expr->index_access.target->type.kind == AST_ARRAY_TYPE) {
+		ptr = LLVMBuildInBoundsGEP(self->builder, target, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), index}, 2, "");
+	} else if (expr->index_access.target->type.kind == AST_SLICE_TYPE) {
+
+		LLVMValueRef capptr = LLVMBuildStructGEP(self->builder, target, 2, "");
+		LLVMValueRef cap = LLVMBuildLoad(self->builder,capptr,"");
+
+		LLVMTypeRef dst = LLVMTypeOf(cap);
+
+		index = LLVMBuildIntCast(self->builder, index, dst,"");
+
+		// check idx vs cap
+		LLVMValueRef oob = LLVMBuildICmp(self->builder, LLVMIntULT, index, cap, "");
+		build_assert(self,context,oob);
+
+		LLVMValueRef arrptrptr = LLVMBuildStructGEP(self->builder, target, 0, "");
+		LLVMValueRef arrptr = LLVMBuildLoad(self->builder,arrptrptr,"");
+
+		ptr = LLVMBuildInBoundsGEP(self->builder, arrptr, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), index}, 2, "");
+
+	} else {
+		derror(&expr->loc, "cannot index into non-pointer or non-array");
+	}
+	return lvalue ? ptr : LLVMBuildLoad(self->builder, ptr, "");
+}

@@ -49,7 +49,7 @@ typedef struct unit unit_t;
 typedef struct variable_decl variable_decl_t;
 typedef struct implementation_decl implementation_decl_t;
 typedef struct implementation_mapping implementation_mapping_t;
-
+typedef struct index_slice_expr index_slice_expr_t;
 
 // --- type -------------------------------------------------------------
 
@@ -153,6 +153,7 @@ enum expr_kind {
 	AST_STRING_LITERAL_EXPR,
 	AST_NUMBER_LITERAL_EXPR,
 	AST_INDEX_ACCESS_EXPR,
+	AST_INDEX_SLICE_EXPR,
 	AST_CALL_EXPR,
 	AST_MEMBER_ACCESS_EXPR,
 	AST_INCDEC_EXPR,
@@ -178,6 +179,18 @@ struct index_access_expr {
 	expr_t *index;
 };
 
+enum index_slice_kind {
+	AST_INDEX_SLICE_RANGE,
+	AST_INDEX_SLICE_PREFIX,
+	AST_INDEX_SLICE_POSTFIX,
+};
+
+struct index_slice_expr {
+	expr_t *target;
+	expr_t *start;
+	expr_t *end;
+	unsigned kind;
+};
 
 struct call_expr {
 	expr_t *target;
@@ -348,6 +361,7 @@ struct expr {
 		free_builtin_t free;
 		make_builtin_t make;
 		index_access_expr_t index_access;
+		index_slice_expr_t index_slice;
 		call_expr_t call;
 		member_access_expr_t member_access;
 		incdec_expr_t incdec_op;
