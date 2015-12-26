@@ -1,0 +1,53 @@
+// Copyright (c) 2015 Thomas Richner
+// Verifies that slicing slices works.
+// +execute
+
+func printf(int8* f,...) void
+
+func exit(int32) void
+
+func assert(int1 c) void{
+	if(c==0){
+		printf("Assert failed, exiting.\n")
+		exit(1)
+	}
+}
+
+func main(int32 argc,int8** argv) int32 {
+
+	blargh : []int32 = make([]int32,77)
+
+	i : int64
+	for i = 0; i < 77; ++i {
+		assert(blargh[i] == 0)
+	}
+
+	blargh[6] = 17
+
+	printf("len: %d, cap: %d\n",len(blargh),cap(blargh))
+
+	blub : []int32 = blargh[7:20]
+
+	printf("len: %d, cap: %d\n",len(blub),cap(blub))
+
+	blub[0] = 123
+
+	j : int64 = 7
+	printf("blargh[%d]=%d\n",j,blargh[j])
+
+
+	bli : []int32 = blargh[:20]
+	bli[7] = 998
+
+	printf("blargh[%d]=%d\n",j,blargh[j])
+
+	blo : []int32 = blargh[6:]
+	blo[1] = 997
+
+	printf("blargh[%d]=%d\n",j,blargh[j])
+
+
+	dispose(blargh)
+
+	return 0
+}
