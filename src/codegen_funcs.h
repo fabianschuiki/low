@@ -14,6 +14,7 @@ BOTH(free_builtin_expr);
 BOTH(ident_expr);
 BOTH(incdec_expr);
 BOTH(index_access_expr);
+BOTH(index_slice_expr);
 BOTH(lencap_builtin_expr);
 BOTH(dispose_builtin_expr);
 BOTH(make_builtin_expr);
@@ -46,6 +47,7 @@ const prepare_expr_fn_t prepare_expr_fn[AST_NUM_EXPRS] = {
 	[AST_SIZEOF_EXPR]         = prepare_sizeof_expr,
 	[AST_STRING_LITERAL_EXPR] = prepare_string_literal_expr,
 	[AST_UNARY_EXPR]          = prepare_unary_expr,
+	[AST_INDEX_SLICE_EXPR]    = prepare_index_slice_expr,
 };
 
 
@@ -68,6 +70,7 @@ const codegen_expr_fn_t codegen_expr_fn[AST_NUM_EXPRS] = {
 	[AST_SIZEOF_EXPR]         = codegen_sizeof_expr,
 	[AST_STRING_LITERAL_EXPR] = codegen_string_literal_expr,
 	[AST_UNARY_EXPR]          = codegen_unary_expr,
+	[AST_INDEX_SLICE_EXPR]    = codegen_index_slice_expr,
 };
 
 
