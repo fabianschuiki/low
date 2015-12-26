@@ -1,6 +1,6 @@
 // Copyright (c) 2015 Thomas Richner
 // Verifies that slice dispose behaves correctly.
-// +execute
+// -execute
 
 func printf(int8* f,...) void
 
@@ -38,8 +38,10 @@ func main(int32 argc,int8** argv) int32 {
 	dispose(blargh)
 
 	printf("cap: %d, len: %d\n",cap(blargh),len(blargh))
-	assert(cap(blargh)==0)
-	assert(len(blargh)==0)
+
+
+	// USE AFTER FREE, SHOULD CRASH (nullpointer)
+	blargh[17] = 123
 
 	return 0
 }
