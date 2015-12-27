@@ -1,0 +1,10 @@
+// Copyright (c) 2015 Fabian Schuiki
+// Verifies that increment/decrement in postfix notation works.
+// +execute
+
+func main() int32 {
+	var int32 i = 0
+	i++
+	i--
+	return i
+}

@@ -9,15 +9,12 @@ PREPARE_TYPE(incdec_expr) {
 
 
 CODEGEN_EXPR(incdec_expr) {
-	assert(expr->incdec_op.order == AST_PRE && "post-increment/-decrement not yet implemented");
+	if (lvalue)
+		derror(&expr->loc, "result of increment/decrement operation is not a valid lvalue\n");
 
 	LLVMValueRef target = codegen_expr(self, context, expr->incdec_op.target, 1, 0);
-	if (!target) {
-		fprintf(stderr, "expr %d is not a valid lvalue and thus cannot be incremented/decremented\n", expr->assignment.target->kind);
-		abort();
-		return 0;
-	}
-	// expr->type = expr->incdec_op.target->type;
+	if (!target)
+		derror(&expr->loc, "expression is not a valid lvalue and thus cannot be incremented/decremented\n");
 	if (expr->type.kind != AST_INTEGER_TYPE)
 		derror(&expr->loc, "increment/decrement operator only supported for integers\n");
 
@@ -31,5 +28,5 @@ CODEGEN_EXPR(incdec_expr) {
 	}
 
 	LLVMBuildStore(self->builder, new_value, target);
-	return lvalue ? target : new_value;
+	return expr->incdec_op.order == AST_PRE ? new_value : value;
 }

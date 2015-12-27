@@ -34,8 +34,24 @@ parse (lexer_t *lex) {
 			if (state->actions[i].token == lex->token)
 				break;
 
-		if (i >= state->num_actions)
-			derror(&lex->loc, "syntax error\n");
+		if (i >= state->num_actions) {
+			char *msg = strdup("syntax error, expected");
+			for (i = 0; i < state->num_actions; ++i) {
+				char *glue;
+				if (i == 0)
+					glue = " ";
+				else if (i == state->num_actions-1)
+					glue = ", or ";
+				else
+					glue = ", ";
+				char *nmsg;
+				asprintf(&nmsg, "%s%s%s", msg, glue, token_names[state->actions[i].token]);
+				free(msg);
+				msg = nmsg;
+			}
+			derror(&lex->loc, "%s\n", msg);
+			free(msg);
+		}
 
 		const parser_action_t *action = &state->actions[i];
 		if (action->state_or_length < 0) {

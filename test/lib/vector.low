@@ -1,0 +1,97 @@
+// Copyright (c) 2015 Fabian Schuiki
+// Test for the vector container.
+// +execute @../../lib/vector.low
+import "../../lib/vector.low"
+
+func printf(int8*,...) void
+func exit(int32) void
+func assert(bool cond) void {
+	if !cond {
+		printf("assertion failed\n")
+		exit(1)
+	}
+}
+
+func main() int32 {
+	v1 : vector
+
+	vector_init(&v1, sizeof #int32)
+	assert(v1.item_size == 4)
+	assert(v1.size == 0)
+	assert(v1.capacity == 0)
+	assert(v1.items == nullptr)
+
+	// Reserving an item increases capacity but not size.
+	vector_reserve(&v1, 1)
+	assert(v1.size == 0)
+	assert(v1.capacity == 1)
+
+	// Resizing up increases size and capacity.
+	vector_resize(&v1, 2)
+	assert(v1.size == 2)
+	assert(v1.capacity == 2)
+
+	// Reading an item after setting should yield the same value.
+	k1 : int32 = 42
+	vector_set(&v1, 0, #int8*(&k1))
+	l1 := *#int32*(vector_get(&v1, 0))
+	assert(l1 == k1)
+
+	// Reading many items after setting should yield the same values.
+	k2 : [2]int32
+	k2[0] = 1
+	k2[1] = 2
+	vector_set_many(&v1, 0, #int8*(&k2), 2)
+	l2 : [2]int32
+	vector_get_many(&v1, 0, #int8*(&l2), 2)
+	assert(l2[0] == k2[0])
+	assert(l2[1] == k2[1])
+
+	// Resizing down decreases capacity only.
+	vector_resize(&v1, 1)
+	assert(v1.size == 1)
+	assert(v1.capacity == 2)
+
+	// Shrinking reduces capacity to size.
+	vector_shrink(&v1)
+	assert(v1.size == 1)
+	assert(v1.capacity == 1)
+
+	// Inserting and erasing in front.
+	k3 : [2]int32
+	k3[0] = 21
+	k3[1] = 22
+	vector_insert(&v1, 0, #int8*(&k3[0]))
+	assert(v1.size == 2)
+	l3 : [3]int32
+	vector_get_many(&v1, 0, #int8*(&l3), 2)
+	assert(l3[0] == k3[0])
+	assert(l3[1] == k2[0])
+
+	vector_erase(&v1, 0)
+	assert(v1.size == 1)
+	vector_get_many(&v1, 0, #int8*(&l3), 1)
+	assert(l3[0] == k2[0])
+
+	// Inserting and erasing many at the end.
+	vector_insert_many(&v1, 1, #int8*(&k3), 2)
+	assert(v1.size == 3)
+	vector_get_many(&v1, 0, #int8*(&l3), 3)
+	assert(l3[0] == k2[0])
+	assert(l3[1] == k3[0])
+	assert(l3[2] == k3[1])
+
+	vector_erase_many(&v1, 1, 2)
+	assert(v1.size == 1)
+	vector_get_many(&v1, 0, #int8*(&l3), 1)
+	assert(l3[0] == k2[0])
+
+	// Clearing a vector resets its size to 0, but leaves capacity intact.
+	oldcap := v1.capacity
+	vector_clear(&v1)
+	assert(v1.size == 0)
+	assert(v1.capacity == oldcap)
+
+	vector_dispose(&v1)
+	return 0
+}

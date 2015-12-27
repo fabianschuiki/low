@@ -5,6 +5,14 @@
 #include <string.h>
 
 
+const char *token_names[MAX_TOKENS] = {
+	#define TKN(id,name) [TKN_##id] = name,
+	#include "lexer_tokens.h"
+	TOKENS
+	#undef TKN
+};
+
+
 static int
 is_whitespace (char c) {
 	return c <= 0x20;
@@ -19,6 +27,13 @@ lexer_step(lexer_t *self) {
 		self->line_base = self->ptr+1;
 	}
 	++self->ptr;
+}
+
+
+static void
+lexer_steps(lexer_t *self, unsigned steps) {
+	for (; steps > 0; --steps)
+		lexer_step(self);
 }
 
 
@@ -147,7 +162,7 @@ lexer_next (lexer_t *self) {
 		unsigned rem = (self->end - self->ptr);
 
 		if (rem >= 3) {
-			#define CHECK_TOKEN(str,tkn) if (strncmp(str, self->ptr, 3) == 0) { self->ptr += 3; self->token = tkn; return; }
+			#define CHECK_TOKEN(str,tkn) if (strncmp(str, self->ptr, 3) == 0) { lexer_steps(self, 3); self->token = tkn; return; }
 			CHECK_TOKEN("...", TKN_ELLIPSIS)
 			CHECK_TOKEN(">>=", TKN_RIGHT_ASSIGN)
 			CHECK_TOKEN("<<=", TKN_LEFT_ASSIGN)
@@ -165,7 +180,7 @@ lexer_next (lexer_t *self) {
 				consume_multiline_comment(self);
 				continue;
 			}
-			#define CHECK_TOKEN(str,tkn) if (strncmp(str, self->ptr, 2) == 0) { self->ptr += 2; self->token = tkn; return; }
+			#define CHECK_TOKEN(str,tkn) if (strncmp(str, self->ptr, 2) == 0) { lexer_steps(self, 2); self->token = tkn; return; }
 			CHECK_TOKEN(":=", TKN_DEF_ASSIGN)
 			CHECK_TOKEN("+=", TKN_ADD_ASSIGN)
 			CHECK_TOKEN("-=", TKN_SUB_ASSIGN)
@@ -190,7 +205,7 @@ lexer_next (lexer_t *self) {
 		}
 
 		if (rem >= 1) {
-			#define CHECK_TOKEN(chr,tkn) if (*self->ptr == chr) { ++self->ptr; self->token = tkn; return; }
+			#define CHECK_TOKEN(chr,tkn) if (*self->ptr == chr) { lexer_step(self); self->token = tkn; return; }
 			CHECK_TOKEN(';', TKN_SEMICOLON)
 			CHECK_TOKEN('{', TKN_LBRACE)
 			CHECK_TOKEN('}', TKN_RBRACE)

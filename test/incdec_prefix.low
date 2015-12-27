@@ -1,14 +1,10 @@
 // Copyright (c) 2015 Thomas Richner
-// Verifies that increment/decrement in prefix notation works
+// Verifies that increment/decrement in prefix notation works.
 // +execute
 
-func main() int32{
-
+func main() int32 {
 	var int32 i = 0
-
 	++i
-
 	--i
-
 	return i
 }

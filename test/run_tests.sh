@@ -27,20 +27,18 @@ log_pass() { printf "\r[`tput setaf 2`pass`tput sgr0`]  %s\n" "$1"; expr `cat .t
 
 DIR=$(dirname $0)
 
-# delete old compilated tests
-rm -f $DIR/*.ll
-
 # iterate over all tests in the test directory
 find $DIR -name "*.low" -print0 | while read -d $'\0' TEST; do
-	TESTLL=${TEST%.low}.ll
+	TEST_OUT=${TEST%.low}.ll
 	TEST_NAME=${TEST#$DIR/}
+	TEST_DIR=$(dirname "$TEST")
 	printf "[....]  %s" "$TEST_NAME"
 
 	# determine what to expect from this test
-	COMP_PASS=$(grep -ic -m 1 "\+compile" "$TEST" || true)
-	COMP_FAIL=$(grep -ic -m 1 "\-compile" "$TEST" || true)
-	EXEC_PASS=$(grep -ic -m 1 "\+execute" "$TEST" || true)
-	EXEC_FAIL=$(grep -ic -m 1 "\-execute" "$TEST" || true)
+	COMP_PASS=$(grep -icw -m 1 "\+compile" "$TEST" || true)
+	COMP_FAIL=$(grep -icw -m 1 "\-compile" "$TEST" || true)
+	EXEC_PASS=$(grep -icw -m 1 "\+execute" "$TEST" || true)
+	EXEC_FAIL=$(grep -icw -m 1 "\-execute" "$TEST" || true)
 	if [ $EXEC_PASS == 1 ] || [ $EXEC_FAIL == 1 ]; then
 		if [ $COMP_FAIL == 1 ]; then
 			log_fail "$TEST_NAME"
@@ -56,8 +54,15 @@ find $DIR -name "*.low" -print0 | while read -d $'\0' TEST; do
 		continue
 	fi
 
+	# determine what additional files need to be compiled
+	ALSO_RAW=$(grep -iohw "@[a-z0-9_/.]*" "$TEST" | cut -c2-)
+	ALSO=
+	for f in $ALSO_RAW; do
+		ALSO="$ALSO $TEST_DIR/$f"
+	done
+
 	# compile the program
-	if "$LOWC" "$TEST" 1>.out 2>&1; then
+	if "$LOWC" "$TEST" $ALSO -o "$TEST_OUT" 1>.out 2>&1; then
 		if [ $COMP_FAIL = 1 ]; then
 			log_fail "$TEST_NAME"
 			printf "        compilation succeeded, but should have failed\n"
@@ -76,7 +81,7 @@ find $DIR -name "*.low" -print0 | while read -d $'\0' TEST; do
 
 	# execute the program if configured that way
 	if [ $EXEC_PASS == 1 ] || [ $EXEC_FAIL == 1 ]; then
-		if "$LLI" "$TESTLL" 1>.out 2>&1; then
+		if "$LLI" "$TEST_OUT" 1>.out 2>&1; then
 			if [ $EXEC_FAIL = 1 ]; then
 				log_fail "$TEST_NAME"
 				printf "      execution succeeded, but should have failed\n"
@@ -94,11 +99,12 @@ find $DIR -name "*.low" -print0 | while read -d $'\0' TEST; do
 		fi
 	fi
 
+	if [ -e "$TEST_OUT" ]; then
+		rm "$TEST_OUT"
+	fi
+
 	log_pass "$TEST_NAME"
 done
-
-# delete compilated files
-rm -f $DIR/*.ll
 
 NUM_PASSED=`cat .test_passed`
 NUM_FAILED=`cat .test_failed`

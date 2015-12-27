@@ -66,7 +66,7 @@ array_reserve(array_t *self, unsigned capacity) {
 	assert(self);
 	if (capacity <= self->capacity)
 		return;
-	array_reallocate(self, self->capacity);
+	array_reallocate(self, capacity);
 }
 
 /// Resizes the array to hold exactly the given number of items.
@@ -120,7 +120,6 @@ array_set(array_t *self, unsigned index, const void *item) {
 /// the items that were previously there.
 void
 array_set_many(array_t *self, unsigned index, const void *items, unsigned num_items) {
-
 	assert(self);
 	assert(index+num_items <= self->size);
 	memcpy(self->items + index*self->item_size,

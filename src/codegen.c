@@ -230,6 +230,7 @@ codegen_decl (codegen_t *self, codegen_context_t *context, decl_t *decl) {
 				LLVMValueRef value = codegen_expr_top(self, context, &decl->cons.value, 0, decl->cons.type);
 				LLVMValueRef global = LLVMAddGlobal(self->module, codegen_type(context, decl->cons.type), decl->cons.name);
 				LLVMSetInitializer(global, value);
+				LLVMSetLinkage(global, LLVMLinkOnceODRLinkage);
 				sym.value = global;
 			}
 
@@ -301,6 +302,12 @@ codegen_stmt (codegen_t *self, codegen_context_t *context, stmt_t *stmt) {
 			codegen_context_init(&subctx);
 			subctx.prev = context;
 			LLVMValueRef cond = codegen_expr_top(self, &subctx, stmt->selection.condition, 0, &bool_type);
+
+			if (!type_equal(&stmt->selection.condition->type, &bool_type)) {
+				char *td = type_describe(&stmt->selection.condition->type);
+				derror(&stmt->loc, "if condition must be a bool expression, got %s instead\n", td);
+				free(td);
+			}
 
 			LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(self->builder));
 			LLVMBasicBlockRef true_block = LLVMAppendBasicBlock(func, "iftrue");
