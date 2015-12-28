@@ -151,6 +151,35 @@ REDUCER(postfix_expr_index) {
 	out->ptr = e;
 }
 
+REDUCER(postfix_expr_slice) {
+	expr_t *e = malloc(sizeof(expr_t));
+	bzero(e, sizeof(*e));
+	e->loc = in[1].loc;
+	e->kind = AST_INDEX_SLICE_EXPR;
+	e->index_slice.target = in[0].ptr;
+	e->index_slice.kind = tag;
+
+	expr_t *start, *end;
+	switch(tag){
+		case AST_INDEX_SLICE_RANGE:
+			start = in[2].ptr;
+			end = in[4].ptr;
+			break;
+		case AST_INDEX_SLICE_PREFIX:
+			start = NULL;
+			end = in[3].ptr;
+			break;
+		case AST_INDEX_SLICE_POSTFIX:
+			start = in[2].ptr;
+			end = NULL;
+			break;
+	}
+
+	e->index_slice.start 	= start;
+	e->index_slice.end 		= end;
+	out->ptr = e;
+}
+
 REDUCER(postfix_expr_call) {
 	expr_t *e = malloc(sizeof(expr_t));
 	bzero(e, sizeof(*e));

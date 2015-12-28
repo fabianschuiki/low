@@ -29,6 +29,14 @@ expr_dispose (expr_t *self) {
 			free(self->index_access.target);
 			free(self->index_access.index);
 			break;
+		case AST_INDEX_SLICE_EXPR:
+			expr_dispose(self->index_slice.target);
+			expr_dispose(self->index_slice.start);
+			expr_dispose(self->index_slice.end);
+			free(self->index_slice.target);
+			free(self->index_slice.start);
+			free(self->index_slice.end);
+			break;
 		case AST_CALL_EXPR:
 			expr_dispose(self->index_access.target);
 			for (i = 0; i < self->call.num_args; ++i)

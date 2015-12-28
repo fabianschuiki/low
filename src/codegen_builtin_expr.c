@@ -159,7 +159,7 @@ CODEGEN_EXPR(dispose_builtin_expr) {
 	LLVMValueRef aslice = codegen_expr(self, context, expr->dispose.expr, 0, 0);
 
 	LLVMValueRef eptr	= LLVMBuildStructGEP(self->builder,aslice,3,"baseptr");
-	LLVMValueRef arrptr = LLVMBuildLoad(self->builder,eptr,"");
+	LLVMValueRef arrptr = LLVMBuildLoad(self->builder,eptr,"arrptr");
 
 	// set slice to zero
 	LLVMValueRef slice = LLVMBuildLoad(self->builder,aslice,""); // can we do this without load?

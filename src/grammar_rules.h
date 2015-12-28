@@ -13,6 +13,9 @@ RULE_END \
 RULE(postfix_expr) \
 	VAR SUB(primary_expr) REDUCE_DEFAULT \
 	VAR SUB(postfix_expr) TKN(LBRACK) SUB(expr) TKN(RBRACK) REDUCE(postfix_expr_index) \
+	VAR SUB(postfix_expr) TKN(LBRACK) SUB(expr) TKN(COLON) SUB(expr) TKN(RBRACK) REDUCE_TAG(postfix_expr_slice,0) \
+	VAR SUB(postfix_expr) TKN(LBRACK) TKN(COLON) SUB(expr) TKN(RBRACK) REDUCE_TAG(postfix_expr_slice,1) \
+	VAR SUB(postfix_expr) TKN(LBRACK) SUB(expr) TKN(COLON) TKN(RBRACK) REDUCE_TAG(postfix_expr_slice,2) \
 	VAR SUB(postfix_expr) TKN(LPAREN) TKN(RPAREN) REDUCE_TAG(postfix_expr_call, 0) \
 	VAR SUB(postfix_expr) TKN(LPAREN) SUB(argument_expr_list) TKN(RPAREN) REDUCE_TAG(postfix_expr_call, 1) \
 	VAR SUB(postfix_expr) TKN(PERIOD) TKN(IDENT) REDUCE(postfix_expr_member) \
