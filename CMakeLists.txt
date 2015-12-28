@@ -15,7 +15,7 @@ set(LLVM_HINT_PATHS
 	/opt
 	/usr/local/opt/llvm # Homebrew
 )
-set(LLVM_LIBS core bitwriter target analysis)
+set(LLVM_LIBS core bitwriter target analysis linker)
 
 if (NOT LLVM_CONFIG_BIN)
 	find_program(LLVM_CONFIG_BIN llvm-config HINTS ${LLVM_HINT_PATHS} ENV LLVM_DIR PATH_SUFFIXES bin)
@@ -110,6 +110,7 @@ add_executable(lowc
 	src/grammar_rules.c
 	src/lexer.c
 	src/main.c
+	src/options.c
 	src/parser.c
 	${CMAKE_BINARY_DIR}/parser_states.c
 )

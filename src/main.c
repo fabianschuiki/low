@@ -3,8 +3,10 @@
 #include "codegen.h"
 #include "lexer.h"
 #include "parser.h"
+#include "options.h"
 #include <llvm-c/Analysis.h>
 #include <llvm-c/BitWriter.h>
+#include <llvm-c/Linker.h>
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -15,31 +17,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-
-static void
-parse_options (int *argc, char **argv) {
-	char **argi = argv+1;
-	char **argo = argv+1;
-	char **arge = argv+*argc;
-	for (; argi != arge; ++argi) {
-		if (*argi[0] == '-') {
-			if (strcmp(*argi, "--") == 0) {
-				++argi;
-				for (; argi != arge; ++argi)
-					*argo++ = *argi;
-				break;
-			} else {
-				// TODO: Parse option
-				fprintf(stderr, "unknown option %s\n", *argi);
-				exit(1);
-			}
-		} else {
-			*argo++ = *argi;
-		}
-	}
-	*argc = argo-argv;
-}
 
 
 static array_t *
@@ -135,60 +112,52 @@ resolve_imports (codegen_t *cg, codegen_context_t *context, const array_t *units
 
 
 static int
-compile (const char *filename) {
+compile (const char *inname, const char *outname, LLVMModuleRef *module) {
 	unsigned i;
 
-	const char *last_slash = strrchr(filename, '/');
-	const char *last_dot = strrchr(last_slash ? last_slash : filename, '.');
-	unsigned basename_len = (last_dot ? last_dot-filename : strlen(filename));
-	char out_name[basename_len+4];
-	strncpy(out_name, filename, basename_len);
-	strcpy(out_name+basename_len, ".ll");
-
-	array_t *units = parse_file(filename);
+	// Parse the file.
+	array_t *units = parse_file(inname);
 	if (!units)
 		return 1;
 
+	// Prepare the codegen context and module that will hold the code of this
+	// file.
 	codegen_t cg;
 	codegen_context_t ctx;
 	bzero(&cg, sizeof cg);
 	codegen_context_init(&ctx);
-	cg.module = LLVMModuleCreateWithName(filename);
+	cg.module = LLVMModuleCreateWithName(inname);
 
+	// Resolve all imports, populating the codegen context with the declarations
+	// of the imported files.
 	array_t handled_imports;
 	array_init(&handled_imports, sizeof(char*));
-	resolve_imports(&cg, &ctx, units, filename, &handled_imports);
+	resolve_imports(&cg, &ctx, units, inname, &handled_imports);
 	for (i = 0; i < handled_imports.size; ++i)
 		free(*(char**)array_get(&handled_imports,i));
 	array_dispose(&handled_imports);
 
+	// Generate the code for this file.
 	codegen(&cg, &ctx, units);
 
 	char *error = NULL;
 	LLVMVerifyModule(cg.module, LLVMAbortProcessAction, &error);
 	LLVMDisposeMessage(error);
 
+	// Write the generated LLVM IR to disk.
 	// LLVMWriteBitcodeToFile(cg.module, "parsed.bc");
 	error = NULL;
-	LLVMPrintModuleToFile(cg.module, out_name, &error);
+	LLVMPrintModuleToFile(cg.module, outname, &error);
 	LLVMDisposeMessage(error);
 
-	LLVMDisposeModule(cg.module);
+	// Return the module or get rid of it.
+	if (module)
+		*module = cg.module;
+	else
+		LLVMDisposeModule(cg.module);
 
-	// printf("after compilation, the context contains %d symbols:\n", ctx.symbols.size);
-	// for (i = 0; i < ctx.symbols.size; ++i) {
-	// 	codegen_symbol_t *sym = array_get(&ctx.symbols,i);
-	// 	printf("  <%s>", sym->name);
-	// 	if (sym->type) {
-	// 		char *buf = type_describe((type_t*)sym->type);
-	// 		printf("  %s", buf);
-	// 		free(buf);
-	// 	}
-	// 	printf("\n");
-	// }
-
+	// Clean up.
 	codegen_context_dispose(&ctx);
-
 	for (i = 0; i < units->size; ++i)
 		unit_dispose(array_get(units,i));
 	array_dispose(units);
@@ -200,26 +169,65 @@ compile (const char *filename) {
 
 int
 main (int argc, char **argv) {
-	/// TODO: Open the file using mmap and perform the lexical analysis.
-	/// TODO: Parse the input into an AST.
-	/// TODO: Iteratively elaborate the code, executing compile-time code where necessary.
-	/// TODO: Generate code.
 
+	// Parse command line options.
 	parse_options(&argc, argv);
 
+	// Compile input files.
 	if (argc == 1) {
 		fprintf(stderr, "no input files\n");
 		return(1);
 	}
 
-	char **arg;
 	int any_failed = 0;
-	for (arg = argv+1; arg != argv+argc; ++arg) {
-		int err = compile(*arg);
+	unsigned num_modules = argc-1;
+	LLVMModuleRef modules[num_modules];
+	unsigned i;
+	for (i = 0; i < argc-1; ++i) {
+		char *arg = argv[i+1];
+
+		// Determine the output file name.
+		const char *last_slash = strrchr(arg, '/');
+		const char *last_dot = strrchr(last_slash ? last_slash : arg, '.');
+		unsigned basename_len = (last_dot ? last_dot-arg : strlen(arg));
+		char out_name[basename_len+4];
+		strncpy(out_name, arg, basename_len);
+		strcpy(out_name+basename_len, ".ll");
+
+		// Compile the file.
+		int err = compile(arg, out_name, modules+i);
 		if (err) {
-			printf("unable to compile %s\n", *arg);
+			fprintf(stderr, "unable to compile %s\n", arg);
 			any_failed = 1;
+			if (modules[i]) {
+				LLVMDisposeModule(modules[i]);
+				modules[i] = 0;
+			}
 		}
+	}
+
+	if (any_failed)
+		return 1;
+
+	// Link the compiled files into an output file, if so requested.
+	if (options.output_name) {
+		for (i = 1; i < num_modules; ++i) {
+			char *error = 0;
+			LLVMBool failed = LLVMLinkModules(modules[0], modules[i], 0, &error);
+			if (failed) {
+				fprintf(stderr, "unable to link %s: %s\n", argv[i+1], error);
+				return 1;
+			}
+			LLVMDisposeMessage(error);
+		}
+
+		char *error = 0;
+		LLVMPrintModuleToFile(modules[0], options.output_name, &error);
+		LLVMDisposeMessage(error);
+		LLVMDisposeModule(modules[0]);
+	} else {
+		for (i = 0; i < num_modules; ++i)
+			LLVMDisposeModule(modules[i]);
 	}
 
 	return any_failed;
