@@ -12,6 +12,21 @@
 typedef codegen_context_t context_t;
 
 void
+dump_val(char* name,LLVMValueRef val){
+	printf("-- %s --:\n",name);
+	printf("Value: \t"); fflush(stdout); LLVMDumpValue(val);
+	printf("Type: \t"); fflush(stdout); LLVMDumpType(LLVMTypeOf(val));
+	printf("--    --\n"); fflush(stdout);
+}
+
+void
+dump_type(char* name,LLVMTypeRef t){
+	printf("-- %s --:\n",name);
+	printf("Type: \t"); fflush(stdout); LLVMDumpType(t);
+	printf("--    --\n"); fflush(stdout);
+}
+
+void
 codegen_context_init (codegen_context_t *self) {
 	assert(self);
 	bzero(self, sizeof *self);
@@ -114,22 +129,6 @@ prepare_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, type_t 
 			die("type determination for expr kind %d not implemented", expr->kind);
 	}
 }
-
-static void
-dump_val(char* name,LLVMValueRef val){
-	printf("-- %s --:\n",name);
-	printf("Value: \t"); fflush(stdout); LLVMDumpValue(val);
-	printf("Type: \t"); fflush(stdout); LLVMDumpType(LLVMTypeOf(val));
-	printf("--    --\n"); fflush(stdout);
-}
-
-static void
-dump_type(char* name,LLVMTypeRef t){
-	printf("-- %s --:\n",name);
-	printf("Type: \t"); fflush(stdout); LLVMDumpType(t);
-	printf("--    --\n"); fflush(stdout);
-}
-
 
 LLVMValueRef
 codegen_expr (codegen_t *self, codegen_context_t *context, expr_t *expr, char lvalue, type_t *type_hint) {

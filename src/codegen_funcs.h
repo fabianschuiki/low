@@ -15,6 +15,7 @@ BOTH(ident_expr);
 BOTH(incdec_expr);
 BOTH(index_access_expr);
 BOTH(lencap_builtin_expr);
+BOTH(dispose_builtin_expr);
 BOTH(make_builtin_expr);
 BOTH(member_access_expr);
 BOTH(new_builtin_expr);
@@ -37,6 +38,7 @@ const prepare_expr_fn_t prepare_expr_fn[AST_NUM_EXPRS] = {
 	[AST_INCDEC_EXPR]         = prepare_incdec_expr,
 	[AST_INDEX_ACCESS_EXPR]   = prepare_index_access_expr,
 	[AST_LENCAP_BUILTIN]      = prepare_lencap_builtin_expr,
+	[AST_DISPOSE_BUILTIN]     = prepare_dispose_builtin_expr,
 	[AST_MAKE_BUILTIN]        = prepare_make_builtin_expr,
 	[AST_MEMBER_ACCESS_EXPR]  = prepare_member_access_expr,
 	[AST_NEW_BUILTIN]         = prepare_new_builtin_expr,
@@ -58,6 +60,7 @@ const codegen_expr_fn_t codegen_expr_fn[AST_NUM_EXPRS] = {
 	[AST_INCDEC_EXPR]         = codegen_incdec_expr,
 	[AST_INDEX_ACCESS_EXPR]   = codegen_index_access_expr,
 	[AST_LENCAP_BUILTIN]      = codegen_lencap_builtin_expr,
+	[AST_DISPOSE_BUILTIN]     = codegen_dispose_builtin_expr,
 	[AST_MAKE_BUILTIN]        = codegen_make_builtin_expr,
 	[AST_MEMBER_ACCESS_EXPR]  = codegen_member_access_expr,
 	[AST_NEW_BUILTIN]         = codegen_new_builtin_expr,

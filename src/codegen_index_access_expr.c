@@ -65,15 +65,12 @@ CODEGEN_EXPR(index_access_expr) {
 
 		index = LLVMBuildIntCast(self->builder, index, dst,"");
 
-		// check idx vs length
+		// check idx vs cap
 		LLVMValueRef oob = LLVMBuildICmp(self->builder, LLVMIntULT, index, cap, "");
 		build_assert(self,context,oob);
 
 		LLVMValueRef arrptrptr = LLVMBuildStructGEP(self->builder, target, 0, "");
 		LLVMValueRef arrptr = LLVMBuildLoad(self->builder,arrptrptr,"");
-
-		// LLVMValueRef nnull = LLVMBuildICmp(self->builder, LLVMIntNE, LLVMConstPointerNull(LLVMInt32Type()), arrptrptr, "");
-		// build_assert(self,context,nnull);
 
 		ptr = LLVMBuildInBoundsGEP(self->builder, arrptr, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), index}, 2, "");
 
