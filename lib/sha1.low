@@ -1,0 +1,27 @@
+/* Copyright (c) 2015 Fabian Schuiki */
+
+func printf(int8*,...) void
+
+type sha1_hash: int160
+
+func sha1_reset(sha1_hash* hash) void {
+	*hash = #sha1_hash(#int160(0x67452301efcdab8998badcfe10325476c3d2e1f0))
+}
+
+func sha1_update(sha1_hash* hash/*, [64]int8 data*/) void {
+	a : int32 = #int32((#int160(*hash) >> #int160(128)) & #int160(0xffffffff))
+	b : int32 = #int32((#int160(*hash) >> #int160(96)) & #int160(0xffffffff))
+	c : int32 = #int32((#int160(*hash) >> #int160(64)) & #int160(0xffffffff))
+	d : int32 = #int32((#int160(*hash) >> #int160(32)) & #int160(0xffffffff))
+	e : int32 = #int32((#int160(*hash) >> #int160(0)) & #int160(0xffffffff))
+
+	printf("a = 0x%08x\n", a)
+	printf("b = 0x%08x\n", b)
+	printf("c = 0x%08x\n", c)
+	printf("d = 0x%08x\n", d)
+	printf("e = 0x%08x\n", e)
+}
+
+func sha1_finalize() void {
+
+}
