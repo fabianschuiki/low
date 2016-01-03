@@ -173,6 +173,10 @@ REDUCER(postfix_expr_slice) {
 			start = in[2].ptr;
 			end = NULL;
 			break;
+		case AST_INDEX_SLICE_COPY:
+			start = NULL;
+			end = NULL;
+			break;
 	}
 
 	e->index_slice.start 	= start;

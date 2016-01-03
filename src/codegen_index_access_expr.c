@@ -110,6 +110,12 @@ CODEGEN_EXPR(index_slice_expr) {
 	LLVMValueRef target = codegen_expr(self, context, expr->index_slice.target, 0, 0);
 	LLVMValueRef zero = LLVMConstNull(LLVMInt64Type());
 
+	//---- simple copy?
+	if(expr->index_slice.kind==AST_INDEX_SLICE_COPY){
+		LLVMValueRef slice = LLVMBuildLoad(self->builder,target,"slice");
+		return slice;
+	}
+
 	//---- codegen start and end expr
 	LLVMValueRef start 	= 0;
 	LLVMValueRef end 	= 0;

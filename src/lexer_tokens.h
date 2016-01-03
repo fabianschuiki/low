@@ -96,4 +96,4 @@ TKN(VAR, "var") \
 TKN(VOID, "void") \
 TKN(VOLATILE, "volatile") \
 TKN(WHILE, "while") \
-TKN(YIELD, "yield") \
+TKN(YIELD, "yield")

@@ -183,6 +183,7 @@ enum index_slice_kind {
 	AST_INDEX_SLICE_RANGE,
 	AST_INDEX_SLICE_PREFIX,
 	AST_INDEX_SLICE_POSTFIX,
+	AST_INDEX_SLICE_COPY,
 };
 
 struct index_slice_expr {
