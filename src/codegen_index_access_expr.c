@@ -141,22 +141,7 @@ CODEGEN_EXPR(index_slice_expr) {
 
 	//---- calc new len/cap
 	LLVMValueRef ncap = LLVMBuildSub(self->builder, end, start, "");
-	LLVMValueRef nlen = LLVMBuildSub(self->builder, len, start, "");
-
-	// conditional max(0,nlen)
-	LLVMValueRef cond = LLVMBuildICmp(self->builder, LLVMIntSLT,nlen,zero,"min");
-
-	LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(self->builder));
-	LLVMBasicBlockRef true_block = LLVMAppendBasicBlock(func, "iftrue");
-	LLVMBasicBlockRef exit_block = LLVMAppendBasicBlock(func, "ifexit");
-
-	LLVMBuildCondBr(self->builder, cond, true_block, exit_block);
-	LLVMPositionBuilderAtEnd(self->builder, true_block);
-
-	nlen = zero;
-
-	LLVMBuildBr(self->builder, exit_block);
-	LLVMPositionBuilderAtEnd(self->builder, exit_block);
+	LLVMValueRef nlen = LLVMBuildSub(self->builder, len, start, "nlen");
 
 	//---- calc new array ptr
 	LLVMValueRef arrptrptr = LLVMBuildStructGEP(self->builder, target, 0, "");
@@ -172,12 +157,35 @@ CODEGEN_EXPR(index_slice_expr) {
 
 	//---- assemble struct
 	LLVMValueRef oldslice = LLVMBuildLoad(self->builder,target,"old_slice");
-	LLVMValueRef slice = LLVMConstNull(LLVMTypeOf(oldslice));
+	LLVMTypeRef tslice = LLVMTypeOf(oldslice);
+	LLVMValueRef slice = LLVMConstNull(tslice);
 
-	slice = LLVMBuildInsertValue(self->builder, slice, ptr, 0, "s_arrptr");
-	slice = LLVMBuildInsertValue(self->builder, slice, nlen, 1, "s_len");
-	slice = LLVMBuildInsertValue(self->builder, slice, ncap, 2, "s_cap");
-	slice = LLVMBuildInsertValue(self->builder, slice, baseptr, 3, "s_baseptr");
+	slice = LLVMBuildInsertValue(self->builder, slice, ptr, 0, "slice");
+	slice = LLVMBuildInsertValue(self->builder, slice, ncap, 2, "slice");
+	slice = LLVMBuildInsertValue(self->builder, slice, baseptr, 3, "slice");
 
-	return slice;
+	// conditional max(0,nlen)
+	LLVMValueRef cond = LLVMBuildICmp(self->builder, LLVMIntSGT,nlen,zero,"min");
+
+	LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(self->builder));
+	LLVMBasicBlockRef true_block  = LLVMAppendBasicBlock(func, "iftrue");
+	LLVMBasicBlockRef false_block = LLVMAppendBasicBlock(func, "iffalse");
+	LLVMBasicBlockRef exit_block  = LLVMAppendBasicBlock(func, "ifexit");
+
+	LLVMBuildCondBr(self->builder, cond, true_block, false_block);
+	LLVMPositionBuilderAtEnd(self->builder, true_block);
+
+	LLVMValueRef slice_len = LLVMBuildInsertValue(self->builder, slice, nlen, 1, "slice_len");
+
+	LLVMBuildBr(self->builder, exit_block);
+	LLVMPositionBuilderAtEnd(self->builder, false_block);
+	LLVMBuildBr(self->builder, exit_block);
+	LLVMPositionBuilderAtEnd(self->builder, exit_block);
+
+	LLVMValueRef incoming_values[2] = { slice_len, slice };
+	LLVMBasicBlockRef incoming_blocks[2] = { true_block, false_block };
+	LLVMValueRef phi = LLVMBuildPhi(self->builder, tslice, "");
+	LLVMAddIncoming(phi, incoming_values, incoming_blocks, 2);
+
+	return phi;
 }
