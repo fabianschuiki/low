@@ -98,11 +98,19 @@ PREPARE_TYPE(index_slice_expr) {
 	type_copy(&expr->type, target);
 }
 
+/* Slices an existing array.
+ *
+ * New values:
+ * ncap = end - start
+ * nlen = max(len - start,0)
+ * narrptr = arrptr + start
+ * nbaseptr = baseptr
+ */
 CODEGEN_EXPR(index_slice_expr) {
 	LLVMValueRef target = codegen_expr(self, context, expr->index_slice.target, 0, 0);
-
 	LLVMValueRef zero = LLVMConstNull(LLVMInt64Type());
 
+	//---- codegen start and end expr
 	LLVMValueRef start 	= 0;
 	LLVMValueRef end 	= 0;
 	if(expr->index_slice.start){
@@ -123,21 +131,17 @@ CODEGEN_EXPR(index_slice_expr) {
 		end = zero;
 	}
 
-	//------------
+	//---- load previous cap and len
 	LLVMValueRef capptr = LLVMBuildStructGEP(self->builder, target, 2, "");
 	LLVMValueRef cap = LLVMBuildLoad(self->builder,capptr,"");
 
 	LLVMValueRef lenptr = LLVMBuildStructGEP(self->builder, target, 1, "");
 	LLVMValueRef len = LLVMBuildLoad(self->builder,lenptr,"");
 
-	LLVMTypeRef dst = LLVMTypeOf(cap);
+	LLVMTypeRef tcap = LLVMTypeOf(cap);
 
-	start = LLVMBuildIntCast(self->builder, start, dst,"");
-	end = LLVMBuildIntCast(self->builder, end, dst,"");
-
-	// ncap = end - start
-	// nlen = max(len - start,0)
-	// narrptr = arrptr + start
+	start = LLVMBuildIntCast(self->builder, start, tcap,"");
+	end = LLVMBuildIntCast(self->builder, end, tcap,"");
 
 	//---- calc new len/cap
 	LLVMValueRef ncap = LLVMBuildSub(self->builder, end, start, "");
@@ -148,14 +152,14 @@ CODEGEN_EXPR(index_slice_expr) {
 	LLVMValueRef arrptr = LLVMBuildLoad(self->builder,arrptrptr,"");
 	LLVMValueRef ptr = LLVMBuildInBoundsGEP(self->builder, arrptr, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), start}, 2, "");
 
-	// cast to correct pointer type
+	// cast to pointer type
 	LLVMTypeRef array_type = LLVMTypeOf(arrptr);
 	ptr = LLVMBuildPointerCast(self->builder,ptr,array_type,"");
 
 	LLVMValueRef baseptrptr = LLVMBuildStructGEP(self->builder, target, 3, "");
 	LLVMValueRef baseptr = LLVMBuildLoad(self->builder,baseptrptr,"");
 
-	//---- assemble struct
+	//---- assemble new struct
 	LLVMValueRef oldslice = LLVMBuildLoad(self->builder,target,"old_slice");
 	LLVMTypeRef tslice = LLVMTypeOf(oldslice);
 	LLVMValueRef slice = LLVMConstNull(tslice);
@@ -164,7 +168,7 @@ CODEGEN_EXPR(index_slice_expr) {
 	slice = LLVMBuildInsertValue(self->builder, slice, ncap, 2, "slice");
 	slice = LLVMBuildInsertValue(self->builder, slice, baseptr, 3, "slice");
 
-	// conditional max(0,nlen)
+	//---- len = max(0, len)
 	LLVMValueRef cond = LLVMBuildICmp(self->builder, LLVMIntSGT,nlen,zero,"min");
 
 	LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(self->builder));
@@ -178,8 +182,11 @@ CODEGEN_EXPR(index_slice_expr) {
 	LLVMValueRef slice_len = LLVMBuildInsertValue(self->builder, slice, nlen, 1, "slice_len");
 
 	LLVMBuildBr(self->builder, exit_block);
+
+	// needed for PHI
 	LLVMPositionBuilderAtEnd(self->builder, false_block);
 	LLVMBuildBr(self->builder, exit_block);
+
 	LLVMPositionBuilderAtEnd(self->builder, exit_block);
 
 	LLVMValueRef incoming_values[2] = { slice_len, slice };
