@@ -1,5 +1,5 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015-2016 Fabian Schuiki */
 #pragma once
 
 void die_impl(const char *filename, unsigned line, const char *fmt, ...);
-#define die(fmt, ...) die_impl(__FILE__, __LINE__, fmt, __VA_ARGS__)
+#define die(...) die_impl(__FILE__, __LINE__, __VA_ARGS__)

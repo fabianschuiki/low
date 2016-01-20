@@ -1,8 +1,8 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015-2016 Fabian Schuiki */
 #include "codegen_internal.h"
 
 
-PREPARE_TYPE(sizeof_expr) {
+PREPARE_EXPR(sizeof_expr) {
 	if (expr->sizeof_op.mode == AST_EXPR_SIZEOF)
 		prepare_expr(self, context, expr->sizeof_op.expr, 0);
 	if (type_hint)

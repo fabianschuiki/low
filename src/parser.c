@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015-2016 Fabian Schuiki */
 #include "ast.h"
 #include "parser.h"
 #include "parser_states.h"

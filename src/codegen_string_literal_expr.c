@@ -1,8 +1,8 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015-2016 Fabian Schuiki */
 #include "codegen_internal.h"
 
 
-PREPARE_TYPE(string_literal_expr) {
+PREPARE_EXPR(string_literal_expr) {
 	expr->type.kind = AST_INTEGER_TYPE;
 	expr->type.width = 8;
 	expr->type.pointer = 1;

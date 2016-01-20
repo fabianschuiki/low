@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Fabian Schuiki, Thomas Richner */
+/* Copyright (c) 2015-2016 Fabian Schuiki, Thomas Richner */
 #include "ast.h"
 #include "common.h"
 #include <assert.h>
@@ -348,11 +348,11 @@ type_describe(type_t *self) {
 			break;
 	}
 	if (s && self->pointer > 0) {
-		char suffix[self->pointer+1];
-		memset(suffix, '*', self->pointer);
-		suffix[self->pointer] = 0;
+		char prefix[self->pointer+1];
+		memset(prefix, '*', self->pointer);
+		prefix[self->pointer] = 0;
 		char *sn = 0;
-		asprintf(&sn, "%s%s", s, suffix);
+		asprintf(&sn, "%s%s", prefix, s);
 		free(s);
 		s = sn;
 	}

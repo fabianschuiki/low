@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Fabian Schuiki, Thomas Richner */
+/* Copyright (c) 2015-2016 Fabian Schuiki, Thomas Richner */
 #pragma once
 #include "grammar.h"
 

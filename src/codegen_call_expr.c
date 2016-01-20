@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015-2016 Fabian Schuiki */
 #include "codegen_internal.h"
 
 // TODO(fabianschuiki): Check whether the arguments passed to the function call
@@ -6,7 +6,7 @@
 // arguments currently only fails in LLVM with an ugly assertion. This should be
 // a proper lowc error.
 
-PREPARE_TYPE(call_expr) {
+PREPARE_EXPR(call_expr) {
 	unsigned i;
 	expr_t *tgt = expr->call.target;
 	if (tgt->kind == AST_IDENT_EXPR) {

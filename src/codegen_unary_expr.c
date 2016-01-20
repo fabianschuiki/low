@@ -1,8 +1,8 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015-2016 Fabian Schuiki */
 #include "codegen_internal.h"
 
 
-PREPARE_TYPE(unary_expr) {
+PREPARE_EXPR(unary_expr) {
 	switch (expr->unary_op.op) {
 		case AST_ADDRESS: {
 			type_t *inner_hint = 0;

@@ -1,8 +1,8 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015-2016 Fabian Schuiki */
 #include "codegen_internal.h"
 
 
-PREPARE_TYPE(assignment_expr) {
+PREPARE_EXPR(assignment_expr) {
 	prepare_expr(self, context, expr->assignment.target, type_hint);
 	prepare_expr(self, context, expr->assignment.expr, &expr->assignment.target->type);
 	if (!type_equal(&expr->assignment.target->type, &expr->assignment.expr->type)) {

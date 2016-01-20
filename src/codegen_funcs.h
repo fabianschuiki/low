@@ -1,8 +1,8 @@
-/* Copyright (c) 2015 Fabian Schuiki, Thomas Richner */
+/* Copyright (c) 2015-2016 Fabian Schuiki, Thomas Richner */
 #include "codegen_internal.h"
 
 #define BOTH(name) \
-	PREPARE_TYPE(name); \
+	PREPARE_EXPR(name); \
 	CODEGEN_EXPR(name);
 
 BOTH(assignment_expr);

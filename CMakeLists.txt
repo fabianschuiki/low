@@ -99,6 +99,7 @@ add_executable(lowc
 	src/codegen_ident_expr.c
 	src/codegen_incdec_expr.c
 	src/codegen_index_access_expr.c
+	src/codegen_index_slice_expr.c
 	src/codegen_member_access_expr.c
 	src/codegen_number_literal_expr.c
 	src/codegen_sizeof_expr.c

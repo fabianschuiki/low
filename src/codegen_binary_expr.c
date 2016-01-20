@@ -1,8 +1,8 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015-2016 Fabian Schuiki */
 #include "codegen_internal.h"
 
 
-PREPARE_TYPE(binary_expr) {
+PREPARE_EXPR(binary_expr) {
 	type_t *hint = 0;
 	if (expr->binary_op.op == AST_ADD ||
 		expr->binary_op.op == AST_SUB ||

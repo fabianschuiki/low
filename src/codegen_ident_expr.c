@@ -1,8 +1,8 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015-2016 Fabian Schuiki */
 #include "codegen_internal.h"
 
 
-PREPARE_TYPE(ident_expr) {
+PREPARE_EXPR(ident_expr) {
 	if (strcmp(expr->ident, "true") == 0 || strcmp(expr->ident, "false") == 0) {
 		expr->type.kind = AST_BOOLEAN_TYPE;
 		return;

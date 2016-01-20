@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015-2016 Fabian Schuiki, Thomas Richner */
 #include "codegen_internal.h"
 
 
@@ -65,7 +65,7 @@ codegen_slice_new(codegen_t *self, codegen_context_t *context, make_builtin_t *m
 	//---- alloc array on heap
 	LLVMTypeRef element_type = codegen_type(context, make->type.slice.type); // array element type
 	LLVMValueRef arrptr = codegen_array_new(self,context,element_type,caparg);
-	LLVMTypeRef array_type = LLVMPointerType(LLVMArrayType(element_type,0),0);
+	LLVMTypeRef array_type = LLVMPointerType(element_type, 0);
 	arrptr = LLVMBuildPointerCast(self->builder,arrptr,array_type,"");
 
 	//---- assemble struct
@@ -81,12 +81,12 @@ codegen_slice_new(codegen_t *self, codegen_context_t *context, make_builtin_t *m
 
 
 
-PREPARE_TYPE(new_builtin_expr) {
+PREPARE_EXPR(new_builtin_expr) {
 	type_copy(&expr->type, &expr->newe.type);
 	++expr->type.pointer;
 }
 
-PREPARE_TYPE(free_builtin_expr) {
+PREPARE_EXPR(free_builtin_expr) {
 	prepare_expr(self, context, expr->free.expr, 0);
 	expr->type.kind = AST_VOID_TYPE;
 
@@ -95,7 +95,7 @@ PREPARE_TYPE(free_builtin_expr) {
 	}
 }
 
-PREPARE_TYPE(make_builtin_expr) {
+PREPARE_EXPR(make_builtin_expr) {
 	if (expr->make.type.kind != AST_SLICE_TYPE) {
 		derror(&expr->loc, "cannot make non-slice\n");
 	}
@@ -104,7 +104,7 @@ PREPARE_TYPE(make_builtin_expr) {
 	type_copy(&expr->type, &expr->make.type);
 }
 
-PREPARE_TYPE(lencap_builtin_expr) {
+PREPARE_EXPR(lencap_builtin_expr) {
 	prepare_expr(self,context,expr->lencap.expr, 0);
 
 	if (expr->lencap.expr->type.kind != AST_SLICE_TYPE) {
@@ -115,7 +115,7 @@ PREPARE_TYPE(lencap_builtin_expr) {
 	type_copy(&expr->type, &int_type);
 }
 
-PREPARE_TYPE(dispose_builtin_expr) {
+PREPARE_EXPR(dispose_builtin_expr) {
 	prepare_expr(self, context, expr->dispose.expr, 0);
 	expr->type.kind = AST_VOID_TYPE;
 }

@@ -1,8 +1,8 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015-2016 Fabian Schuiki */
 #include "codegen_internal.h"
 
 
-PREPARE_TYPE(member_access_expr) {
+PREPARE_EXPR(member_access_expr) {
 	unsigned i;
 	prepare_expr(self, context, expr->member_access.target, 0);
 	type_t *st = resolve_type_name(context, &expr->member_access.target->type);

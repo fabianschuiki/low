@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Thomas Richner, Fabian Schuiki */
+/* Copyright (c) 2015-2016 Thomas Richner, Fabian Schuiki */
 #include "codegen_internal.h"
 
 #define CODEGEN_TYPE(name) LLVMTypeRef codegen_type_##name(codegen_context_t *context, type_t *type)
@@ -103,7 +103,7 @@ CODEGEN_TYPE(struct){
 
 CODEGEN_TYPE(slice){
 	// underlying struct of a slice
-	LLVMTypeRef arrtype = LLVMPointerType(LLVMArrayType(codegen_type(context, type->slice.type),0),0);
+	LLVMTypeRef arrtype = LLVMPointerType(codegen_type(context, type->slice.type), 0);
 	LLVMTypeRef members[4];
 	members[0] = arrtype; // pointer to array
 	members[1] = LLVMIntType(64); 			// length @HARDCODED

@@ -1,8 +1,8 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015-2016 Fabian Schuiki */
 #include "codegen_internal.h"
 
 
-PREPARE_TYPE(cast_expr) {
+PREPARE_EXPR(cast_expr) {
 	prepare_expr(self, context, expr->cast.target, &expr->cast.type);
 	type_copy(&expr->type, &expr->cast.type);
 }

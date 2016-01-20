@@ -1,8 +1,8 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015-2016 Fabian Schuiki */
 #include "codegen_internal.h"
 
 
-PREPARE_TYPE(incdec_expr) {
+PREPARE_EXPR(incdec_expr) {
 	prepare_expr(self, context, expr->incdec_op.target, type_hint);
 	type_copy(&expr->type, &expr->incdec_op.target->type);
 }

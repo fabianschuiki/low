@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015-2016 Fabian Schuiki */
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>

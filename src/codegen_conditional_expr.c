@@ -1,8 +1,8 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015-2016 Fabian Schuiki */
 #include "codegen_internal.h"
 
 
-PREPARE_TYPE(conditional_expr) {
+PREPARE_EXPR(conditional_expr) {
 	type_t bool_type = { .kind = AST_BOOLEAN_TYPE };
 	prepare_expr(self, context, expr->conditional.condition, &bool_type);
 

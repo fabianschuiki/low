@@ -1,0 +1,42 @@
+// Copyright (c) 2015-2016 Fabian Schuiki
+// Verifies that an array can be converted to a slice.
+// +execute
+
+func printf(*int8,...) void
+
+func exit(int32) void
+
+func assert(c int1) void {
+	if c == 0 {
+		printf("assert failed, exiting\n")
+		exit(1)
+	}
+}
+
+func main() int32 {
+
+	a : [4]int32
+	a[0] = 0
+	a[1] = 1
+	a[2] = 2
+	a[3] = 3
+
+	b := a[0:2]
+	assert(len(b) == 2)
+	assert(cap(b) == 4)
+	i : int32
+	printf("len(b) = %d\ncap(b) = %d\n", #int32(len(b)), #int32(cap(b)))
+	for i = 0; i < #int32(len(b)); ++i {
+		printf("[%d] = %d\n", i, b[i])
+	}
+
+	c := a[2:]
+	assert(len(c) == 2)
+	assert(cap(c) == 2)
+	printf("len(c) = %d\ncap(c) = %d\n", #int32(len(c)), #int32(cap(c)))
+	for i = 0; i < #int32(len(c)); ++i {
+		printf("[%d] = %d\n", i, c[i])
+	}
+
+	return 0
+}

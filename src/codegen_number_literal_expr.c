@@ -1,8 +1,8 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015-2016 Fabian Schuiki */
 #include "codegen_internal.h"
 
 
-PREPARE_TYPE(number_literal_expr) {
+PREPARE_EXPR(number_literal_expr) {
 	if (type_hint)
 		type_copy(&expr->type, type_hint);
 }

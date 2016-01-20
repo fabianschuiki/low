@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Fabian Schuiki, Thomas Richner */
+/* Copyright (c) 2015-2016 Fabian Schuiki, Thomas Richner */
 #define TOKENS \
 /* literals */ \
 TKN(IDENT, "identifier") \
