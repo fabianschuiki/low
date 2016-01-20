@@ -3,7 +3,7 @@ No fuss, just systems programming.
 
 An evolution of the C language, designed to give the programmer more power over the underlying hardware. Cleaner, more expressive syntax, declaration order independence, no lossy implicit casts, proper bitfields, and fast builds through dependency management by the `lowc` compiler. If you write kernels or embedded code in C, you'll love **Low**.
 
-[![Build Status](https://travis-ci.org/fabianschuiki/low.svg)](https://travis-ci.org/fabianschuiki/low)
+[![Build Status](https://travis-ci.org/fabianschuiki/low.svg?branch=master)](https://travis-ci.org/fabianschuiki/low)
 
 Currently still missing from the language:
 
