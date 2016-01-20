@@ -12,13 +12,14 @@ PREPARE_EXPR(index_slice_expr) {
 		prepare_expr(self, context, expr->index_slice.end, &int_type);
 
 	type_t *target = &expr->index_slice.target->type;
-	if (target->kind == AST_SLICE_TYPE) {
+	type_t *target_resolved = resolve_type_name(context, target);
+	if (target_resolved->kind == AST_SLICE_TYPE) {
 		type_copy(&expr->type, target);
-	} else if (target->kind == AST_ARRAY_TYPE) {
+	} else if (target_resolved->kind == AST_ARRAY_TYPE) {
 		bzero(&expr->type, sizeof(type_t));
 		expr->type.kind = AST_SLICE_TYPE;
 		expr->type.slice.type = malloc(sizeof(type_t));
-		type_copy(expr->type.slice.type, target->array.type);
+		type_copy(expr->type.slice.type, target_resolved->array.type);
 	} else {
 		char *td = type_describe(&expr->index_slice.target->type);
 		derror(&expr->loc, "expression of type %s cannot be sliced\n", td);
@@ -67,11 +68,7 @@ static LLVMValueRef slice_slice(codegen_t *self, codegen_context_t *context, exp
 	}
 
 	//---- load previous cap and len
-	LLVMValueRef capptr = LLVMBuildStructGEP(self->builder, target, 2, "");
-	LLVMValueRef cap = LLVMBuildLoad(self->builder,capptr,"");
-
-	LLVMValueRef lenptr = LLVMBuildStructGEP(self->builder, target, 1, "");
-	LLVMValueRef len = LLVMBuildLoad(self->builder,lenptr,"");
+	LLVMValueRef cap = LLVMBuildExtractValue(self->builder, target, 2, "");
 
 	LLVMTypeRef tcap = LLVMTypeOf(cap);
 
@@ -79,24 +76,16 @@ static LLVMValueRef slice_slice(codegen_t *self, codegen_context_t *context, exp
 	end = LLVMBuildIntCast(self->builder, end, tcap,"");
 
 	//---- calc new len/cap
-	LLVMValueRef ncap = LLVMBuildSub(self->builder, end, start, "");
-	LLVMValueRef nlen = LLVMBuildSub(self->builder, len, start, "nlen");
+	LLVMValueRef ncap = LLVMBuildSub(self->builder, cap, start, "");
+	LLVMValueRef nlen = LLVMBuildSub(self->builder, end, start, "nlen");
 
 	//---- calc new array ptr
-	LLVMValueRef arrptrptr = LLVMBuildStructGEP(self->builder, target, 0, "");
-	LLVMValueRef arrptr = LLVMBuildLoad(self->builder,arrptrptr,"");
+	LLVMValueRef arrptr = LLVMBuildExtractValue(self->builder, target, 0, "");
 	LLVMValueRef ptr = LLVMBuildInBoundsGEP(self->builder, arrptr, &start, 1, "");
-
-	// cast to pointer type
-	LLVMTypeRef array_type = LLVMTypeOf(arrptr);
-	ptr = LLVMBuildPointerCast(self->builder,ptr,array_type,"");
-
-	LLVMValueRef baseptrptr = LLVMBuildStructGEP(self->builder, target, 3, "");
-	LLVMValueRef baseptr = LLVMBuildLoad(self->builder,baseptrptr,"");
+	LLVMValueRef baseptr = LLVMBuildExtractValue(self->builder, target, 3, "");
 
 	//---- assemble new struct
-	LLVMValueRef oldslice = LLVMBuildLoad(self->builder,target,"old_slice");
-	LLVMTypeRef tslice = LLVMTypeOf(oldslice);
+	LLVMTypeRef tslice = LLVMTypeOf(target);
 	LLVMValueRef slice = LLVMConstNull(tslice);
 
 	slice = LLVMBuildInsertValue(self->builder, slice, ptr, 0, "slice");
@@ -185,7 +174,7 @@ static LLVMValueRef slice_array(codegen_t *self, codegen_context_t *context, exp
 
 
 CODEGEN_EXPR(index_slice_expr) {
-	unsigned kind = expr->index_slice.target->type.kind;
+	unsigned kind = resolve_type_name(context, &expr->index_slice.target->type)->kind;
 	if (kind == AST_SLICE_TYPE) {
 		return slice_slice(self, context, expr);
 	} else if (kind == AST_ARRAY_TYPE) {

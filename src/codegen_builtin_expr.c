@@ -44,42 +44,6 @@ codegen_array_new(codegen_t* self, codegen_context_t *context,LLVMTypeRef type,L
 }
 
 
-/* struct {
- *    *arr: *[i32 x 0]
- *    len: i64
- *    cap: i64
- *	  off: i64
- * }
- */
-
-static LLVMValueRef
-codegen_slice_new(codegen_t *self, codegen_context_t *context, make_builtin_t *make){
-	assert(self);
-	assert(context);
-	assert(make);
-
-	//---- init cap to given value
-	LLVMValueRef caparg = codegen_expr(self, context, make->expr, 0, 0);
-	caparg = LLVMBuildIntCast(self->builder, caparg, LLVMInt64Type(),"");
-
-	//---- alloc array on heap
-	LLVMTypeRef element_type = codegen_type(context, make->type.slice.type); // array element type
-	LLVMValueRef arrptr = codegen_array_new(self,context,element_type,caparg);
-	LLVMTypeRef array_type = LLVMPointerType(element_type, 0);
-	arrptr = LLVMBuildPointerCast(self->builder,arrptr,array_type,"");
-
-	//---- assemble struct
-	LLVMTypeRef make_type = codegen_type(context, &make->type);
-	LLVMValueRef slice = LLVMConstNull(make_type);
-
-	slice = LLVMBuildInsertValue(self->builder, slice, arrptr, 0, "arrptr");
-	slice = LLVMBuildInsertValue(self->builder, slice, caparg, 2, "cap");
-	slice = LLVMBuildInsertValue(self->builder, slice, arrptr, 3, "baseptr");
-
-	return slice;
-}
-
-
 
 PREPARE_EXPR(new_builtin_expr) {
 	type_copy(&expr->type, &expr->newe.type);
@@ -96,18 +60,20 @@ PREPARE_EXPR(free_builtin_expr) {
 }
 
 PREPARE_EXPR(make_builtin_expr) {
-	if (expr->make.type.kind != AST_SLICE_TYPE) {
+	type_t *type = resolve_type_name(context, &expr->make.type);
+	if (type->kind != AST_SLICE_TYPE) {
 		derror(&expr->loc, "cannot make non-slice\n");
 	}
-	type_t int_type = {.kind=AST_INTEGER_TYPE,.width=64};
-	prepare_expr(self,context,expr->make.expr, &int_type);
+	type_t int_type = { .kind = AST_INTEGER_TYPE, .width = 64 };
+	prepare_expr(self, context, expr->make.expr, &int_type);
 	type_copy(&expr->type, &expr->make.type);
 }
 
 PREPARE_EXPR(lencap_builtin_expr) {
 	prepare_expr(self,context,expr->lencap.expr, 0);
 
-	if (expr->lencap.expr->type.kind != AST_SLICE_TYPE) {
+	type_t *type = resolve_type_name(context, &expr->lencap.expr->type);
+	if (type->kind != AST_SLICE_TYPE) {
 		derror(&expr->loc, "cannot use with non-slice type\n");
 	}
 
@@ -118,6 +84,13 @@ PREPARE_EXPR(lencap_builtin_expr) {
 PREPARE_EXPR(dispose_builtin_expr) {
 	prepare_expr(self, context, expr->dispose.expr, 0);
 	expr->type.kind = AST_VOID_TYPE;
+
+	type_t *target_type = resolve_type_name(context, &expr->dispose.expr->type);
+	if (target_type->kind != AST_SLICE_TYPE) {
+		char *td = type_describe(&expr->dispose.expr->type);
+		derror(&expr->loc, "dispose can only be used on slices, got %s\n", td);
+		free(td);
+	}
 }
 
 CODEGEN_EXPR(new_builtin_expr) {
@@ -133,37 +106,54 @@ CODEGEN_EXPR(free_builtin_expr) {
 }
 
 CODEGEN_EXPR(make_builtin_expr) {
-	assert(expr->make.type.kind==AST_SLICE_TYPE && "MAKE only for slices defined");
-	return codegen_slice_new(self,context,&expr->make);
+	// assert(expr->make.type.kind==AST_SLICE_TYPE && "MAKE only for slices defined");
+	type_t *type = resolve_type_name(context, &expr->make.type);
+	if (type->kind != AST_SLICE_TYPE) {
+		derror(&expr->loc, "cannot make non-slice\n");
+	}
+
+	//---- init cap to given value
+	LLVMValueRef caparg = codegen_expr(self, context, expr->make.expr, 0, 0);
+	caparg = LLVMBuildIntCast(self->builder, caparg, LLVMInt64Type(),"");
+
+	//---- alloc array on heap
+	LLVMTypeRef element_type = codegen_type(context, type->slice.type); // array element type
+	LLVMValueRef arrptr = codegen_array_new(self,context,element_type,caparg);
+	LLVMTypeRef array_type = LLVMPointerType(element_type, 0);
+	arrptr = LLVMBuildPointerCast(self->builder,arrptr,array_type,"");
+
+	//---- assemble struct
+	LLVMTypeRef make_type = codegen_type(context, type);
+	LLVMValueRef slice = LLVMConstNull(make_type);
+
+	slice = LLVMBuildInsertValue(self->builder, slice, arrptr, 0, "arrptr");
+	slice = LLVMBuildInsertValue(self->builder, slice, caparg, 2, "cap");
+	slice = LLVMBuildInsertValue(self->builder, slice, arrptr, 3, "baseptr");
+
+	return slice;
 }
 
 CODEGEN_EXPR(lencap_builtin_expr) {
-	assert(expr->lencap.expr->type.kind==AST_SLICE_TYPE && "CAP/LEN only for slices defined");
-	LLVMValueRef aslice = codegen_expr(self, context, expr->lencap.expr, 0, 0);
+	LLVMValueRef slice = codegen_expr(self, context, expr->lencap.expr, 0, 0);
 
-	LLVMValueRef eptr = NULL;
-	if(expr->lencap.kind==AST_LEN){
-		eptr = LLVMBuildStructGEP(self->builder,aslice,1,"len");
-	}else if(expr->lencap.kind==AST_CAP){
-		eptr = LLVMBuildStructGEP(self->builder,aslice,2,"cap");
-	}else{
-		derror(&expr->loc,"what a terrible failure :(");
+	if (expr->lencap.kind == AST_LEN) {
+		return LLVMBuildExtractValue(self->builder, slice, 1, "len");
+	} else if (expr->lencap.kind == AST_CAP) {
+		return LLVMBuildExtractValue(self->builder, slice, 2, "cap");
+	} else {
+		die("unexpected len/cap kind");
+		return 0;
 	}
-
-	return LLVMBuildLoad(self->builder,eptr,"");
 }
 
 CODEGEN_EXPR(dispose_builtin_expr) {
+	LLVMValueRef slice_ptr = codegen_expr(self, context, expr->dispose.expr, 1, 0);
+	LLVMValueRef slice = LLVMBuildLoad(self->builder, slice_ptr, "");
 
-	assert(expr->dispose.expr->type.kind==AST_SLICE_TYPE && "DISPOSE only for slices defined");
-	LLVMValueRef aslice = codegen_expr(self, context, expr->dispose.expr, 0, 0);
-
-	LLVMValueRef eptr	= LLVMBuildStructGEP(self->builder,aslice,3,"baseptr");
-	LLVMValueRef arrptr = LLVMBuildLoad(self->builder,eptr,"arrptr");
+	LLVMValueRef ptr = LLVMBuildExtractValue(self->builder, slice, 3, "baseptr");
 
 	// set slice to zero
-	LLVMValueRef slice = LLVMBuildLoad(self->builder,aslice,""); // can we do this without load?
-	LLVMBuildStore(self->builder,LLVMConstNull(LLVMTypeOf(slice)),aslice);
+	LLVMBuildStore(self->builder, LLVMConstNull(LLVMTypeOf(slice)), slice_ptr);
 
-	return LLVMBuildFree(self->builder,arrptr);
+	return LLVMBuildFree(self->builder, ptr);
 }

@@ -178,7 +178,8 @@ codegen_decl (codegen_t *self, codegen_context_t *context, decl_t *decl) {
 	switch(decl->kind) {
 		case AST_VARIABLE_DECL: {
 			if (decl->variable.type.kind != AST_NO_TYPE) {
-				LLVMValueRef var = LLVMBuildAlloca(self->builder, codegen_type(context, &decl->variable.type), decl->variable.name);
+				LLVMTypeRef var_type = codegen_type(context, &decl->variable.type);
+				LLVMValueRef var = LLVMBuildAlloca(self->builder, var_type, decl->variable.name);
 
 				codegen_symbol_t sym = {
 					.name = decl->variable.name,
@@ -198,6 +199,8 @@ codegen_decl (codegen_t *self, codegen_context_t *context, decl_t *decl) {
 						free(t2);
 					}
 					LLVMBuildStore(self->builder, val, var);
+				} else {
+					LLVMBuildStore(self->builder, LLVMConstNull(var_type), var);
 				}
 			} else {
 				LLVMValueRef val = codegen_expr_top(self, context, decl->variable.initial, 0, 0);

@@ -30,7 +30,7 @@ PREPARE_EXPR(index_access_expr) {
 	type_t int_type = { .kind = AST_INTEGER_TYPE, .pointer = 0, .width = 64 };
 	prepare_expr(self, context, expr->index_access.target, 0);
 	prepare_expr(self, context, expr->index_access.index, &int_type);
-	type_t *target = &expr->index_access.target->type;
+	type_t *target = resolve_type_name(context, &expr->index_access.target->type);
 	if (target->pointer > 0) {
 		type_copy(&expr->type, target);
 		--expr->type.pointer;
@@ -45,7 +45,8 @@ PREPARE_EXPR(index_access_expr) {
 
 
 CODEGEN_EXPR(index_access_expr) {
-	bool is_array = (expr->index_access.target->type.pointer == 0 && expr->index_access.target->type.kind == AST_ARRAY_TYPE);
+	type_t *target_type = resolve_type_name(context, &expr->index_access.target->type);
+	bool is_array = (target_type->pointer == 0 && target_type->kind == AST_ARRAY_TYPE);
 	LLVMValueRef target = codegen_expr(self, context, expr->index_access.target, is_array, 0);
 	LLVMValueRef index = codegen_expr(self, context, expr->index_access.index, 0, 0);
 	if (expr->index_access.index->type.kind != AST_INTEGER_TYPE) {
@@ -53,25 +54,22 @@ CODEGEN_EXPR(index_access_expr) {
 	}
 
 	LLVMValueRef ptr;
-	if (expr->index_access.target->type.pointer > 0) {
+	if (target_type->pointer > 0) {
 		ptr = LLVMBuildInBoundsGEP(self->builder, target, &index, 1, "");
-	} else if (expr->index_access.target->type.kind == AST_ARRAY_TYPE) {
+	} else if (target_type->kind == AST_ARRAY_TYPE) {
 		ptr = LLVMBuildInBoundsGEP(self->builder, target, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), index}, 2, "");
-	} else if (expr->index_access.target->type.kind == AST_SLICE_TYPE) {
+	} else if (target_type->kind == AST_SLICE_TYPE) {
 
-		LLVMValueRef capptr = LLVMBuildStructGEP(self->builder, target, 2, "");
-		LLVMValueRef cap = LLVMBuildLoad(self->builder,capptr,"");
-
+		LLVMValueRef cap = LLVMBuildExtractValue(self->builder, target, 2, "cap");
 		LLVMTypeRef dst = LLVMTypeOf(cap);
 
-		index = LLVMBuildIntCast(self->builder, index, dst,"");
+		index = LLVMBuildIntCast(self->builder, index, dst, "");
 
 		// check idx vs cap
 		LLVMValueRef oob = LLVMBuildICmp(self->builder, LLVMIntULT, index, cap, "");
 		build_assert(self,context,oob);
 
-		LLVMValueRef arrptrptr = LLVMBuildStructGEP(self->builder, target, 0, "");
-		LLVMValueRef arrptr = LLVMBuildLoad(self->builder,arrptrptr,"");
+		LLVMValueRef arrptr = LLVMBuildExtractValue(self->builder, target, 0, "ptr");
 
 		ptr = LLVMBuildInBoundsGEP(self->builder, arrptr, &index, 1, "");
 

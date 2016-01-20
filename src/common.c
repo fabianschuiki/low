@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 void die_impl(const char *filename, unsigned line, const char *fmt, ...) {
-	fprintf(stderr, "%s.%d: ", __FILE__, __LINE__);
+	fprintf(stderr, "%s.%d: ", filename, line);
 
 	va_list ap;
 	va_start(ap, fmt);

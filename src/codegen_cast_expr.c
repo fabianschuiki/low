@@ -12,12 +12,12 @@ CODEGEN_EXPR(cast_expr) {
 	unsigned i,n;
 	assert(!lvalue && "result of a cast is not a valid lvalue");
 	LLVMValueRef target = codegen_expr(self, context, expr->cast.target, 0, 0);
-	if (type_equal(&expr->cast.target->type, &expr->cast.type))
-		return target;
 	LLVMTypeRef dst = codegen_type(context, &expr->cast.type);
 
 	type_t *from = resolve_type_name(context, &expr->cast.target->type);
 	type_t *to = resolve_type_name(context, &expr->cast.type);
+	if (type_equal(from, to))
+		return target;
 	assert(from && to);
 	char *from_str = type_describe(from);
 	char *to_str = type_describe(to);

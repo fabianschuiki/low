@@ -392,9 +392,11 @@ type_copy (type_t *dst, const type_t *src) {
 			}
 			break;
 		case AST_ARRAY_TYPE:
+			dst->array.type = malloc(sizeof(type_t));
 			type_copy(dst->array.type, src->array.type);
 			break;
 		case AST_SLICE_TYPE:
+			dst->slice.type = malloc(sizeof(type_t));
 			type_copy(dst->slice.type, src->slice.type);
 			break;
 		case AST_INTERFACE_TYPE:
