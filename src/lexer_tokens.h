@@ -83,6 +83,7 @@ TKN(FREE, "free") \
 TKN(MAKE, "make") \
 TKN(LEN, "len") \
 TKN(CAP, "cap") \
+TKN(PACKAGE, "package") \
 TKN(DISPOSE, "dispose") \
 TKN(RETURN, "return") \
 TKN(SIZEOF, "sizeof") \

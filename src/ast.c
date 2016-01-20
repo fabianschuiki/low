@@ -581,6 +581,9 @@ unit_dispose (unit_t *self) {
 		case AST_IMPORT_UNIT:
 			free(self->import_name);
 			break;
+		case AST_PACKAGE_UNIT:
+			free(self->package.name);
+			break;
 		case AST_DECL_UNIT:
 			decl_dispose(self->decl);
 			free(self->decl);

@@ -426,6 +426,31 @@ codegen_stmt (codegen_t *self, codegen_context_t *context, stmt_t *stmt) {
 	}
 }
 
+const char* PKG_SEPARATOR = "_";
+
+static char*
+mangle_func_name(codegen_t *self, func_unit_t *func){
+	assert(self);
+
+	if(!self->package){
+		return func->name;
+	}
+
+	assert(self->package->name);
+
+	char* pkg = self->package->name;
+
+	if(!strcmp(func->name,"main")){
+		return func->name;
+	}
+
+	char str[100];
+	strcpy(str, pkg);
+	strcat(str,PKG_SEPARATOR);
+	strcat(str, func->name);
+
+	return strdup(str);
+}
 
 static void
 codegen_unit (codegen_t *self, codegen_context_t *context, unit_t *unit, int stage) {
@@ -435,8 +460,9 @@ codegen_unit (codegen_t *self, codegen_context_t *context, unit_t *unit, int sta
 
 	unsigned i;
 	switch (unit->kind) {
-
+		// handled elsewhere
 		case AST_IMPORT_UNIT:
+		case AST_PACKAGE_UNIT:
 			break;
 
 		case AST_DECL_UNIT:
@@ -452,7 +478,12 @@ codegen_unit (codegen_t *self, codegen_context_t *context, unit_t *unit, int sta
 				for (i = 0; i < unit->func.num_params; ++i)
 					param_types[i] = codegen_type(context, &unit->func.params[i].type);
 				LLVMTypeRef func_type = LLVMFunctionType(codegen_type(context, &unit->func.return_type), param_types, unit->func.num_params, unit->func.variadic);
-				LLVMValueRef func = LLVMAddFunction(self->module, unit->func.name, func_type);
+
+
+				char* fname = mangle_func_name(self,&unit->func);
+				printf("fname: %s\n",fname);
+				// LLVMValueRef func = LLVMAddFunction(self->module, unit->func.name, func_type);
+				LLVMValueRef func = LLVMAddFunction(self->module, fname, func_type);
 
 				// Declare the function in the context.
 				type_t *type = &unit->func.type;
@@ -578,6 +609,31 @@ codegen_defs (codegen_t *self, codegen_context_t *context, const array_t *units)
 		codegen_unit(self, context, array_get(units,i), 2);
 }
 
+void
+codegen_package (codegen_t *self, codegen_context_t *context, const array_t *units) {
+	assert(self);
+	assert(context);
+	assert(units);
+
+	self->package = NULL;	// just to be sure...
+
+	int i;
+	for(i=0;i<units->size;i++){
+		unit_t* unit = array_get(units,i);
+		if(unit->kind == AST_PACKAGE_UNIT){
+			if(self->package){
+				derror(&(unit->loc), "Encountered multiple 'package' definitions.\n");
+			}
+			package_unit_t* p = malloc(sizeof(package_unit_t));
+			*p = unit->package;
+			self->package = p;
+		}
+	}
+
+	if(self->package == NULL){
+		printf("Could not find 'package' definition. Please FIXIT.\n");
+	}
+}
 
 void
 codegen (codegen_t *self, codegen_context_t *context, const array_t *units) {
@@ -585,6 +641,7 @@ codegen (codegen_t *self, codegen_context_t *context, const array_t *units) {
 	assert(context);
 	assert(units);
 
+	codegen_package(self, context, units);
 	codegen_decls(self, context, units);
 	codegen_defs(self, context, units);
 }

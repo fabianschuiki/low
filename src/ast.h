@@ -46,6 +46,7 @@ typedef struct type type_t;
 typedef struct type_unit type_unit_t;
 typedef struct unary_expr unary_expr_t;
 typedef struct unit unit_t;
+typedef struct package_unit package_unit_t;
 typedef struct variable_decl variable_decl_t;
 typedef struct implementation_decl implementation_decl_t;
 typedef struct implementation_mapping implementation_mapping_t;
@@ -521,6 +522,7 @@ enum unit_kind {
 	AST_DECL_UNIT,
 	AST_FUNC_UNIT,
 	AST_TYPE_UNIT,
+	AST_PACKAGE_UNIT,
 };
 
 
@@ -532,6 +534,10 @@ struct func_unit {
 	func_param_t *params;
 	unsigned variadic;
 	type_t type;
+};
+
+struct package_unit {
+	char *name;
 };
 
 struct func_param {
@@ -554,6 +560,7 @@ struct unit {
 		decl_t *decl;
 		func_unit_t func;
 		type_unit_t type;
+		package_unit_t package;
 	};
 };
 

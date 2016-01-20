@@ -284,6 +284,7 @@ lexer_next (lexer_t *self) {
 			CHECK_KEYWORD("const",     TKN_CONST);
 			CHECK_KEYWORD("continue",  TKN_CONTINUE);
 			CHECK_KEYWORD("default",   TKN_DEFAULT);
+			CHECK_KEYWORD("dispose",   TKN_DISPOSE);
 			CHECK_KEYWORD("do",        TKN_DO);
 			CHECK_KEYWORD("else",      TKN_ELSE);
 			CHECK_KEYWORD("enum",      TKN_ENUM);
@@ -297,9 +298,9 @@ lexer_next (lexer_t *self) {
 			CHECK_KEYWORD("inline",    TKN_INLINE);
 			CHECK_KEYWORD("interface", TKN_INTERFACE);
 			CHECK_KEYWORD("len",       TKN_LEN);
-			CHECK_KEYWORD("dispose",   TKN_DISPOSE);
 			CHECK_KEYWORD("make",      TKN_MAKE);
 			CHECK_KEYWORD("new",       TKN_NEW);
+			CHECK_KEYWORD("package",   TKN_PACKAGE);
 			CHECK_KEYWORD("return",    TKN_RETURN);
 			CHECK_KEYWORD("sizeof",    TKN_SIZEOF);
 			CHECK_KEYWORD("static",    TKN_STATIC);
