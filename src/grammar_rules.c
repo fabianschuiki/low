@@ -999,6 +999,15 @@ REDUCER(interface_member_func_parameter) {
 
 // --- unit --------------------------------------------------------------------
 
+REDUCER(package_unit) {
+	unit_t *u = malloc(sizeof(unit_t));
+	bzero(u, sizeof(*u));
+	u->kind = AST_PACKAGE_UNIT;
+	u->loc = in[1].loc;
+	u->package.name = strndup(in[1].first+1, in[1].last-in[1].first-2);
+	out->ptr = u;
+}
+
 REDUCER(import_unit) {
 	unit_t *u = malloc(sizeof(unit_t));
 	bzero(u, sizeof(*u));
