@@ -15,6 +15,7 @@ struct codegen {
 	LLVMBasicBlockRef break_block;
 	LLVMBasicBlockRef continue_block;
 	unit_t *unit;
+	package_unit_t *package;
 };
 
 struct codegen_context {
