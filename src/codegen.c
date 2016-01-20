@@ -423,8 +423,7 @@ codegen_stmt (codegen_t *self, codegen_context_t *context, stmt_t *stmt) {
 	}
 }
 
- // TODO WORKAROUND use '/' instead!
-const char* PKG_SEPARATOR = ".";
+const char* PKG_SEPARATOR = "_";
 
 static char*
 mangle_func_name(codegen_t *self, func_unit_t *func){
