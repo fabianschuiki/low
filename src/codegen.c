@@ -441,6 +441,9 @@ codegen_unit (codegen_t *self, codegen_context_t *context, unit_t *unit, int sta
 				codegen_decl(self, context, unit->decl);
 			break;
 
+		case AST_PACKAGE_UNIT:
+			break;
+
 		case AST_FUNC_UNIT: {
 			LLVMValueRef func;
 
@@ -575,6 +578,31 @@ codegen_defs (codegen_t *self, codegen_context_t *context, const array_t *units)
 		codegen_unit(self, context, array_get(units,i), 2);
 }
 
+void
+codegen_package (codegen_t *self, codegen_context_t *context, const array_t *units) {
+	assert(self);
+	assert(context);
+	assert(units);
+
+	self->package = NULL;	// just to be sure...
+
+	int i;
+	for(i=0;i<units->size;i++){
+		unit_t* unit = array_get(units,i);
+		if(unit->kind == AST_PACKAGE_UNIT){
+			if(self->package){
+				derror(&(unit->loc), "Encountered multiple 'package' definitions.\n");
+			}
+			package_unit_t* p = malloc(sizeof(package_unit_t));
+			*p = unit->package;
+			self->package = p;
+		}
+	}
+
+	if(self->package == NULL){
+		printf("Could not find 'package' definition. Please FIXIT.\n");
+	}
+}
 
 void
 codegen (codegen_t *self, codegen_context_t *context, const array_t *units) {
@@ -584,4 +612,5 @@ codegen (codegen_t *self, codegen_context_t *context, const array_t *units) {
 
 	codegen_decls(self, context, units);
 	codegen_defs(self, context, units);
+	codegen_package(self, context, units);
 }

@@ -329,6 +329,10 @@ RULE(import_unit) \
 	VAR TKN(IMPORT) TKN(STRING_LITERAL) TKN(SEMICOLON) REDUCE(import_unit) \
 RULE_END \
 \
+RULE(package_unit) \
+	VAR TKN(PACKAGE) TKN(STRING_LITERAL) TKN(SEMICOLON) REDUCE(package_unit) \
+RULE_END \
+\
 RULE(decl_unit) \
 	VAR SUB(decl) REDUCE(decl_unit) \
 RULE_END \
@@ -370,6 +374,7 @@ RULE_END \
 \
 RULE(unit) \
 	VAR SUB(import_unit) REDUCE_DEFAULT \
+	VAR SUB(package_unit) REDUCE_DEFAULT \
 	VAR SUB(decl_unit) REDUCE_DEFAULT \
 	VAR SUB(func_unit) REDUCE_DEFAULT \
 	VAR SUB(type_unit) REDUCE_DEFAULT \
