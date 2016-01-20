@@ -1,0 +1,79 @@
+/* Copyright (c) 2016 Fabian Schuiki */
+
+/// A string is simply a slice of bytes to be interpreted as UTF-8.
+type string: []int8
+
+/// Copy one string into another. The destination string must have enough
+/// capacity to hold the additional bytes of the source string.
+func copy(dst string, src string) void {
+	// assert(cap(dst) >= len(src))
+	i : int64
+	for i = 0; i < len(src); ++i {
+		dst[i] = src[i]
+	}
+}
+
+/// Concatenates two strings into a newly allocated string.
+func concat(a string, b string) string {
+	new_length := len(a) + len(b) - 1
+	result := make(string, new_length)
+	copy(result[:len(a)], a)
+	copy(result[len(a)-1:], b)
+	return result[:new_length]
+}
+
+/// Appends one string to another. If the destination string does not have
+/// enough capacity, it is reallocated and the freed slice is returned.
+/// Otherwise a null-slice is returned.
+func append(dst *string, a string) string {
+	new_length := len(*dst) + len(a) - 1
+	if cap(*dst) < new_length {
+		printf("reallocating from %d to %d\n", len(*dst), new_length);
+		tmp := *dst
+		*dst = make(string, new_length)
+		copy((*dst)[:len(tmp)], tmp)
+		copy((*dst)[len(tmp)-1:], a)
+		*dst = (*dst)[:new_length]
+		return tmp
+	} else {
+		printf("appending\n");
+		copy((*dst)[len(*dst)-1:], a)
+		*dst = (*dst)[:new_length]
+		null_slice : string
+		return null_slice
+	}
+}
+
+
+func printf(*int8,...) void
+func putchar(int32) void
+
+func dump(s string) void {
+	i : int64
+	for i = 0; i < len(s); ++i {
+		putchar(#int32(s[i]))
+	}
+}
+
+func main() int32 {
+	a := "hello world\n"
+	b := #*[13]int8(a)
+	c : []int8 = (*b)[:]
+	d := #string(c)
+	dump(d)
+
+	e := concat(d,d)
+	printf("concatenated from length %d to %d:\n", #int32(len(d)), #int32(len(e)))
+	dump(e)
+
+	f := (make(string, 20))[:1]
+	printf("#1: f = "); dump(f); putchar(#int32(*"\n"))
+	g0 := append(&f,d)
+	printf("#2: [retcap = %d] f = ", cap(g0)); dump(f)
+	dispose(g0)
+	g1 := append(&f,d)
+	printf("#3: [retcap = %d] f = ", cap(g1)); dump(f)
+	dispose(g1)
+
+	return 0
+}
