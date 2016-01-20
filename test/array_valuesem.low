@@ -1,0 +1,48 @@
+// Copyright (c) 2015-2016-2016 Fabian Schuiki
+// Verify that arrays have value semantics.
+// +compile
+
+func printf(fmt *int8,...) void
+
+func dump(a *[4]int32) void {
+	printf("[")
+	i : int32
+	for i = 0; i < 4; ++i {
+		if i > 0 {
+			printf(", %d", (*a)[i])
+		} else {
+			printf("%d", (*a)[i])
+		}
+	}
+	printf("]\n")
+}
+
+func main() int32 {
+
+	a : [4]int32
+	a[0] = 0
+	a[1] = 1
+	a[2] = 2
+	a[3] = 3
+	b : [4]int32
+	b = a
+
+	printf("a = "); dump(&a)
+	printf("b = "); dump(&b)
+
+	printf("modifying b\n")
+	b[0] = 3
+	b[1] = 2
+	b[2] = 1
+	b[3] = 0
+
+	printf("a = "); dump(&a)
+	printf("b = "); dump(&b)
+
+	c : *[4]int32 = &a
+	d : [4]int32 = *c
+	printf("c = "); dump(c)
+	printf("d = "); dump(&d)
+
+	return a[0] == b[3] && a[1] == b[2] && a[2] == b[1] && a[3] == b[0] ? 0 : 1
+}

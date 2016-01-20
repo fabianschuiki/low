@@ -1,19 +1,19 @@
-// Copyright (c) 2015 Thomas Richner
+// Copyright (c) 2015-2016 Thomas Richner
 // Verify the cap and len builtin function.
 // +execute
 
-func printf(int8* f,...) void
+func printf(*int8,...) void
 
 func exit(int32) void
 
-func assert(int1 c) void{
+func assert(c int1) void{
 	if(c==0){
 		printf("Assert failed, exiting.\n")
 		exit(1)
 	}
 }
 
-func main() int32{
+func main() int32 {
 
 	var []int32 blub
 

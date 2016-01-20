@@ -46,7 +46,7 @@ CODEGEN_EXPR(ident_expr) {
 		return sym->value;
 	} else if (sym->value) {
 		LLVMValueRef ptr = sym->value;
-		return lvalue || expr->type.kind == AST_ARRAY_TYPE || expr->type.kind == AST_SLICE_TYPE ? ptr : LLVMBuildLoad(self->builder, ptr, "");
+		return lvalue || expr->type.kind == AST_SLICE_TYPE ? ptr : LLVMBuildLoad(self->builder, ptr, "");
 	} else {
 		assert(sym->decl && sym->decl->kind == AST_CONST_DECL && "expected identifier to be a const");
 		assert(!lvalue && "const is not a valid lvalue");

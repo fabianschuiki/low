@@ -113,9 +113,6 @@ CODEGEN_EXPR(cast_expr) {
 	} else if (from->kind == AST_BOOLEAN_TYPE && to->pointer == 0) {
 		if (to->kind == AST_INTEGER_TYPE)
 			return LLVMBuildZExt(self->builder, target, dst, "");
-	} else if (from->kind == AST_ARRAY_TYPE && to->pointer > 0) {
-		if (to->kind == from->array.type->kind)
-			return LLVMBuildInBoundsGEP(self->builder, target, (LLVMValueRef[]){LLVMConstNull(LLVMInt32Type()), LLVMConstNull(LLVMInt32Type())}, 2, "");
 	}
 
 	derror(&expr->loc, "cannot cast from %s to %s\n", from_str, to_str);

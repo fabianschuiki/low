@@ -45,7 +45,7 @@ parse (lexer_t *lex) {
 				else
 					glue = ", ";
 				char *nmsg;
-				asprintf(&nmsg, "%s%s%s", msg, glue, token_names[state->actions[i].token]);
+				asprintf(&nmsg, "%s%s\"%s\"", msg, glue, token_names[state->actions[i].token]);
 				free(msg);
 				msg = nmsg;
 			}

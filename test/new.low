@@ -1,8 +1,8 @@
-// Copyright (c) 2015 Thomas Richner
+// Copyright (c) 2015-2016 Thomas Richner
 // Verify the new() builtin function.
 // +compile
 
-func printf(int8* f,...) void
+func printf(*int8,...) void
 
 type yo: struct {
 	int32 x
@@ -10,8 +10,8 @@ type yo: struct {
 }
 
 func main() int32{
-	var int8* i = new(int8)
-	var yo* x = new(yo)
+	var *int8 i = new(int8)
+	var *yo x = new(yo)
 
 	return 0
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2015 Fabian Schuiki
+// Copyright (c) 2015-2016 Fabian Schuiki
 // Verifies that casts are working.
 // +compile
 
@@ -8,5 +8,5 @@ func main() void {
 	z := #int16(x)
 
 	str := "hello world\n"
-	data : int64* = #int64*(str)
+	data : *int64 = #*int64(str)
 }

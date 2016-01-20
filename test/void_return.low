@@ -1,4 +1,4 @@
-// Copyright (c) 2015 Fabian Schuiki, Thomas Richner
+// Copyright (c) 2015-2016 Fabian Schuiki, Thomas Richner
 // Verifies that the code generator automatically inserts a return statement for
 // void functions.
 // +compile

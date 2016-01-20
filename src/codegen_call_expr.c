@@ -1,6 +1,10 @@
 /* Copyright (c) 2015 Fabian Schuiki */
 #include "codegen_internal.h"
 
+// TODO(fabianschuiki): Check whether the arguments passed to the function call
+// are compatible with the function prototype. Passing an incorrect number of
+// arguments currently only fails in LLVM with an ugly assertion. This should be
+// a proper lowc error.
 
 PREPARE_TYPE(call_expr) {
 	unsigned i;

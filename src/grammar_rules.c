@@ -832,8 +832,9 @@ REDUCER(type_name) {
 }
 
 REDUCER(type_pointer) {
-	type_t *t = in[0].ptr;
+	type_t *t = in[1].ptr;
 	++t->pointer;
+	out->ptr = t;
 }
 
 REDUCER(type_struct) {
@@ -1080,10 +1081,13 @@ REDUCER(parameter_list) {
 REDUCER(parameter) {
 	func_param_t *p = malloc(sizeof(func_param_t));
 	bzero(p, sizeof(*p));
-	p->type = *(type_t*)in[0].ptr;
-	free(in[0].ptr);
-	if (tag == 1)
-		p->name = strndup(in[1].first, in[1].last-in[1].first);
+	unsigned i = 0;
+	if (tag == 1) {
+		p->name = strndup(in[i].first, in[i].last-in[i].first);
+		++i;
+	}
+	p->type = *(type_t*)in[i].ptr;
+	free(in[i].ptr);
 	out->ptr = p;
 }
 

@@ -276,7 +276,7 @@ RULE_END \
 RULE(type) \
 	VAR TKN(VOID) REDUCE(type_void) \
 	VAR TKN(IDENT) REDUCE(type_name) \
-	VAR SUB(type) TKN(MUL_OP) REDUCE(type_pointer) \
+	VAR TKN(MUL_OP) SUB(type) REDUCE(type_pointer) \
 	VAR TKN(STRUCT) TKN(LBRACE) SUB(struct_member_list) TKN(RBRACE) REDUCE(type_struct) \
 	VAR TKN(LBRACK) TKN(NUMBER_LITERAL) TKN(RBRACK) SUB(type) REDUCE(type_array) \
 	VAR TKN(LBRACK) TKN(RBRACK) SUB(type) REDUCE(type_slice) \
@@ -356,7 +356,7 @@ RULE_END \
 \
 RULE(parameter) \
 	VAR SUB(type) REDUCE_TAG(parameter, 0) \
-	VAR SUB(type) TKN(IDENT) REDUCE_TAG(parameter, 1) \
+	VAR TKN(IDENT) SUB(type) REDUCE_TAG(parameter, 1) \
 RULE_END \
 \
 RULE(type_unit) \

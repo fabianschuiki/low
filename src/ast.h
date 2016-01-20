@@ -305,6 +305,8 @@ enum binary_op {
 	AST_OR,
 };
 
+extern const char *binary_op_names[];
+
 struct binary_expr {
 	expr_t *lhs;
 	expr_t *rhs;

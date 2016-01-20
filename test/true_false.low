@@ -1,4 +1,4 @@
-// Copyright (c) 2015 Fabian Schuiki
+// Copyright (c) 2015-2016 Fabian Schuiki
 // Verify that boolean constants work and are properly typed.
 // +compile
 

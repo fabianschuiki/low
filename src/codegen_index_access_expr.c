@@ -45,9 +45,10 @@ PREPARE_TYPE(index_access_expr) {
 
 
 CODEGEN_EXPR(index_access_expr) {
-	LLVMValueRef target = codegen_expr(self, context, expr->index_access.target, 0, 0);
+	bool is_array = (expr->index_access.target->type.pointer == 0 && expr->index_access.target->type.kind == AST_ARRAY_TYPE);
+	LLVMValueRef target = codegen_expr(self, context, expr->index_access.target, is_array, 0);
 	LLVMValueRef index = codegen_expr(self, context, expr->index_access.index, 0, 0);
-	if (expr->index_access.index->type.kind != AST_INTEGER_TYPE){
+	if (expr->index_access.index->type.kind != AST_INTEGER_TYPE) {
 		derror(&expr->index_access.index->loc, "index needs to be an integer\n");
 	}
 

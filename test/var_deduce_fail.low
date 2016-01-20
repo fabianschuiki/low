@@ -1,4 +1,4 @@
-// Copyright (c) 2015 Fabian Schuiki
+// Copyright (c) 2015-2016 Fabian Schuiki
 // Verifies that variables cannot deduce their type from the initial
 // value if that value needs to infer its type from the surrounding
 // context.

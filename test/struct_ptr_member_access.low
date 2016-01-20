@@ -1,8 +1,8 @@
-// Copyright (c) 2015 Thomas Richner
+// Copyright (c) 2015-2016 Thomas Richner
 // Verify struct pointer member access.
 // +compile
 
-func printf(int8* f,...) void
+func printf(*int8,...) void
 
 type yo: struct {
 	int32 x
@@ -10,7 +10,7 @@ type yo: struct {
 }
 
 func main() int32{
-	var yo* blub = new(yo)
+	var *yo blub = new(yo)
 	blub.y = 17
 
 	return 0

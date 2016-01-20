@@ -7,21 +7,30 @@ PREPARE_TYPE(binary_expr) {
 	if (expr->binary_op.op == AST_ADD ||
 		expr->binary_op.op == AST_SUB ||
 		expr->binary_op.op == AST_MUL ||
-		expr->binary_op.op == AST_DIV)
+		expr->binary_op.op == AST_DIV ||
+		expr->binary_op.op == AST_MOD ||
+		expr->binary_op.op == AST_LEFT ||
+		expr->binary_op.op == AST_RIGHT ||
+		expr->binary_op.op == AST_BITWISE_AND ||
+		expr->binary_op.op == AST_BITWISE_XOR ||
+		expr->binary_op.op == AST_BITWISE_OR)
 		hint = type_hint;
 
-	prepare_expr(self, context, expr->binary_op.lhs, hint);
-	prepare_expr(self, context, expr->binary_op.rhs, hint);
+	prepare_expr(self, context, expr->binary_op.lhs, 0);
+	prepare_expr(self, context, expr->binary_op.rhs, 0);
+
+	if (expr->binary_op.lhs->type.kind == AST_NO_TYPE &&
+		expr->binary_op.rhs->type.kind == AST_NO_TYPE) {
+		prepare_expr(self, context, expr->binary_op.lhs, hint);
+		prepare_expr(self, context, expr->binary_op.rhs, hint);
+	}
+
 	if (expr->binary_op.lhs->type.kind == AST_NO_TYPE &&
 		expr->binary_op.rhs->type.kind != AST_NO_TYPE)
 		prepare_expr(self, context, expr->binary_op.lhs, &expr->binary_op.rhs->type);
 	if (expr->binary_op.rhs->type.kind == AST_NO_TYPE &&
 		expr->binary_op.lhs->type.kind != AST_NO_TYPE)
 		prepare_expr(self, context, expr->binary_op.rhs, &expr->binary_op.lhs->type);
-
-	if (expr->binary_op.lhs->type.kind == AST_NO_TYPE &&
-		expr->binary_op.rhs->type.kind == AST_NO_TYPE)
-		derror(&expr->loc, "cannot determine type of binary operation, use a cast\n");
 
 	switch (expr->binary_op.op) {
 		case AST_LT:
@@ -43,11 +52,21 @@ PREPARE_TYPE(binary_expr) {
 
 
 CODEGEN_EXPR(binary_expr) {
+	if (expr->binary_op.lhs->type.kind == AST_NO_TYPE &&
+		expr->binary_op.rhs->type.kind == AST_NO_TYPE)
+		derror(&expr->loc, "cannot determine type of binary operation, use a cast\n");
+
+	if (!type_equal(&expr->binary_op.lhs->type, &expr->binary_op.rhs->type)) {
+		char *tdl = type_describe(&expr->binary_op.lhs->type);
+		char *tdr = type_describe(&expr->binary_op.rhs->type);
+		derror(&expr->loc, "operands to %s must be of the same type (got %s and %s)\n", binary_op_names[expr->binary_op.op], tdl, tdr);
+		free(tdl);
+		free(tdr);
+	}
+
 	assert(!lvalue && "result of a binary operation is not a valid lvalue");
 	LLVMValueRef lhs = codegen_expr(self, context, expr->binary_op.lhs, 0, 0);
 	LLVMValueRef rhs = codegen_expr(self, context, expr->binary_op.rhs, 0, 0);
-	if (!type_equal(&expr->binary_op.lhs->type, &expr->binary_op.rhs->type))
-		derror(&expr->loc, "operands to binary operator must be of the same type");
 
 	type_t *t = &expr->binary_op.lhs->type;
 	if (t->kind == AST_BOOLEAN_TYPE) {

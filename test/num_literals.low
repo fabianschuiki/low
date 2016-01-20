@@ -1,12 +1,12 @@
-// Copyright (c) 2015 Thomas Richner
+// Copyright (c) 2015-2016 Thomas Richner
 // Verifies that number literals with arbitrary radix work.
 // +execute
 
-func printf(int8* f,...) void
+func printf(*int8,...) void
 
 func exit(int32) void
 
-func assert(int32 c) void{
+func assert(c int32) void{
 	if(c!=0){
 		printf("Assert failed, exiting.\n")
 		exit(1)
@@ -14,7 +14,7 @@ func assert(int32 c) void{
 }
 
 func main () int32 {
-	
+
 	var int32 i = 55
 	printf("simple %d\n",i)
 
@@ -29,7 +29,7 @@ func main () int32 {
 	i = 0x123
 	printf("0x %d\n",i)
 	assert(i-291)
-	
+
 	i = 16xABCD
 	printf("16x %d\n",i)
 	assert(i-43981)

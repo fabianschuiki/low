@@ -1,0 +1,11 @@
+// Copyright (c) 2016 Fabian Schuiki
+// Verifies that bitwise OR does not accept operands of different types.
+// -compile
+
+func main() int32 {
+	a : int8 = 1
+	b : int16 = 2
+	c : int32
+	c = (a << 24) | (#int32(b) << 8)
+	return 0
+}

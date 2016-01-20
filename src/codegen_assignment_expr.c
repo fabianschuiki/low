@@ -24,11 +24,6 @@ CODEGEN_EXPR(assignment_expr) {
 		return 0;
 	}
 	LLVMValueRef rv = codegen_expr(self, context, expr->assignment.expr, 0, 0);
-	// assert(expr->assignment.target->type.kind == expr->assignment.expr->type.kind &&
-	//        expr->assignment.target->type.width == expr->assignment.expr->type.width &&
-	//        expr->assignment.target->type.pointer == expr->assignment.expr->type.pointer &&
-	//        "incompatible types in assignment");
-	// expr->type = expr->assignment.expr->type;
 	LLVMValueRef v;
 	if (expr->assignment.op == AST_ASSIGN) {
 		v = rv;

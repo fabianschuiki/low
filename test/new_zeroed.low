@@ -1,4 +1,4 @@
-// Copyright (c) 2015 Fabian Schuiki
+// Copyright (c) 2015-2016 Fabian Schuiki
 // Verifies that new returns zeroed memory.
 // +execute
 
@@ -8,17 +8,17 @@ type foo: struct {
 }
 
 func main() int32{
-	var int64* x1 = new(int64)
-	var foo* x2 = new(foo)
+	var *int64 x1 = new(int64)
+	var *foo x2 = new(foo)
 
 	if *x1 != 0{
 		return 1
-	} 
+	}
 
 	var int64 i
 
 	for i = 0; i < sizeof #foo; ++i {
-		if (#(int8*)x2)[i] != 0 {
+		if (#(*int8)x2)[i] != 0 {
 			return 2
 		}
 	}

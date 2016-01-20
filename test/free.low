@@ -1,8 +1,8 @@
-// Copyright (c) 2015 Thomas Richner
+// Copyright (c) 2015-2016 Thomas Richner
 // Verify the free() builtin function.
 // +execute
 
-func printf(int8* f,...) void
+func printf(*int8,...) void
 
 type yo: struct {
 	int32 x
@@ -10,8 +10,8 @@ type yo: struct {
 }
 
 func main() int32{
-	var int32 * i = new(int32)
-	var yo* x = new(yo)
+	i : *int32 = new(int32)
+	x : *yo = new(yo)
 
 	*i = x.x + x.y
 

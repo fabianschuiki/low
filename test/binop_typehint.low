@@ -1,0 +1,9 @@
+// Copyright (c) 2016 Fabian Schuiki
+// Verifies that type hints propagate into nested binary operations.
+// +compile
+
+func main() int32 {
+	a : int32 = 5
+	tmp := a + (32-5)
+	return 0
+}

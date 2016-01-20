@@ -1,7 +1,7 @@
 /* Copyright (c) 2015 Fabian Schuiki */
 // TODO(trichner): Get your builtin assert up and running ;)
 
-const nullptr int8* = #int8*(#int1(0)) // a hack such that we can create a nullptr
+const nullptr *int8 = #*int8(#int1(0)) // a hack such that we can create a nullptr
 
 type vector: struct {
 	/// Number of items in the vector.
@@ -11,12 +11,12 @@ type vector: struct {
 	/// Size of one item in the vector.
 	int32 item_size
 	/// Memory region that holds the items.
-	int8* items
+	*int8 items
 }
 
 
 /// Initializes a vector.
-func vector_init(vector* self, int32 item_size) void {
+func vector_init(self *vector, item_size int32) void {
 	// assert(self != 0)
 	// assert(item_size > 0)
 	self.item_size = item_size
@@ -26,7 +26,7 @@ func vector_init(vector* self, int32 item_size) void {
 }
 
 /// Disposes of the resources held by a vectpr.
-func vector_dispose(vector* self) void {
+func vector_dispose(self *vector) void {
 	// assert(self != 0)
 	if #int64(self.items) > 0 {
 		free(self.items);
@@ -37,7 +37,7 @@ func vector_dispose(vector* self) void {
 
 /// Makes sure that the vector can hold at least \a capacity number of items
 /// without having to reallocate its memory.
-func vector_reserve(vector* self, int32 capacity) void {
+func vector_reserve(self *vector, capacity int32) void {
 	// assert(self != 0)
 	if capacity <= self.capacity {
 		return
@@ -46,7 +46,7 @@ func vector_reserve(vector* self, int32 capacity) void {
 }
 
 /// Resizes the vector to hold exactly the given number of items.
-func vector_resize(vector* self, int32 size) void {
+func vector_resize(self *vector, size int32) void {
 	// assert(self != 0)
 	if size > self.capacity {
 		vector_reallocate(self, size)
@@ -56,7 +56,7 @@ func vector_resize(vector* self, int32 size) void {
 
 /// Reduces the vector's capacity and memory footprint to hold exactly its
 /// current number of items.
-func vector_shrink(vector* self) void {
+func vector_shrink(self *vector) void {
 	// assert(self != 0)
 	if self.size != self.capacity {
 		vector_reallocate(self, self.size)
@@ -65,7 +65,7 @@ func vector_shrink(vector* self) void {
 
 
 /// Returns a pointer to the item at the given index.
-func vector_get(vector* self, int32 index) int8* {
+func vector_get(self *vector, index int32) *int8 {
 	// assert(self != 0)
 	// assert(index < self.size)
 	// TODO(fabianschuiki): implement pointer arithmetic
@@ -73,7 +73,7 @@ func vector_get(vector* self, int32 index) int8* {
 }
 
 /// Copies multiple items from the vector, starting at the given index.
-func vector_get_many(vector* self, int32 index, int8* items, int32 num_items) void {
+func vector_get_many(self *vector, index int32, items *int8, num_items int32) void {
 	// assert(self != 0)
 	// assert(index < self.size)
 	// assert(index+num_items <= self.size)
@@ -85,7 +85,7 @@ func vector_get_many(vector* self, int32 index, int8* items, int32 num_items) vo
 
 /// Copies an item to the given index in the vector, replacing the item that was
 /// previously there.
-func vector_set(vector* self, int32 index, int8* item) void {
+func vector_set(self *vector, index int32, item *int8) void {
 	// assert(self != 0)
 	// assert(index < self.size)
 	memcpy(&self.items[index*self.item_size], item, self.item_size)
@@ -93,7 +93,7 @@ func vector_set(vector* self, int32 index, int8* item) void {
 
 /// Copies multiple items to the vector, starting at the given index. Replaces
 /// the items that were previously there.
-func vector_set_many(vector* self, int32 index, int8* items, int32 num_items) void {
+func vector_set_many(self *vector, index int32, items *int8, num_items int32) void {
 	// assert(self != 0)
 	// assert(index+num_items <= self.size)
 	memcpy(
@@ -107,7 +107,7 @@ func vector_set_many(vector* self, int32 index, int8* items, int32 num_items) vo
 /// location in the vector remains uninitialized and may be populated by
 /// different means.
 /// \return Returns a pointer to the location in the vector.
-func vector_insert(vector* self, int32 index, int8* item) int8* {
+func vector_insert(self *vector, index int32, item *int8) *int8 {
 	// assert(self != 0)
 	// assert(index <= self.size)
 	vector_grow(self, 1)
@@ -125,7 +125,7 @@ func vector_insert(vector* self, int32 index, int8* item) int8* {
 /// the locations in the vector remain unitialized and may be populated by
 /// different means.
 /// \return Returns a pointer to the location in the vector.
-func vector_insert_many(vector* self, int32 index, int8* items, int32 num_items) int8* {
+func vector_insert_many(self *vector, index int32, items *int8, num_items int32) *int8 {
 	// assert(self != 0)
 	// assert(index <= self.size)
 	vector_grow(self, num_items)
@@ -141,7 +141,7 @@ func vector_insert_many(vector* self, int32 index, int8* items, int32 num_items)
 
 
 /// Erases the item at the given index from the vector.
-func vector_erase(vector* self, int32 index) void {
+func vector_erase(self *vector, index int32) void {
 	// assert(self != 0)
 	// assert(index < self.size)
 	if index < self.size-1 {
@@ -151,7 +151,7 @@ func vector_erase(vector* self, int32 index) void {
 }
 
 /// Erases the items in the range [index,index+num_items) from the vector.
-func vector_erase_many(vector* self, int32 index, int32 num_items) void {
+func vector_erase_many(self *vector, index int32, num_items int32) void {
 	// assert(self != 0)
 	// assert(index+num_items <= self.size)
 	if index+num_items < self.size {
@@ -164,7 +164,7 @@ func vector_erase_many(vector* self, int32 index, int32 num_items) void {
 /// Adds an item to the end of the vector. If \a item is 0, an unitialized item
 /// is added to the vector that may be populated by different means.
 /// \return Returns a pointer to the location in the vector.
-func vector_add(vector* self, int8* item) int8* {
+func vector_add(self *vector, item *int8) *int8 {
 	// assert(self != 0)
 	return vector_insert(self, self.size, item)
 }
@@ -172,20 +172,20 @@ func vector_add(vector* self, int8* item) int8* {
 /// Adds multiple items to the end of the vector. If \a item is 0, unitialized
 /// items are added to the vector that may be populated by different means.
 /// \return Returns a pointer to the location in the vector.
-func vector_add_many(vector* self, int8* items, int32 num_items) int8* {
+func vector_add_many(self *vector, items *int8, num_items int32) *int8 {
 	// assert(self != 0)
 	return vector_insert_many(self, self.size, items, num_items)
 }
 
 /// Removes an item from the end of the vector.
-func vector_remove(vector* self) void {
+func vector_remove(self *vector) void {
 	// assert(self != 0)
 	// assert(self.size > 0)
 	--self.size
 }
 
 /// Removes multiple items from the end of the vector.
-func vector_remove_many(vector* self, int32 num_items) void {
+func vector_remove_many(self *vector, num_items int32) void {
 	// assert(self != 0)
 	// assert(num_items <= self.size)
 	self.size -= num_items
@@ -193,7 +193,7 @@ func vector_remove_many(vector* self, int32 num_items) void {
 
 
 /// Removes all items from the vector.
-func vector_clear(vector* self) void {
+func vector_clear(self *vector) void {
 	// assert(self != 0)
 	self.size = 0
 }
@@ -202,12 +202,12 @@ func vector_clear(vector* self) void {
 
 // ----- PRIVATE FUNCTIONS -----
 
-func malloc(int32) int8*;
-func realloc(int8*, int32) int8*;
-func memcpy(int8*, int8*, int32) int8*;
-func memmove(int8*, int8*, int32) int8*;
+func malloc(int32) *int8;
+func realloc(*int8, int32) *int8;
+func memcpy(*int8, *int8, int32) *int8;
+func memmove(*int8, *int8, int32) *int8;
 
-func vector_reallocate(vector* self, int32 capacity) void {
+func vector_reallocate(self *vector, capacity int32) void {
 	// assert(self != 0)
 	if capacity == 0 {
 		if self.items != nullptr {
@@ -224,7 +224,7 @@ func vector_reallocate(vector* self, int32 capacity) void {
 	self.capacity = capacity
 }
 
-func vector_grow(vector* self, int32 additional) void {
+func vector_grow(self *vector, additional int32) void {
 	// assert(self != 0)
 	req := self.size + additional
 	if self.capacity < req {
@@ -239,7 +239,7 @@ func vector_grow(vector* self, int32 additional) void {
 	}
 }
 
-func vector_move_tail(vector* self, int32 from, int32 to) void {
+func vector_move_tail(self *vector, from int32, to int32) void {
 	// assert(self != 0)
 	memmove(
 		&self.items[to*self.item_size],

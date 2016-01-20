@@ -7,6 +7,28 @@
 #include <string.h>
 
 
+const char *binary_op_names[] = {
+	[AST_ADD] = "+",
+	[AST_SUB] = "-",
+	[AST_MUL] = "*",
+	[AST_DIV] = "/",
+	[AST_MOD] = "%",
+	[AST_LEFT] = "<<",
+	[AST_RIGHT] = ">>",
+	[AST_LT] = "<",
+	[AST_GT] = ">",
+	[AST_LE] = "<=",
+	[AST_GE] = ">=",
+	[AST_EQ] = "==",
+	[AST_NE] = "!=",
+	[AST_BITWISE_AND] = "&",
+	[AST_BITWISE_XOR] = "^",
+	[AST_BITWISE_OR] = "|",
+	[AST_AND] = "&&",
+	[AST_OR] = "||",
+};
+
+
 void
 expr_dispose (expr_t *self) {
 	if (self == 0)

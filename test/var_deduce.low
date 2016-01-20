@@ -1,8 +1,8 @@
-// Copyright (c) 2015 Fabian Schuiki
+// Copyright (c) 2015-2016 Fabian Schuiki
 // Verifies that variables can deduce their type from the initial value.
 // +compile
 
-func multiply(int8 x, int16 y) int24 {
+func multiply(x int8, y int16) int24 {
 	return #(int24)x * #(int24)y
 }
 

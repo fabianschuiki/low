@@ -1,8 +1,8 @@
-// Copyright (c) 2015 Fabian Schuiki
+// Copyright (c) 2015-2016 Fabian Schuiki
 // Verifies that interfaces work with functions.
 // +execute
 
-func printf(int8*, ...) void
+func printf(*int8,...) void
 
 
 // Define an interface.
@@ -21,13 +21,13 @@ type multiplier: struct {
 }
 
 
-func adder_consume(adder *self, int32 v) int32 {
+func adder_consume(self *adder, v int32) int32 {
 	self.result += v
 	printf("  adder.result = %d\n", self.result)
 	return self.result
 }
 
-func multiplier_consume(multiplier *self, int32 v) int32 {
+func multiplier_consume(self *multiplier, v int32) int32 {
 	self.result *= v
 	printf("  multiplier.result = %d\n", self.result)
 	return self.result

@@ -1,8 +1,8 @@
-// Copyright (c) 2015 Fabian Schuiki
+// Copyright (c) 2015-2016 Fabian Schuiki
 // Verifies that interfaces work on struct members.
 // +execute
 
-func printf(int8*, ...) void
+func printf(*int8,...) void
 
 type coords2d: interface {
 	x : int32
@@ -21,7 +21,7 @@ type vector3f: struct {
 }
 
 type entity: struct {
-	name   : int8*;
+	name   : *int8
 	y      : int32
 	id     : int64
 	health : float64
@@ -29,7 +29,7 @@ type entity: struct {
 	mlamla : int8
 }
 
-func swap_and_sum(coords2d i) int32 {
+func swap_and_sum(i coords2d) int32 {
 	tmp := i.x
 	i.x = i.y
 	i.y = tmp
