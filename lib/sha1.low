@@ -1,19 +1,27 @@
-/* Copyright (c) 2015 Fabian Schuiki */
+/* Copyright (c) 2015-2016 Fabian Schuiki */
 
-func printf(int8*,...) void
+func printf(*int8,...) void
 
 type sha1_hash: int160
 
-func sha1_reset(sha1_hash* hash) void {
-	*hash = #sha1_hash(#int160(0x67452301efcdab8998badcfe10325476c3d2e1f0))
+func sha1_reset(hash *sha1_hash) void {
+	*hash = #sha1_hash(#int160(0x67452301'efcdab89'98badcfe'10325476'c3d2e1f0))
 }
 
-func sha1_update(sha1_hash* hash/*, [64]int8 data*/) void {
-	a : int32 = #int32((#int160(*hash) >> #int160(128)) & #int160(0xffffffff))
-	b : int32 = #int32((#int160(*hash) >> #int160(96)) & #int160(0xffffffff))
-	c : int32 = #int32((#int160(*hash) >> #int160(64)) & #int160(0xffffffff))
-	d : int32 = #int32((#int160(*hash) >> #int160(32)) & #int160(0xffffffff))
-	e : int32 = #int32((#int160(*hash) >> #int160(0)) & #int160(0xffffffff))
+func sha1_update(hash *sha1_hash, data *int8) void {
+	a := #int32((#int160(*hash) >> 128) & 0xffffffff)
+	b := #int32((#int160(*hash) >> 96)  & 0xffffffff)
+	c := #int32((#int160(*hash) >> 64)  & 0xffffffff)
+	d := #int32((#int160(*hash) >> 32)  & 0xffffffff)
+	e := #int32((#int160(*hash) >> 0)   & 0xffffffff)
+
+	// The first 16 loop iterations operate on the unmodified input data.
+	chunk : [16]int32
+	i : int32
+	for i = 0; i < 16; ++i {
+		chunk[i] = (#int32(data[i*4+0]) << 24) | (#int32(data[i*4+1]) << 16) | (#int32(data[i*4+2]) << 8) | (#int32(data[i*4+0]) << 0)
+		sha1_merge(&a, &b, &c, &d, &e, chunk[i], sha1_f0(b,c,d))
+	}
 
 	printf("a = 0x%08x\n", a)
 	printf("b = 0x%08x\n", b)
@@ -25,3 +33,18 @@ func sha1_update(sha1_hash* hash/*, [64]int8 data*/) void {
 func sha1_finalize() void {
 
 }
+
+/// Merges the result of one loop iteration into the state.
+func sha1_merge(a *int32, b *int32, c *int32, d *int32, e *int32, w int32, f int32) void {
+	tmp := (*a << 5 | *a >> #int32(32-5)) + f + *e + w
+	*e = *d
+	*d = *c
+	*c = (*b << 30 | *b >> #int32(32-30))
+	*b = *a
+	*a = tmp
+}
+
+func sha1_f0(b int32, c int32, d int32) int32 { return ((b & c) | (~b & d)) + 0x5a827999; }
+func sha1_f1(b int32, c int32, d int32) int32 { return (b ^ c ^ d) + 0x6ed9eba1; }
+func sha1_f2(b int32, c int32, d int32) int32 { return ((b & c) | (b & d) | (c & d)) + 0x8f1bbcdc; }
+func sha1_f3(b int32, c int32, d int32) int32 { return (b ^ c ^ d) + 0xca62c1d6; }

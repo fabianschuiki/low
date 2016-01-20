@@ -1,11 +1,11 @@
-// Copyright (c) 2015 Fabian Schuiki
+// Copyright (c) 2015-2016 Fabian Schuiki
 // Test for the SHA1 implementation.
 // +execute @../../lib/sha1.low
 import "../../lib/sha1.low"
 
-func printf(int8*,...) void
+func printf(*int8,...) void
 func exit(int32) void
-func assert(bool cond) void {
+func assert(cond bool) void {
 	if !cond {
 		printf("assertion failed\n")
 		exit(1)
@@ -16,6 +16,6 @@ func main() int32 {
 	hash : sha1_hash
 	sha1_reset(&hash)
 	data : [64]int8
-	sha1_update(&hash/*, data*/)
+	sha1_update(&hash, &data[0])
 	return 0
 }
