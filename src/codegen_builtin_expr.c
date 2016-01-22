@@ -46,6 +46,10 @@ codegen_array_new(codegen_t* self, codegen_context_t *context,LLVMTypeRef type,L
 
 
 PREPARE_EXPR(new_builtin_expr) {
+	if(expr->newe.expr){
+		type_t int_type = {.kind=AST_INTEGER_TYPE,.width=64};
+		prepare_expr(self, context, expr->newe.expr, &int_type);
+	}
 	type_copy(&expr->type, &expr->newe.type);
 	++expr->type.pointer;
 }
@@ -95,8 +99,16 @@ PREPARE_EXPR(dispose_builtin_expr) {
 
 CODEGEN_EXPR(new_builtin_expr) {
 	LLVMTypeRef type = codegen_type(context, &expr->newe.type);
-	LLVMValueRef ptr = LLVMBuildMalloc(self->builder,type,"");
-	LLVMBuildStore(self->builder,LLVMConstNull(type),ptr);
+
+	LLVMValueRef ptr;
+	if(expr->newe.expr){
+		LLVMValueRef size = codegen_expr(self, context, expr->newe.expr, 0, 0);
+		ptr = codegen_array_new(self,context,type,size);
+	}else{
+		ptr = LLVMBuildMalloc(self->builder,type,"");
+		LLVMBuildStore(self->builder,LLVMConstNull(type),ptr);
+	}
+
 	return ptr;
 }
 

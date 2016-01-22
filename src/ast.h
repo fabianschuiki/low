@@ -254,6 +254,7 @@ struct sizeof_expr {
 
 struct new_builtin {
 	type_t type;
+	expr_t *expr;
 };
 
 struct free_builtin {
