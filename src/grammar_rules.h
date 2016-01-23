@@ -43,7 +43,8 @@ RULE(unary_expr) \
 RULE_END \
 \
 RULE(builtin_func) \
-	VAR TKN(NEW) TKN(LPAREN) SUB(type) TKN(RPAREN) REDUCE(builtin_func_new) \
+	VAR TKN(NEW) TKN(LPAREN) SUB(type) TKN(RPAREN) REDUCE_TAG(builtin_func_new,0) \
+	VAR TKN(NEW) TKN(LPAREN) SUB(type) TKN(COMMA) SUB(expr) TKN(RPAREN) REDUCE_TAG(builtin_func_new,1) \
 	VAR TKN(FREE) TKN(LPAREN) SUB(expr) TKN(RPAREN) REDUCE(builtin_func_free) \
 	VAR TKN(MAKE) TKN(LPAREN) SUB(type) TKN(COMMA) SUB(expr) TKN(RPAREN) REDUCE(builtin_func_make) \
 	VAR TKN(LEN) TKN(LPAREN) SUB(expr) TKN(RPAREN) REDUCE_TAG(builtin_func_lencap,0) \

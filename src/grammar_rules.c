@@ -310,6 +310,9 @@ REDUCER(builtin_func_new) {
 
 	e->newe.type = *(type_t*)in[2].ptr;		/* type to alloc */
 	free(in[2].ptr);
+	if(tag==1){
+		e->newe.expr = in[4].ptr;
+	}
 	out->ptr = e;
 }
 
