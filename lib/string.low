@@ -1,6 +1,22 @@
 /* Copyright (c) 2016 Fabian Schuiki */
+// package string
 
-/// A string is simply a slice of bytes to be interpreted as UTF-8.
+// The string library should be capable of:
+// - concatenation
+// - duplicating strings and substrings
+// - inserting, removing, and replacing substrings
+// - searching for unichars and substrings
+// - checking for, adding, and removing prefix/suffix
+// - splitting string into []string
+// - joining []string into string
+// - comparing strings for equality and order
+// - make string uppercase, lowercase, and titlecase
+
+/// A string is simply a slice of bytes to be interpreted as UTF-8. To maintain
+/// seamless compatibility with C libraries, the capacity of the slice must
+/// always be at least one more than its length (cap(str) >= len(str)+1), and
+/// the first byte beyond the length of the slice shall shall always be zero
+/// (str[len(str)] == 0).
 type string: []int8
 
 /// Copy one string into another. The destination string must have enough
@@ -15,10 +31,11 @@ func copy(dst string, src string) void {
 
 /// Concatenates two strings into a newly allocated string.
 func concat(a string, b string) string {
-	new_length := len(a) + len(b) - 1
-	result := make(string, new_length)
+	new_length := len(a) + len(b)
+	result := make(string, new_length+1)
 	copy(result[:len(a)], a)
-	copy(result[len(a)-1:], b)
+	copy(result[len(a):], b)
+	result[new_length] = 0
 	return result[:new_length]
 }
 
@@ -26,18 +43,17 @@ func concat(a string, b string) string {
 /// enough capacity, it is reallocated and the freed slice is returned.
 /// Otherwise a null-slice is returned.
 func append(dst *string, a string) string {
-	new_length := len(*dst) + len(a) - 1
-	if cap(*dst) < new_length {
-		printf("reallocating from %d to %d\n", len(*dst), new_length);
+	new_length := len(*dst) + len(a)
+	if cap(*dst) < new_length+1 {
 		tmp := *dst
-		*dst = make(string, new_length)
+		*dst = make(string, new_length+1)
 		copy((*dst)[:len(tmp)], tmp)
-		copy((*dst)[len(tmp)-1:], a)
+		copy((*dst)[len(tmp):], a)
+		(*dst)[new_length] = 0
 		*dst = (*dst)[:new_length]
 		return tmp
 	} else {
-		printf("appending\n");
-		copy((*dst)[len(*dst)-1:], a)
+		copy((*dst)[len(*dst):], a)
 		*dst = (*dst)[:new_length]
 		null_slice : string
 		return null_slice
@@ -58,7 +74,7 @@ func dump(s string) void {
 func main() int32 {
 	a := "hello world\n"
 	b := #*[13]int8(a)
-	c : []int8 = (*b)[:]
+	c : []int8 = (*b)[:12]
 	d := #string(c)
 	dump(d)
 
@@ -66,7 +82,8 @@ func main() int32 {
 	printf("concatenated from length %d to %d:\n", #int32(len(d)), #int32(len(e)))
 	dump(e)
 
-	f := (make(string, 20))[:1]
+	f := (make(string, 20))
+	f[0] = 0
 	printf("#1: f = "); dump(f); putchar(#int32(*"\n"))
 	g0 := append(&f,d)
 	printf("#2: [retcap = %d] f = ", cap(g0)); dump(f)
