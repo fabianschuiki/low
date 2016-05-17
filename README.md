@@ -18,6 +18,9 @@ Currently still missing from the language:
 - slices (paritally implemented in #1)
 - fixed-point type
 - unsigned integer type
+- big/little endian types
+- proper bit masks
+- macros/templates
 
 Refer to [1] and [2] for the C grammar and lexical analysis specification. Refer to [3] for the LLVM IR specification, and [4] and [5] for the LLVM C API documentation. Refer to [6] for details on how `defer`, `panic`, and `recover` interact in the Go language.
 
