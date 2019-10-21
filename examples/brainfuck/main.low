@@ -1,0 +1,107 @@
+type FILE: int8
+
+func printf(*int8, ...) int32
+func fopen(path *int8, mode *int8) *FILE
+func fclose(fd *FILE) int32
+func fgetc(fd *FILE) int32
+func feof(fd *FILE) int32
+func ftell(fd *FILE) int32
+func fseek(fd *FILE, offset int32, whence int32) int32
+func putchar(int32) int32
+func getchar() int32
+
+const O_RDONLY = 0x0000
+const PROT_READ = 0x04
+const MAP_PRIVATE = 0x0000
+
+func main(argc int32, argv **int8) int32 {
+	if (argc != 2) {
+		printf("usage: %s INPUT_FILE\n", argv[0])
+		return 1
+	}
+	fd := fopen(argv[1], "r")
+	t := new(Tape)
+	t.size = 16
+	t.mem = new(int64, t.size)
+	run(fd, t, false)
+	printf("\n# program ended; %d cells on the tape\n", t.size)
+	free(t)
+	fclose(fd)
+	return 0
+}
+
+func run(fd *FILE, tape *Tape, skip bool) void {
+	for ; true ; {
+		pos := ftell(fd)
+		c := #int8(fgetc(fd))
+		if feof(fd) != 0 {
+			return
+		}
+		if !skip {
+			if c == ">"[0] {
+				tape_ptr_inc(tape)
+				continue
+			} else if c == "<"[0] {
+				tape_ptr_dec(tape)
+				continue
+			} else if c == "+"[0] {
+				tape.mem[tape.ptr] += 1
+				continue
+			} else if c == "-"[0] {
+				tape.mem[tape.ptr] -= 1
+				continue
+			} else if c == "."[0] {
+				putchar(#int32(tape.mem[tape.ptr]))
+				continue
+			} else if c == ","[0] {
+				tape.mem[tape.ptr] = #int64(getchar())
+				continue
+			}
+		}
+		if c == "["[0] {
+			inner_skip := skip || (tape.mem[tape.ptr] == 0)
+			run(fd, tape, inner_skip)
+			if !inner_skip {
+				fseek(fd, pos, 0)
+			}
+		} else if c == "]"[0] {
+			return
+		}
+	}
+}
+
+type Tape: struct {
+	mem: *int64
+	ptr: int64
+	size: int64
+}
+
+func copy_int64_slice(dst *int64, src *int64, size int64, offset int64) void {
+	var int64 i
+	for i = 0; i < size; ++i {
+		dst[i + offset] = src[i]
+	}
+}
+
+func tape_ptr_inc(tape *Tape) void {
+	tape.ptr += 1;
+	if (tape.ptr >= tape.size) {
+		size := tape.size * 2
+		mem_new := new(int64, size)
+		copy_int64_slice(mem_new, tape.mem, tape.size, 0)
+		free(tape.mem)
+		tape.mem = mem_new
+	}
+}
+
+func tape_ptr_dec(tape *Tape) void {
+	tape.ptr -= 1;
+	if (tape.ptr < 0) {
+		size := tape.size * 2
+		mem_new := new(int64, size)
+		copy_int64_slice(mem_new, tape.mem, tape.size, tape.size)
+		free(tape.mem)
+		tape.mem = mem_new
+		tape.ptr += size
+	}
+}
