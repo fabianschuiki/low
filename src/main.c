@@ -212,13 +212,11 @@ main (int argc, char **argv) {
 	// Link the compiled files into an output file, if so requested.
 	if (options.output_name) {
 		for (i = 1; i < num_modules; ++i) {
-			char *error = 0;
-			LLVMBool failed = LLVMLinkModules(modules[0], modules[i], 0, &error);
+			LLVMBool failed = LLVMLinkModules2(modules[0], modules[i]);
 			if (failed) {
-				fprintf(stderr, "unable to link %s: %s\n", argv[i+1], error);
+				fprintf(stderr, "unable to link %s\n", argv[i+1]);
 				return 1;
 			}
-			LLVMDisposeMessage(error);
 		}
 
 		char *error = 0;
